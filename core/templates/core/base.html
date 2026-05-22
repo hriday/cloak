@@ -8,6 +8,7 @@
   <title>{% block title %}cloak{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'core/style.css' %}">
   <script defer src="{% static 'vendor/htmx.min.js' %}"></script>
+  <script defer src="{% static 'core/wizard.js' %}"></script>
   <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
   <script>window.CLOAK_LOGGED_IN = {{ user.is_authenticated|yesno:'true,false' }};</script>
   <script defer src="{% static 'core/import-on-login.js' %}"></script>

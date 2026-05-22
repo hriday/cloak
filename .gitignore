@@ -22,6 +22,7 @@ node_modules/
 .DS_Store
 .vscode/
 .idea/
+.claude/
 
 # Superpowers workspace (already exists)
 .superpowers/

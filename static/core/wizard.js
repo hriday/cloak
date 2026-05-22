@@ -1,4 +1,4 @@
-export async function loadAlgorithmModules(slug) {
+async function loadAlgorithmModules(slug) {
   const base = `/static/algorithms/${slug}`;
   const [validators, codegen] = await Promise.all([
     import(`${base}/validators.js`),
@@ -7,7 +7,7 @@ export async function loadAlgorithmModules(slug) {
   return { validators, codegen };
 }
 
-export function wizardComponent(initial) {
+function wizardComponent(initial) {
   return {
     algorithmSlug: initial.algorithmSlug,
     lessonSlug: initial.lessonSlug,
@@ -30,6 +30,9 @@ export function wizardComponent(initial) {
       this.codegen = mods.codegen;
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
+      if (this.currentStep?.slug === "done") {
+        this.fullScript = this.codegen.full_script(this.state);
+      }
       this.persistLocal();
     },
 
@@ -96,6 +99,9 @@ export function wizardComponent(initial) {
       this.hint = "";
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
+      if (this.currentStep?.slug === "done" && this.codegen) {
+        this.fullScript = this.codegen.full_script(this.state);
+      }
       this.persistLocal();
       this.syncServer();
     },

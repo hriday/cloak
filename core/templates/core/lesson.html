@@ -2,8 +2,6 @@
 {% load static %}
 {% block title %}{{ algorithm.name }} — {{ lesson.title }}{% endblock %}
 {% block content %}
-<script type="module" src="{% static 'core/wizard.js' %}"></script>
-
 {{ initial_data|json_script:"cloak-init-data" }}
 
 <div x-data="wizardComponent(JSON.parse(document.getElementById('cloak-init-data').textContent))" x-init="init()">
