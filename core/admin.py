@@ -1,3 +1,7 @@
 from django.contrib import admin
+from .models import Algorithm, Lesson, Step, UserProgress
 
-# Register your models here.
+admin.site.register(Algorithm)
+admin.site.register(Lesson)
+admin.site.register(Step)
+admin.site.register(UserProgress)
