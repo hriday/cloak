@@ -48,7 +48,24 @@
 
       <template x-if="step.kind === 'info'">
         <div style="margin-top:12px;">
-          <button class="btn" @click="advance()" x-text="isLast ? 'Done' : 'Continue'"></button>
+          <!-- Full-script inline preview on the done step -->
+          <template x-if="step.slug === 'done'">
+            <div style="margin-bottom:16px;">
+              <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Your full Python script</div>
+              <pre class="code" style="max-height:320px;overflow:auto;" x-text="fullScript"></pre>
+            </div>
+          </template>
+
+          <!-- CTA links on done step; Continue button on all other info steps -->
+          <template x-if="step.slug === 'done'">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+              <a href="/" class="btn">Back to algorithms</a>
+              <a href="/dashboard/" class="btn secondary">My progress</a>
+            </div>
+          </template>
+          <template x-if="step.slug !== 'done'">
+            <button class="btn" @click="advance()" x-text="isLast ? 'Done' : 'Continue'"></button>
+          </template>
         </div>
       </template>
 

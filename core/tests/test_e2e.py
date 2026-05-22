@@ -48,6 +48,19 @@ def test_logged_in_progress_full_rsa_flow(client, rsa_loaded):
             content_type="application/json",
         )
         assert resp.status_code == 200, f"step {i}: {resp.content}"
+
+    # Step 10: the 'done' info step — same final state, advances to step 10
+    final_state = {"p": p, "q": q, "n": n, "phi": phi_n, "e": e, "d": d, "m": m, "c": c, "m_decrypted": m}
+    resp = client.post(
+        "/api/progress/encrypt-decrypt/",
+        data=json.dumps({"state": final_state, "current_step_order": 10}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200, f"step 10: {resp.content}"
+    body = resp.json()
+    assert body["completed_at"] is not None, "done step must set completed_at"
+
     final = UserProgress.objects.get(user=user, lesson__slug="encrypt-decrypt")
-    assert final.current_step_order == 9
+    assert final.current_step_order == 10
     assert final.state["m_decrypted"] == m
+    assert final.completed_at is not None, "completed_at must be persisted after done step"

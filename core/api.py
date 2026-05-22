@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -36,7 +37,17 @@ def progress_detail(request, lesson_slug):
         user=request.user, lesson=lesson,
         defaults={"state": state, "current_step_order": current},
     )
-    return Response({"state": progress.state, "current_step_order": progress.current_step_order})
+
+    # Mark lesson complete when user reaches the final step.
+    if current == lesson.steps.count() and progress.completed_at is None:
+        progress.completed_at = timezone.now()
+        progress.save(update_fields=["completed_at"])
+
+    return Response({
+        "state": progress.state,
+        "current_step_order": progress.current_step_order,
+        "completed_at": progress.completed_at,
+    })
 
 
 @api_view(["POST"])

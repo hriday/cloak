@@ -101,5 +101,14 @@
       "prompt_template": "### Decrypt\n\n`m = c^d mod n`. Apply the private exponent d = {{ state.d }} to c = {{ state.c }} (mod n = {{ state.n }}). You should recover the original message.",
       "validator_key": "decrypt", "codegen_key": "decrypt"
     }
+  },
+  {
+    "model": "core.step",
+    "pk": 10,
+    "fields": {
+      "lesson": 1, "order": 10, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou encrypted and decrypted a message with RSA. Your full Python script is above.\n\nTry another algorithm or check your progress dashboard.",
+      "validator_key": "info", "codegen_key": "info"
+    }
   }
 ]

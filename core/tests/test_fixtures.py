@@ -10,8 +10,8 @@ def test_rsa_fixture_loads():
     assert algo.status == "live"
     lesson = Lesson.objects.get(algorithm=algo, slug="encrypt-decrypt")
     steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
-    assert len(steps) == 9
+    assert len(steps) == 10
     assert [s.slug for s in steps] == [
         "intro", "pick-pq", "compute-n", "compute-phi", "pick-e",
-        "compute-d", "pick-message", "encrypt", "decrypt-done",
+        "compute-d", "pick-message", "encrypt", "decrypt-done", "done",
     ]
