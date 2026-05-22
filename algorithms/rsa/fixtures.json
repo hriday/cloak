@@ -1,0 +1,105 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 1,
+    "fields": {
+      "slug": "rsa",
+      "name": "RSA",
+      "family": "asymmetric",
+      "status": "live",
+      "order": 1,
+      "intro_template": ""
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 1,
+    "fields": {
+      "algorithm": 1,
+      "slug": "encrypt-decrypt",
+      "title": "Encrypt & Decrypt a Number",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 1,
+    "fields": {
+      "lesson": 1, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Welcome to RSA\n\nYou'll pick two primes, derive a public and private key, encrypt a number, then decrypt it. Compute each step yourself; the site will check your work and show you the Python equivalent.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 2,
+    "fields": {
+      "lesson": 1, "order": 2, "slug": "pick-pq", "kind": "input-multi",
+      "prompt_template": "### Pick two primes\n\nChoose **p** and **q**, each a prime up to 3 digits (between 2 and 999). They must be different.",
+      "validator_key": "pick_pq", "codegen_key": "pick_pq"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 3,
+    "fields": {
+      "lesson": 1, "order": 3, "slug": "compute-n", "kind": "input-numeric",
+      "prompt_template": "### Compute n\n\nn is the modulus of both the public and private key.\n\n`n = p · q` — with p = {{ state.p }}, q = {{ state.q }}.",
+      "validator_key": "compute_n", "codegen_key": "compute_n"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 4,
+    "fields": {
+      "lesson": 1, "order": 4, "slug": "compute-phi", "kind": "input-numeric",
+      "prompt_template": "### Compute φ(n)\n\nEuler's totient. For two primes, `φ(n) = (p-1)(q-1)`.\n\nWith p = {{ state.p }}, q = {{ state.q }}.",
+      "validator_key": "compute_phi", "codegen_key": "compute_phi"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 5,
+    "fields": {
+      "lesson": 1, "order": 5, "slug": "pick-e", "kind": "choose-from-list",
+      "prompt_template": "### Pick e (public exponent)\n\nChoose any e with 1 < e < φ(n) and gcd(e, φ) = 1. The list below shows the first valid candidates.",
+      "validator_key": "pick_e", "codegen_key": "pick_e"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 6,
+    "fields": {
+      "lesson": 1, "order": 6, "slug": "compute-d", "kind": "input-numeric",
+      "prompt_template": "### Compute d (private exponent)\n\nd is the modular inverse of e mod φ(n) — that is, `(d · e) ≡ 1 (mod φ)`.\n\nWith e = {{ state.e }}, φ = {{ state.phi }}.",
+      "validator_key": "compute_d", "codegen_key": "compute_d"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 7,
+    "fields": {
+      "lesson": 1, "order": 7, "slug": "pick-message", "kind": "input-numeric",
+      "prompt_template": "### Choose a message\n\nPick a small integer m with 0 ≤ m < n = {{ state.n }}. We'll encrypt this.",
+      "validator_key": "pick_message", "codegen_key": "pick_message"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 8,
+    "fields": {
+      "lesson": 1, "order": 8, "slug": "encrypt", "kind": "input-numeric",
+      "prompt_template": "### Encrypt\n\n`c = m^e mod n`. Compute the ciphertext c with m = {{ state.m }}, e = {{ state.e }}, n = {{ state.n }}.",
+      "validator_key": "encrypt", "codegen_key": "encrypt"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 9,
+    "fields": {
+      "lesson": 1, "order": 9, "slug": "decrypt-done", "kind": "input-numeric",
+      "prompt_template": "### Decrypt\n\n`m = c^d mod n`. Apply the private exponent d = {{ state.d }} to c = {{ state.c }} (mod n = {{ state.n }}). You should recover the original message.",
+      "validator_key": "decrypt", "codegen_key": "decrypt"
+    }
+  }
+]
