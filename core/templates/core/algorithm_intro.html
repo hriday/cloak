@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% block title %}{{ algorithm.name }} — cloak{% endblock %}
+{% block content %}
+<h1>{{ algorithm.name }}</h1>
+<p style="color:var(--muted)">{{ algorithm.get_family_display }} encryption</p>
+
+{% if algorithm.slug == "rsa" %}
+  <div class="card">
+    <h3>The idea</h3>
+    <p>RSA is an <em>asymmetric</em> cipher: anyone can encrypt with your public key, but only you (holding the private key) can decrypt. Its security rests on the difficulty of factoring large numbers.</p>
+  </div>
+  <div class="card">
+    <h3>The cast</h3>
+    <ul>
+      <li><code>p</code>, <code>q</code> — two primes (your secret)</li>
+      <li><code>n = p·q</code> — modulus (public)</li>
+      <li><code>φ(n) = (p-1)(q-1)</code> — Euler's totient</li>
+      <li><code>e</code> — public exponent (coprime to φ)</li>
+      <li><code>d</code> — private exponent (e⁻¹ mod φ)</li>
+    </ul>
+  </div>
+{% endif %}
+
+{% if lesson %}
+  <p><a class="btn" href="{% url 'lesson_runner' algorithm.slug lesson.slug %}">Start the lesson</a></p>
+{% endif %}
+{% endblock %}
