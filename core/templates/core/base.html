@@ -1,0 +1,30 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}cloak{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'core/style.css' %}">
+  <script defer src="{% static 'vendor/htmx.min.js' %}"></script>
+  <script defer src="{% static 'vendor/alpine.min.js' %}"></script>
+</head>
+<body>
+  <header class="site">
+    <a href="{% url 'landing' %}"><strong>cloak</strong></a>
+    <nav>
+      {% if user.is_authenticated %}
+        <a href="{% url 'dashboard' %}">{{ user.email|default:user.username }}</a>
+        <form method="post" action="{% url 'logout' %}" style="display:inline">
+          {% csrf_token %}
+          <button class="btn secondary" type="submit">Log out</button>
+        </form>
+      {% else %}
+        <a class="btn secondary" href="{% url 'login' %}">Log in</a>
+        <a class="btn" href="{% url 'signup' %}">Sign up</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main>{% block content %}{% endblock %}</main>
+</body>
+</html>
