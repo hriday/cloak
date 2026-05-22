@@ -1,0 +1,23 @@
+{% extends "core/base.html" %}
+{% block title %}Your progress — cloak{% endblock %}
+{% block content %}
+<h1>Your progress</h1>
+
+{% if rows %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;">
+    {% for row in rows %}
+      <a class="card" href="{% url 'lesson_runner' row.lesson.algorithm.slug row.lesson.slug %}" style="text-decoration:none;color:inherit;">
+        <h3>{{ row.lesson.algorithm.name }} — {{ row.lesson.title }}</h3>
+        <p style="color:var(--muted)">Step {{ row.current_step_order }}{% if row.completed_at %} · completed{% endif %}</p>
+      </a>
+    {% endfor %}
+  </div>
+{% else %}
+  <p>You haven't started any lessons yet. <a href="{% url 'landing' %}">Pick one to start.</a></p>
+{% endif %}
+
+<h2 style="margin-top:32px;">Coming soon</h2>
+<div class="card muted">
+  <p>More algorithms after RSA — pick the next direction once we're live.</p>
+</div>
+{% endblock %}
