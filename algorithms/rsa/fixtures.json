@@ -27,6 +27,7 @@
     "fields": {
       "lesson": 1, "order": 1, "slug": "intro", "kind": "info",
       "prompt_template": "## Welcome to RSA\n\nYou'll pick two primes, derive a public and private key, encrypt a number, then decrypt it. Compute each step yourself; the site will check your work and show you the Python equivalent.",
+      "help_template": "",
       "validator_key": "info", "codegen_key": "info"
     }
   },
@@ -36,6 +37,7 @@
     "fields": {
       "lesson": 1, "order": 2, "slug": "pick-pq", "kind": "input-multi",
       "prompt_template": "### Pick two primes\n\nChoose **p** and **q**, each a prime up to 3 digits (between 2 and 999). They must be different.",
+      "help_template": "**In plain English:** A *prime* is a whole number greater than 1 whose only divisors are 1 and itself — like 2, 3, 5, 7, 11, 13… RSA's security comes from the fact that multiplying two big primes is fast but factoring the product back into its primes is slow. We use small primes here so you can do the math by hand. Some you can try: 61, 53, 97, 101, 211, 313.",
       "validator_key": "pick_pq", "codegen_key": "pick_pq"
     }
   },
@@ -45,6 +47,7 @@
     "fields": {
       "lesson": 1, "order": 3, "slug": "compute-n", "kind": "input-numeric",
       "prompt_template": "### Compute n\n\nn is the modulus of both the public and private key.\n\n`n = p · q` — with p = {{ state.p }}, q = {{ state.q }}.",
+      "help_template": "**In plain English:** Multiply your two primes together. The result is **n** — the only piece of the key the world will see. Anyone can know n; nobody (except you) can easily recover p and q from it. That asymmetry is what makes RSA work.",
       "validator_key": "compute_n", "codegen_key": "compute_n"
     }
   },
@@ -54,6 +57,7 @@
     "fields": {
       "lesson": 1, "order": 4, "slug": "compute-phi", "kind": "input-numeric",
       "prompt_template": "### Compute φ(n)\n\nEuler's totient. For two primes, `φ(n) = (p-1)(q-1)`.\n\nWith p = {{ state.p }}, q = {{ state.q }}.",
+      "help_template": "**In plain English:** **φ(n)** (pronounced *phi of n*) counts how many numbers from 1 up to n share no common factor with n. There's a shortcut when n is a product of two primes: φ(n) = (p−1) × (q−1). You need φ(n) to derive the private key — and anyone who knows φ(n) can break your key, so it's a secret along with p and q.",
       "validator_key": "compute_phi", "codegen_key": "compute_phi"
     }
   },
@@ -63,6 +67,7 @@
     "fields": {
       "lesson": 1, "order": 5, "slug": "pick-e", "kind": "choose-from-list",
       "prompt_template": "### Pick e (public exponent)\n\nChoose any e with 1 < e < φ(n) and gcd(e, φ) = 1. The list below shows the first valid candidates.",
+      "help_template": "**In plain English:** **e** is the *public* exponent — the number used to encrypt. The only rule is that e must share no factor with φ(n) other than 1 (that's what *gcd(e, φ) = 1* means; gcd is the greatest common divisor). In real systems e = 65537 is standard because it's prime, large enough to be safe, and small enough to be fast.",
       "validator_key": "pick_e", "codegen_key": "pick_e"
     }
   },
@@ -72,6 +77,7 @@
     "fields": {
       "lesson": 1, "order": 6, "slug": "compute-d", "kind": "input-numeric",
       "prompt_template": "### Compute d (private exponent)\n\nd is the modular inverse of e mod φ(n) — that is, `(d · e) ≡ 1 (mod φ)`.\n\nWith e = {{ state.e }}, φ = {{ state.phi }}.",
+      "help_template": "**In plain English:** **d** is the *private* exponent — the number that *undoes* what e does. The math sentence `(d · e) ≡ 1 (mod φ)` means: multiply d by e, divide by φ, and the remainder is 1. In Python: `d = pow(e, -1, phi)`. Try a few values of d for e = {{ state.e }} and φ = {{ state.phi }} — you're looking for the one where d × {{ state.e }} divided by {{ state.phi }} leaves remainder 1. Keep d secret — it's your private key.",
       "validator_key": "compute_d", "codegen_key": "compute_d"
     }
   },
@@ -81,6 +87,7 @@
     "fields": {
       "lesson": 1, "order": 7, "slug": "pick-message", "kind": "input-numeric",
       "prompt_template": "### Choose a message\n\nPick a small integer m with 0 ≤ m < n = {{ state.n }}. We'll encrypt this.",
+      "help_template": "**In plain English:** RSA encrypts *numbers*, not text. Pick anything between 0 and n − 1 = {{ state.n }} − 1. In real life, you'd convert a message (say, the letter 'A') to a number first using something like UTF-8. For this lesson, any small integer works.",
       "validator_key": "pick_message", "codegen_key": "pick_message"
     }
   },
@@ -90,6 +97,7 @@
     "fields": {
       "lesson": 1, "order": 8, "slug": "encrypt", "kind": "input-numeric",
       "prompt_template": "### Encrypt\n\n`c = m^e mod n`. Compute the ciphertext c with m = {{ state.m }}, e = {{ state.e }}, n = {{ state.n }}.",
+      "help_template": "**In plain English:** Encryption is just *modular exponentiation*: raise the message **m** to the power **e**, then take the remainder when divided by **n**. That remainder is the ciphertext **c**. In Python: `pow(m, e, n)` — the three-argument form does this in one step without computing the giant intermediate number.",
       "validator_key": "encrypt", "codegen_key": "encrypt"
     }
   },
@@ -99,6 +107,7 @@
     "fields": {
       "lesson": 1, "order": 9, "slug": "decrypt-done", "kind": "input-numeric",
       "prompt_template": "### Decrypt\n\n`m = c^d mod n`. Apply the private exponent d = {{ state.d }} to c = {{ state.c }} (mod n = {{ state.n }}). You should recover the original message.",
+      "help_template": "**In plain English:** Decryption is the same operation as encryption, just with **d** instead of **e**. Raise **c** to the power **d**, take the remainder mod **n**, and out pops the original **m**. The reason this works is a theorem (Fermat–Euler): m raised to any multiple of φ(n), then plus 1, gives back m mod n. Since e × d is exactly that, e and d are inverses.",
       "validator_key": "decrypt", "codegen_key": "decrypt"
     }
   },
@@ -108,6 +117,7 @@
     "fields": {
       "lesson": 1, "order": 10, "slug": "done", "kind": "info",
       "prompt_template": "## Done!\n\nYou encrypted and decrypted a message with RSA. Your full Python script is above.\n\nTry another algorithm or check your progress dashboard.",
+      "help_template": "",
       "validator_key": "info", "codegen_key": "info"
     }
   }

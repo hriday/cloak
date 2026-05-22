@@ -57,6 +57,13 @@ function wizardComponent(initial) {
       this.inlineCode = (fn && this.stepValuesPresent(step)) ? fn(this.state) : "";
     },
 
+    substituteState(html) {
+      if (!html) return "";
+      return html.replace(/\{\{\s*state\.(\w+)\s*\}\}/g, (_, key) =>
+        key in this.state ? String(this.state[key]) : "_"
+      );
+    },
+
     stepValuesPresent(step) {
       const map = {
         pick_pq: ["p", "q"], compute_n: ["n"], compute_phi: ["phi"],

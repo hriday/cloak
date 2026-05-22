@@ -18,9 +18,7 @@ def algorithm_intro(request, slug):
 
 
 def lesson_runner(request, algo_slug, lesson_slug):
-    import json
     import markdown as md_lib
-    from django.template import Context, Template
     algorithm = get_object_or_404(Algorithm, slug=algo_slug, status="live")
     lesson = get_object_or_404(Lesson, algorithm=algorithm, slug=lesson_slug)
     db_steps = list(lesson.steps.order_by("order"))
@@ -35,9 +33,10 @@ def lesson_runner(request, algo_slug, lesson_slug):
         state = progress.state or {}
         current = progress.current_step_order or 1
 
-    def render_prompt(template_str, state_for_render):
-        rendered = Template(template_str).render(Context({"state": state_for_render}))
-        return md_lib.markdown(rendered)
+    # Render markdown only; leave `{{ state.X }}` placeholders intact so the
+    # client substitutes live values from the wizard's reactive state.
+    def render_md(template_str):
+        return md_lib.markdown(template_str or "")
 
     steps_payload = [
         {
@@ -46,7 +45,8 @@ def lesson_runner(request, algo_slug, lesson_slug):
             "kind": s.kind,
             "validator_key": s.validator_key,
             "codegen_key": s.codegen_key,
-            "prompt_html": render_prompt(s.prompt_template, state),
+            "prompt_html": render_md(s.prompt_template),
+            "help_html": render_md(s.help_template),
         }
         for s in db_steps
     ]

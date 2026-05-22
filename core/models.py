@@ -54,6 +54,7 @@ class Step(models.Model):
     slug = models.SlugField()
     kind = models.CharField(max_length=20, choices=KIND_CHOICES)
     prompt_template = models.TextField()
+    help_template = models.TextField(blank=True, default="")
     validator_key = models.CharField(max_length=80, blank=True, default="")
     codegen_key = models.CharField(max_length=80, blank=True, default="")
 

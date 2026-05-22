@@ -19,7 +19,14 @@
 
   <template x-for="step in steps" :key="step.order">
     <div x-show="step.order === currentStepOrder" class="card">
-      <div x-html="step.prompt_html"></div>
+      <div x-html="substituteState(step.prompt_html)"></div>
+
+      <template x-if="step.help_html">
+        <details class="help" open>
+          <summary>In plain English</summary>
+          <div x-html="substituteState(step.help_html)"></div>
+        </details>
+      </template>
 
       <template x-if="step.kind === 'input-numeric'">
         <div style="margin-top:12px;">
