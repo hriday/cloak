@@ -1,0 +1,90 @@
+{% extends "core/base.html" %}
+{% load static %}
+{% block title %}{{ algorithm.name }} — {{ lesson.title }}{% endblock %}
+{% block content %}
+<script type="module" src="{% static 'core/wizard.js' %}"></script>
+
+{{ initial_data|json_script:"cloak-init-data" }}
+
+<div x-data="wizardComponent(JSON.parse(document.getElementById('cloak-init-data').textContent))" x-init="init()">
+
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+    <h2 style="margin:0">{{ algorithm.name }} — {{ lesson.title }}</h2>
+    <button class="btn secondary" @click="showFullScript()">Show full script</button>
+  </div>
+
+  <div class="progress">
+    <template x-for="(state, idx) in progressBar" :key="idx">
+      <div :class="state"></div>
+    </template>
+  </div>
+
+  <template x-for="step in steps" :key="step.order">
+    <div x-show="step.order === currentStepOrder" class="card">
+      <div x-html="step.prompt_html"></div>
+
+      <template x-if="step.kind === 'input-numeric'">
+        <div style="margin-top:12px;">
+          <input type="text" x-model="inputValue" placeholder="your answer" @keydown.enter="check()">
+          <button class="btn" @click="check()">Check</button>
+        </div>
+      </template>
+
+      <template x-if="step.kind === 'input-multi'">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+          <span>p =</span><input type="text" x-model="multiInput.p" style="min-width:90px">
+          <span>q =</span><input type="text" x-model="multiInput.q" style="min-width:90px">
+          <button class="btn" @click="check()">Check</button>
+        </div>
+      </template>
+
+      <template x-if="step.kind === 'choose-from-list'">
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
+          <template x-for="opt in coprimeOptions" :key="opt">
+            <button class="btn secondary" @click="inputValue = String(opt); check()" x-text="opt"></button>
+          </template>
+        </div>
+      </template>
+
+      <template x-if="step.kind === 'info'">
+        <div style="margin-top:12px;">
+          <button class="btn" @click="advance()" x-text="isLast ? 'Done' : 'Continue'"></button>
+        </div>
+      </template>
+
+      <div x-show="hint" x-text="hint" class="hint"></div>
+
+      <div x-show="inlineCode" style="margin-top:14px;">
+        <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Python for this step</div>
+        <div class="code" x-text="inlineCode"></div>
+      </div>
+    </div>
+  </template>
+
+  <div style="display:flex;justify-content:space-between;margin-top:8px;">
+    <button class="btn secondary" @click="back()" :disabled="currentStepOrder === 1">← Back</button>
+    <span style="color:var(--muted)" x-text="`Step ${currentStepOrder} of ${steps.length}`"></span>
+  </div>
+
+  <template x-if="!{{ user.is_authenticated|yesno:'true,false' }} && currentStepOrder >= 3">
+    <div class="banner">
+      Save your progress: <a href="{% url 'signup' %}" style="color:#fff;text-decoration:underline">sign up</a> or
+      <a href="{% url 'login' %}" style="color:#fff;text-decoration:underline">log in</a>.
+    </div>
+  </template>
+
+  <div class="modal-bg" x-show="fullScriptOpen" @click.self="fullScriptOpen = false">
+    <div class="modal">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0">{{ algorithm.slug }}_lesson.py</h3>
+        <div>
+          <button class="btn secondary" @click="copyFullScript()">Copy</button>
+          <button class="btn" @click="downloadFullScript()">Download</button>
+          <button class="btn secondary" @click="fullScriptOpen = false">Close</button>
+        </div>
+      </div>
+      <pre class="code" style="margin-top:12px;" x-text="fullScript"></pre>
+    </div>
+  </div>
+</div>
+{% endblock %}
