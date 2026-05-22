@@ -1,0 +1,19 @@
+{% extends "core/base.html" %}
+{% block title %}cloak — learn cryptography by doing it{% endblock %}
+{% block content %}
+<h1>Learn cryptography by doing the math.</h1>
+<p>Pick an algorithm. Walk through it step by step. Get the Python code as you go.</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:24px;">
+  {% for algo in algorithms %}
+    <a class="card" href="{% url 'algorithm_intro' algo.slug %}" style="text-decoration:none;color:inherit;">
+      <h3>{{ algo.name }}</h3>
+      <p style="color:var(--muted)">{{ algo.get_family_display }}</p>
+    </a>
+  {% endfor %}
+  <div class="card muted">
+    <h3>More algorithms coming soon</h3>
+    <p style="color:var(--muted)">DES, Blowfish, post-quantum — once RSA is live.</p>
+  </div>
+</div>
+{% endblock %}
