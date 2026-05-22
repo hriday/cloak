@@ -12,8 +12,8 @@ from .progress_service import validate_state
 
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
-def progress_detail(request, lesson_slug):
-    lesson = get_object_or_404(Lesson, slug=lesson_slug)
+def progress_detail(request, algo_slug, lesson_slug):
+    lesson = get_object_or_404(Lesson, algorithm__slug=algo_slug, slug=lesson_slug)
     if request.method == "GET":
         progress, _ = UserProgress.objects.get_or_create(
             user=request.user, lesson=lesson,
@@ -59,7 +59,7 @@ def progress_import(request):
     skipped = []
     for item in serializer.validated_data["items"]:
         try:
-            lesson = Lesson.objects.get(slug=item["lesson_slug"])
+            lesson = Lesson.objects.get(algorithm__slug=item["algorithm_slug"], slug=item["lesson_slug"])
         except Lesson.DoesNotExist:
             skipped.append(item["lesson_slug"])
             continue

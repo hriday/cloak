@@ -138,7 +138,7 @@ export function wizardComponent(initial) {
     async syncServer() {
       if (!initial.loggedIn) return;
       const csrf = document.querySelector("meta[name=csrf-token]")?.content;
-      await fetch(`/api/progress/${this.lessonSlug}/`, {
+      await fetch(`/api/progress/${this.algorithmSlug}/${this.lessonSlug}/`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
         body: JSON.stringify({ state: this.state, current_step_order: this.currentStepOrder }),

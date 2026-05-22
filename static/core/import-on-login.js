@@ -8,7 +8,7 @@
     const [, , algo, lesson] = key.split(".");
     try {
       const parsed = JSON.parse(localStorage.getItem(key));
-      items.push({ lesson_slug: lesson, state: parsed.state, current_step_order: parsed.current_step_order });
+      items.push({ algorithm_slug: algo, lesson_slug: lesson, state: parsed.state, current_step_order: parsed.current_step_order });
     } catch {}
   }
   if (items.length === 0) {
@@ -22,7 +22,7 @@
     body: JSON.stringify({ items }),
   }).then((r) => {
     if (r.ok) {
-      for (const it of items) localStorage.removeItem(`cloak.progress.rsa.${it.lesson_slug}`);
+      for (const it of items) localStorage.removeItem(`cloak.progress.${it.algorithm_slug}.${it.lesson_slug}`);
     }
     sessionStorage.setItem("cloak.import_attempted", "1");
   });

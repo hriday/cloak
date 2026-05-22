@@ -43,7 +43,7 @@ def test_logged_in_progress_full_rsa_flow(client, rsa_loaded):
     ]
     for i, state in enumerate(states, start=2):
         resp = client.post(
-            "/api/progress/encrypt-decrypt/",
+            "/api/progress/rsa/encrypt-decrypt/",
             data=json.dumps({"state": state, "current_step_order": i}),
             content_type="application/json",
         )
@@ -52,7 +52,7 @@ def test_logged_in_progress_full_rsa_flow(client, rsa_loaded):
     # Step 10: the 'done' info step — same final state, advances to step 10
     final_state = {"p": p, "q": q, "n": n, "phi": phi_n, "e": e, "d": d, "m": m, "c": c, "m_decrypted": m}
     resp = client.post(
-        "/api/progress/encrypt-decrypt/",
+        "/api/progress/rsa/encrypt-decrypt/",
         data=json.dumps({"state": final_state, "current_step_order": 10}),
         content_type="application/json",
     )

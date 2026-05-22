@@ -8,6 +8,7 @@ class ProgressPayloadSerializer(serializers.Serializer):
 
 
 class ImportItemSerializer(serializers.Serializer):
+    algorithm_slug = serializers.SlugField()
     lesson_slug = serializers.SlugField()
     state = serializers.JSONField()
     current_step_order = serializers.IntegerField(min_value=1)
