@@ -67,3 +67,36 @@ export function xor_encrypt_head(input, state) {
   }
   return { ok: true, value: { h_ciphertext: xorBytes(msg, symKey) } };
 }
+
+export function unwrap_key(input, state) {
+  const got = _parseInt(input);
+  if (got === null) return { ok: false, hint: "Enter a whole number." };
+  const wrapped = BigInt(state.h_wrapped_key);
+  const expected = modPow(wrapped, HYBRID_D, HYBRID_N);
+  if (got !== expected) {
+    return { ok: false, hint: `m = c^d mod n. With c=${wrapped}, d=103, n=143.` };
+  }
+  return _ok({ h_recovered_key: got });
+}
+
+export function xor_decrypt_head(input, state) {
+  const got = _parseInt(input);
+  if (got === null) return { ok: false, hint: "Enter a whole number." };
+  const cipher = state?.h_ciphertext;
+  if (!Array.isArray(cipher) || cipher.length === 0) {
+    return { ok: false, hint: "No ciphertext in state — go back and encrypt first." };
+  }
+  const recoveredKey = Number(state.h_recovered_key);
+  const firstByte = cipher[0];
+  const expectedFirst = firstByte ^ recoveredKey;
+  if (Number(got) !== expectedFirst) {
+    return { ok: false, hint: `Compute first_ciphertext_byte XOR recovered_key. With c[0] = ${firstByte} and recovered_key = ${recoveredKey}.` };
+  }
+  const decoded = cipher.map((c) => c ^ recoveredKey);
+  const recovered = decoded.map((code) => String.fromCharCode(code)).join("");
+  return { ok: true, value: { h_recovered_message: recovered } };
+}
+
+export function info(_input, _state) {
+  return { ok: true, value: {} };
+}

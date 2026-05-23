@@ -76,3 +76,34 @@ test("xor_encrypt_head wrong value mentions both operands", () => {
   assert.match(r.hint, /104/); // first_code
   assert.match(r.hint, /42/);  // sym_key
 });
+
+test("unwrap_key happy — 81^103 mod 143 = 42", () => {
+  const r = v.unwrap_key("42", { h_wrapped_key: 81 });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.h_recovered_key, 42);
+});
+
+test("unwrap_key wrong value mentions c/d/n", () => {
+  const r = v.unwrap_key("999", { h_wrapped_key: 81 });
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /81/);   // c
+  assert.match(r.hint, /103/);  // d
+  assert.match(r.hint, /143/);  // n
+});
+
+test("xor_decrypt_head happy — first byte 66 XOR recovered_key 42 = 104", () => {
+  const r = v.xor_decrypt_head("104", { h_ciphertext: [66, 67], h_recovered_key: 42 });
+  assert.equal(r.ok, true);
+  assert.equal(r.value.h_recovered_message, "hi");
+});
+
+test("xor_decrypt_head wrong value mentions both operands", () => {
+  const r = v.xor_decrypt_head("999", { h_ciphertext: [66, 67], h_recovered_key: 42 });
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /66/);  // ciphertext[0]
+  assert.match(r.hint, /42/);  // recovered_key
+});
+
+test("info always returns ok", () => {
+  assert.deepEqual(v.info("anything", {}), { ok: true, value: {} });
+});
