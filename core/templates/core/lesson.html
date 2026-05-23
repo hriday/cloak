@@ -74,22 +74,66 @@
 
       <template x-if="step.kind === 'info'">
         <div style="margin-top:12px;">
-          <!-- Full-script inline preview on the done step -->
-          <template x-if="step.slug === 'done'">
-            <div style="margin-bottom:16px;">
-              <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Your full Python script</div>
-              <pre class="code" style="max-height:320px;overflow:auto;" x-text="fullScript"></pre>
+
+          <!-- Soft-done fork: toy lesson complete -->
+          <template x-if="step.slug === 'toy-complete'">
+            <div>
+              <div style="margin-bottom:16px;">
+                <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Your toy lesson script</div>
+                <pre class="code" style="max-height:240px;overflow:auto;" x-text="fullScript"></pre>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button class="btn" @click="advance()">Encrypt a real sentence →</button>
+                <a href="/" class="btn secondary">Back to algorithms</a>
+                <a href="/dashboard/" class="btn secondary">My progress</a>
+              </div>
             </div>
           </template>
 
-          <!-- CTA links on done step; Continue button on all other info steps -->
+          <!-- Final done + playground -->
           <template x-if="step.slug === 'done'">
-            <div style="display:flex;gap:12px;flex-wrap:wrap;">
-              <a href="/" class="btn">Back to algorithms</a>
-              <a href="/dashboard/" class="btn secondary">My progress</a>
+            <div>
+              <div style="margin-bottom:16px;">
+                <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Your full Python script</div>
+                <pre class="code" style="max-height:320px;overflow:auto;" x-text="fullScript"></pre>
+              </div>
+
+              <div style="margin-bottom:16px;border-top:1px dashed var(--border, #ddd);padding-top:12px;">
+                <h3 style="margin:0 0 6px 0;">Playground</h3>
+                <p style="color:var(--muted);margin:0 0 8px 0;font-size:0.9em;">Type anything (≤500 printable ASCII chars). The table re-encrypts as you type, using <span x-text="`n=${state.n2}, e=${state.e2}, d=${state.d2}`"></span>.</p>
+                <textarea
+                  x-model="playgroundSentence"
+                  @input="recomputePlayground()"
+                  placeholder="Try a sentence..."
+                  maxlength="500"
+                  rows="3"
+                  style="width:100%;font-family:inherit;padding:8px;"></textarea>
+                <div style="color:var(--muted);font-size:0.8em;margin-top:4px;">
+                  <span x-text="`${playgroundSentence.length} / 500`"></span>
+                  · decoded: <code x-text="playgroundDecoded || '—'"></code>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <a href="/" class="btn">Back to algorithms</a>
+                <a href="/dashboard/" class="btn secondary">My progress</a>
+              </div>
             </div>
           </template>
-          <template x-if="step.slug !== 'done'">
+
+          <!-- Decrypt-sentence info step: actually decrypt state.encrypted and show -->
+          <template x-if="step.slug === 'decrypt-sentence'">
+            <div>
+              <p style="color:var(--muted);">Each encrypted number gets <code>^d mod n</code> applied. The result is the original ASCII code, which decodes back to the character. Recovered text (computed from <code>state.encrypted</code> with d=<span x-text="state.d2"></span>, n=<span x-text="state.n2"></span>):</p>
+              <pre class="code" x-text="recoveredText"></pre>
+              <p x-show="recoveredMatchesOriginal" style="color:var(--ok, #2a8a3e);">✓ Matches the original sentence.</p>
+              <p x-show="!recoveredMatchesOriginal" style="color:var(--err, #c0392b);">⚠ Does not match the original — key derivation bug. Please reload.</p>
+              <button class="btn" @click="advance()">Continue</button>
+            </div>
+          </template>
+
+          <!-- Continue button on all other info steps -->
+          <template x-if="step.slug !== 'done' && step.slug !== 'toy-complete' && step.slug !== 'decrypt-sentence'">
             <button class="btn" @click="advance()" x-text="isLast ? 'Done' : 'Continue'"></button>
           </template>
         </div>
@@ -133,7 +177,7 @@
 
   <div style="display:flex;justify-content:space-between;margin-top:8px;">
     <button class="btn secondary" @click="back()" :disabled="currentStepOrder === 1">← Back</button>
-    <span style="color:var(--muted)" x-text="`Step ${currentStepOrder} of ${steps.length}`"></span>
+    <span style="color:var(--muted)" x-text="`Step ${currentStepOrder} of ${displayedStepTotal}`"></span>
   </div>
 
   <template x-if="!{{ user.is_authenticated|yesno:'true,false' }} && currentStepOrder >= 3">
