@@ -104,3 +104,32 @@ def test_pick_pq_big_rejects_non_prime():
     r = v.pick_pq_big({"p": "17", "q": "21"}, {})
     assert r["ok"] is False
     assert "21" in r["hint"] and "prime" in r["hint"]
+
+
+def test_pick_sentence_happy():
+    r = v.pick_sentence("Hello, world!", {})
+    assert r["ok"] is True
+    assert r["value"]["sentence"] == "Hello, world!"
+
+
+def test_pick_sentence_rejects_empty():
+    r = v.pick_sentence("", {})
+    assert r["ok"] is False
+    assert "at least one" in r["hint"]
+
+
+def test_pick_sentence_rejects_too_long():
+    r = v.pick_sentence("a" * 501, {})
+    assert r["ok"] is False
+    assert "500" in r["hint"]
+
+
+def test_pick_sentence_rejects_emoji():
+    r = v.pick_sentence("Hi 🦊", {})
+    assert r["ok"] is False
+    assert "ASCII" in r["hint"] or "ascii" in r["hint"]
+
+
+def test_pick_sentence_rejects_newline():
+    r = v.pick_sentence("Line1\nLine2", {})
+    assert r["ok"] is False

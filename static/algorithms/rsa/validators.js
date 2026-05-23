@@ -122,6 +122,19 @@ export function pick_pq_big(input, _state) {
   return _ok({ p2: p, q2: q, n2, phi2, e2, d2 });
 }
 
+export function pick_sentence(input, _state) {
+  const s = input == null ? "" : String(input);
+  if (s.length === 0) return { ok: false, hint: "Type at least one character." };
+  if (s.length > 500) return { ok: false, hint: "Keep it under 500 characters." };
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code < 32 || code > 126) {
+      return { ok: false, hint: `Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: '${s[i]}'.` };
+    }
+  }
+  return { ok: true, value: { sentence: s } };
+}
+
 // ---- Walkthroughs ----------------------------------------------------------
 // Each returns an array of escalating hint strings (method → worked example → answer).
 // Wizard reveals one rung per click of the "I don't know how" button.

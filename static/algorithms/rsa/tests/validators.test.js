@@ -59,3 +59,32 @@ test("pick_pq_big rejects non-prime", () => {
   assert.equal(r.ok, false);
   assert.match(r.hint, /21.*prime|prime.*21/);
 });
+
+test("pick_sentence happy", () => {
+  const r = v.pick_sentence("Hello, world!", {});
+  assert.equal(r.ok, true);
+  assert.equal(r.value.sentence, "Hello, world!");
+});
+
+test("pick_sentence rejects empty", () => {
+  const r = v.pick_sentence("", {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /at least one/);
+});
+
+test("pick_sentence rejects > 500 chars", () => {
+  const r = v.pick_sentence("a".repeat(501), {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /500/);
+});
+
+test("pick_sentence rejects non-ASCII", () => {
+  const r = v.pick_sentence("Hi 🦊", {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /ASCII/i);
+});
+
+test("pick_sentence rejects newline", () => {
+  const r = v.pick_sentence("Line1\nLine2", {});
+  assert.equal(r.ok, false);
+});

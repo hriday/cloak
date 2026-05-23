@@ -127,3 +127,16 @@ def pick_pq_big(input_obj, state):
     return {"ok": True, "value": {
         "p2": p, "q2": q, "n2": n2, "phi2": phi2, "e2": e2, "d2": d2,
     }}
+
+
+def pick_sentence(input_str, state):
+    s = "" if input_str is None else str(input_str)
+    if len(s) == 0:
+        return {"ok": False, "hint": "Type at least one character."}
+    if len(s) > 500:
+        return {"ok": False, "hint": "Keep it under 500 characters."}
+    for ch in s:
+        code = ord(ch)
+        if code < 32 or code > 126:
+            return {"ok": False, "hint": f"Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: {ch!r}."}
+    return {"ok": True, "value": {"sentence": s}}
