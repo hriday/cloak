@@ -1,5 +1,3 @@
-console.log("[cheat] wizard.js loaded, build=", window.CLOAK_ASSETS_VERSION || "unknown");
-
 async function loadAlgorithmModules(slug) {
   const base = `/static/algorithms/${slug}`;
   // Cache-bust per page load. Chromium aggressively caches ES modules and a
@@ -10,7 +8,6 @@ async function loadAlgorithmModules(slug) {
     import(`${base}/validators.js${v}`),
     import(`${base}/codegen.js${v}`),
   ]);
-  console.log("[cheat] modules loaded; cheatState available?", typeof validators.cheatState === "function");
   return { validators, codegen };
 }
 
@@ -37,6 +34,7 @@ function wizardComponent(initial) {
     playgroundEncoded: [],    // ephemeral derived array for the playground table
     playgroundDecoded: "",    // ephemeral derived string
     cheatFlash: false,        // brief toast shown when Konami code activates
+    _cheatInstalled: false,   // guards _installCheatCode against double-install
 
     async init() {
       const mods = await loadAlgorithmModules(this.algorithmSlug);
@@ -52,22 +50,24 @@ function wizardComponent(initial) {
     },
 
     _installCheatCode() {
-      // Konami: ↑↑↓↓←→←→BA
+      if (this._cheatInstalled) return;
+      this._cheatInstalled = true;
+      // Konami: ↑↑↓↓←→←→BA. Match against `event.key` (the actual character
+      // typed, layout-aware) rather than `event.code` (the physical QWERTY
+      // position), so Dvorak / Colemak / international layouts work too.
       const seq = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
                    "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight",
-                   "KeyB", "KeyA"];
+                   "b", "a"];
       let buf = [];
-      console.log("[cheat] handler installed; press ↑↑↓↓←→←→BA");
       document.addEventListener("keydown", (e) => {
         const tag = e.target?.tagName;
-        console.log("[cheat] keydown", { code: e.code, key: e.key, target: tag });
         if (tag === "INPUT" || tag === "TEXTAREA") return;  // don't intercept typing
-        buf.push(e.code);
+        // Single-char keys → lowercase; named keys (ArrowUp etc.) → as-is
+        const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+        buf.push(k);
         if (buf.length > seq.length) buf.shift();
-        console.log("[cheat] buffer", buf.join(" "));
-        if (buf.length === seq.length && buf.every((k, i) => k === seq[i])) {
+        if (buf.length === seq.length && buf.every((kk, i) => kk === seq[i])) {
           buf = [];
-          console.log("[cheat] sequence matched, activating");
           this._activateCheat();
         }
       });
