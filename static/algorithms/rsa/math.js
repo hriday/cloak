@@ -53,3 +53,18 @@ export function coprimeCandidates(phiN, limit = 12) {
   }
   return out;
 }
+
+export function textToCodes(s) {
+  const out = [];
+  for (let i = 0; i < s.length; i++) out.push(s.charCodeAt(i));
+  return out;
+}
+
+export function codesToText(arr) {
+  return arr.map((c) => String.fromCharCode(Number(c))).join("");
+}
+
+export function toBinary8(n) {
+  const bits = Number(n).toString(2);
+  return bits.padStart(8, "0");
+}

@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { isPrime, gcd, modInv, modPow, phi, coprimeCandidates } from "../math.js";
+import * as m from "../math.js";
 
 test("isPrime", () => {
   assert.equal(isPrime(2n), true);
@@ -34,4 +35,24 @@ test("coprimeCandidates", () => {
   for (const e of cands) {
     assert.equal(gcd(e, 3120n), 1n);
   }
+});
+
+test("textToCodes converts ASCII string to ASCII codes", () => {
+  assert.deepEqual(m.textToCodes("Hi"), [72, 105]);
+  assert.deepEqual(m.textToCodes(""), []);
+  assert.deepEqual(m.textToCodes("A B"), [65, 32, 66]);
+});
+
+test("codesToText is inverse of textToCodes", () => {
+  assert.equal(m.codesToText([72, 105]), "Hi");
+  assert.equal(m.codesToText([]), "");
+  const roundtrip = "Hello, world!";
+  assert.equal(m.codesToText(m.textToCodes(roundtrip)), roundtrip);
+});
+
+test("toBinary8 zero-pads to 8 bits", () => {
+  assert.equal(m.toBinary8(72), "01001000");
+  assert.equal(m.toBinary8(0), "00000000");
+  assert.equal(m.toBinary8(255), "11111111");
+  assert.equal(m.toBinary8(1), "00000001");
 });
