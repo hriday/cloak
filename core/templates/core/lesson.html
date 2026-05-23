@@ -170,12 +170,13 @@
         </div>
       </template>
 
-      <template x-if="assembledCiphertext && (step.slug === 'encrypt-sentence' || step.slug === 'decrypt-sentence' || step.slug === 'done')">
-        <div style="margin-top:12px;padding:10px 12px;border:1px dashed var(--border, #444);border-radius:4px;font-size:0.9em;line-height:1.6;">
-          <div><strong>Ciphertext (one number per character):</strong> <code x-text="assembledCiphertext.list"></code></div>
-          <div style="margin-top:4px;"><strong>As a transmittable stream</strong> (each block is <span x-text="assembledCiphertext.width"></span> digits, since n = <span x-text="assembledCiphertext.n"></span>): <code x-text="assembledCiphertext.padded"></code></div>
-          <div style="margin-top:6px;color:var(--muted);font-style:italic;">
-            Each number is one character encrypted independently. To send the message you concatenate them with zero-padding so the receiver can split the stream back into <span x-text="assembledCiphertext.width"></span>-digit blocks, decrypt each with <code>d</code>, and reassemble the ASCII codes into the original text.
+      <template x-if="messageRoundtrip && (step.slug === 'encrypt-sentence' || step.slug === 'decrypt-sentence' || step.slug === 'done')">
+        <div style="margin-top:12px;padding:10px 12px;border:1px dashed var(--border, #444);border-radius:4px;font-size:0.95em;line-height:1.7;">
+          <div><strong>Original:</strong> <code x-text="`'${messageRoundtrip.original}'`"></code></div>
+          <div><strong>Encrypted:</strong> <code x-text="messageRoundtrip.encrypted"></code></div>
+          <div x-show="messageRoundtrip.decrypted !== null">
+            <strong>Decrypted:</strong> <code x-text="`'${messageRoundtrip.decrypted}'`"></code>
+            <span x-show="messageRoundtrip.decrypted === messageRoundtrip.original" style="color:var(--ok, #2a8a3e);margin-left:6px;">✓ matches</span>
           </div>
         </div>
       </template>

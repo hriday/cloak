@@ -44,6 +44,10 @@ function wizardComponent(initial) {
       this.maybeRefreshCoprimeOptions();
       if (this.currentStep?.slug === "done") {
         this.fullScript = this.codegen.full_script(this.state);
+        if (!this.playgroundSentence && this.state.sentence) {
+          this.playgroundSentence = this.state.sentence;
+          this.recomputePlayground();
+        }
       }
       this._installCheatCode();
       this.persistLocal();
@@ -136,22 +140,23 @@ function wizardComponent(initial) {
       }
       return rows;
     },
-    get assembledCiphertext() {
-      // Shows how per-character encryptions combine into "the message you'd send".
-      // Two forms: comma-separated (readable) and fixed-width concatenated (so the
-      // receiver can split it back). Width = digits needed to encode n-1.
+    get messageRoundtrip() {
+      // Shows the message at each stage: original text, encrypted as a single string,
+      // and (when available) the decrypted recovery. On the playground (step 15) we
+      // derive from playgroundSentence/Encoded/Decoded; elsewhere from locked state.
       const slug = this.currentStep?.slug;
-      const source = slug === "done" ? this.playgroundEncoded : (this.state.encrypted || []);
-      if (!Array.isArray(source) || source.length === 0) return null;
-      const n = this.state.n2;
-      if (!n) return null;
-      const width = String(n - 1).length;
-      return {
-        list: source.join(", "),
-        padded: source.map((c) => String(c).padStart(width, "0")).join(""),
-        width,
-        n,
-      };
+      const onPlayground = slug === "done";
+      const original = onPlayground ? this.playgroundSentence : (this.state.sentence || "");
+      const encArray = onPlayground ? this.playgroundEncoded : (this.state.encrypted || []);
+      if (!original || !Array.isArray(encArray) || encArray.length === 0) return null;
+      const encrypted = encArray.join(", ");
+      let decrypted = null;
+      if (onPlayground) {
+        decrypted = this.playgroundDecoded || null;
+      } else if (this.state.decrypted) {
+        decrypted = this.state.decrypted;
+      }
+      return { original, encrypted, decrypted };
     },
     get recoveredText() {
       // Used by step 14 (decrypt-sentence) to show the actual roundtrip.
@@ -236,6 +241,12 @@ function wizardComponent(initial) {
       this.maybeRefreshCoprimeOptions();
       if (this.currentStep?.slug === "done" && this.codegen) {
         this.fullScript = this.codegen.full_script(this.state);
+        // Pre-populate the playground with the locked sentence so the user
+        // immediately sees their full encrypt/decrypt roundtrip on arrival.
+        if (!this.playgroundSentence && this.state.sentence) {
+          this.playgroundSentence = this.state.sentence;
+          this.recomputePlayground();
+        }
       }
       this.persistLocal();
       this.syncServer();
