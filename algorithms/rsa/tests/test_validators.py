@@ -133,3 +133,25 @@ def test_pick_sentence_rejects_emoji():
 def test_pick_sentence_rejects_newline():
     r = v.pick_sentence("Line1\nLine2", {})
     assert r["ok"] is False
+
+
+def test_encrypt_sentence_head_happy():
+    # state from "Hi" with p=17, q=19, e=5, n=323
+    state = {"sentence": "Hi", "e2": 5, "n2": 323, "d2": 173}
+    # 72^5 mod 323 = ?
+    expected_first = pow(72, 5, 323)
+    r = v.encrypt_sentence_head(str(expected_first), state)
+    assert r["ok"] is True
+    enc = r["value"]["encrypted"]
+    assert len(enc) == 2
+    assert enc[0] == expected_first
+    assert enc[1] == pow(105, 5, 323)
+
+
+def test_encrypt_sentence_head_wrong():
+    state = {"sentence": "Hi", "e2": 5, "n2": 323, "d2": 173}
+    r = v.encrypt_sentence_head("999", state)
+    assert r["ok"] is False
+    assert "72" in r["hint"]  # mentions m = 72
+    assert "5" in r["hint"]   # mentions e
+    assert "323" in r["hint"] # mentions n

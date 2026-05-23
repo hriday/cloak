@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import * as v from "../validators.js";
+import * as m from "../math.js";
 
 test("pick_pq happy", () => {
   assert.deepEqual(v.pick_pq({ p: "61", q: "53" }, {}), { ok: true, value: { p: 61, q: 53 } });
@@ -87,4 +88,22 @@ test("pick_sentence rejects non-ASCII", () => {
 test("pick_sentence rejects newline", () => {
   const r = v.pick_sentence("Line1\nLine2", {});
   assert.equal(r.ok, false);
+});
+
+test("encrypt_sentence_head happy", () => {
+  const state = { sentence: "Hi", e2: 5, n2: 323, d2: 173 };
+  // 72^5 mod 323
+  const expectedFirst = Number(m.modPow(72n, 5n, 323n));
+  const r = v.encrypt_sentence_head(String(expectedFirst), state);
+  assert.equal(r.ok, true);
+  assert.equal(r.value.encrypted.length, 2);
+  assert.equal(r.value.encrypted[0], expectedFirst);
+});
+
+test("encrypt_sentence_head wrong", () => {
+  const state = { sentence: "Hi", e2: 5, n2: 323, d2: 173 };
+  const r = v.encrypt_sentence_head("999", state);
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /72/);
+  assert.match(r.hint, /323/);
 });

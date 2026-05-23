@@ -140,3 +140,19 @@ def pick_sentence(input_str, state):
         if code < 32 or code > 126:
             return {"ok": False, "hint": f"Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: {ch!r}."}
     return {"ok": True, "value": {"sentence": s}}
+
+
+def encrypt_sentence_head(input_str, state):
+    got = _parse_int(input_str)
+    if got is None:
+        return {"ok": False, "hint": "Enter a whole number."}
+    sentence = state.get("sentence", "")
+    if not sentence:
+        return {"ok": False, "hint": "No sentence in state — go back and type one first."}
+    first_code = ord(sentence[0])
+    e2, n2 = state["e2"], state["n2"]
+    expected_first = pow(first_code, e2, n2)
+    if got != expected_first:
+        return {"ok": False, "hint": f"c = m^e mod n. With m={first_code} (the ASCII of {sentence[0]!r}), e={e2}, n={n2}."}
+    encrypted = [pow(ord(ch), e2, n2) for ch in sentence]
+    return {"ok": True, "value": {"encrypted": encrypted}}

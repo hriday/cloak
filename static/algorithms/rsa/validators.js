@@ -135,6 +135,25 @@ export function pick_sentence(input, _state) {
   return { ok: true, value: { sentence: s } };
 }
 
+export function encrypt_sentence_head(input, state) {
+  const got = _parseInt(input);
+  if (got === null) return { ok: false, hint: "Enter a whole number." };
+  const sentence = state?.sentence || "";
+  if (!sentence) return { ok: false, hint: "No sentence in state — go back and type one first." };
+  const e2 = BigInt(state.e2);
+  const n2 = BigInt(state.n2);
+  const firstCode = BigInt(sentence.charCodeAt(0));
+  const expectedFirst = modPow(firstCode, e2, n2);
+  if (got !== expectedFirst) {
+    return { ok: false, hint: `c = m^e mod n. With m=${firstCode} (the ASCII of '${sentence[0]}'), e=${e2}, n=${n2}.` };
+  }
+  const encrypted = [];
+  for (let i = 0; i < sentence.length; i++) {
+    encrypted.push(Number(modPow(BigInt(sentence.charCodeAt(i)), e2, n2)));
+  }
+  return { ok: true, value: { encrypted } };
+}
+
 // ---- Walkthroughs ----------------------------------------------------------
 // Each returns an array of escalating hint strings (method → worked example → answer).
 // Wizard reveals one rung per click of the "I don't know how" button.
