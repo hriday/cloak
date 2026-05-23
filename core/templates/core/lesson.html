@@ -45,6 +45,25 @@
         </div>
       </template>
 
+      <template x-if="step.kind === 'input-text'">
+        <div style="margin-top:12px;">
+          <textarea
+            x-model="sentenceInput"
+            placeholder="Type your sentence (max 500 ASCII chars)"
+            maxlength="500"
+            rows="3"
+            style="width:100%;font-family:inherit;padding:8px;"
+            @input="$nextTick(() => {})"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+            <span style="color:var(--muted);font-size:0.8em;" x-text="`${sentenceInput.length} / 500`"></span>
+            <div>
+              <button class="btn" @click="check()">Continue</button>
+              <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <template x-if="step.kind === 'choose-from-list'">
         <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
           <template x-for="opt in coprimeOptions" :key="opt">
@@ -79,6 +98,31 @@
       <div x-show="hint" x-text="hint" class="hint"></div>
 
       <div x-show="walkthroughHtml" class="hint" style="margin-top:10px;line-height:1.5;" x-html="walkthroughHtml"></div>
+
+      <template x-if="conversionRows.length > 0 && (step.kind === 'input-text' || step.slug === 'encrypt-sentence' || step.slug === 'decrypt-sentence' || step.slug === 'done')">
+        <div style="margin-top:14px;max-height:300px;overflow:auto;border:1px solid var(--border, #ddd);border-radius:4px;">
+          <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:0.9em;">
+            <thead style="position:sticky;top:0;background:var(--bg, #fff);">
+              <tr>
+                <th style="text-align:left;padding:6px 10px;">char</th>
+                <th style="text-align:left;padding:6px 10px;">binary</th>
+                <th style="text-align:right;padding:6px 10px;">ascii</th>
+                <th style="text-align:right;padding:6px 10px;" x-show="conversionRows.some(r => r.enc !== null)">encrypted</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="(row, i) in conversionRows" :key="i">
+                <tr>
+                  <td style="padding:4px 10px;" x-text="row.ch === ' ' ? '␣' : row.ch"></td>
+                  <td style="padding:4px 10px;" x-text="row.bin"></td>
+                  <td style="padding:4px 10px;text-align:right;" x-text="row.code"></td>
+                  <td style="padding:4px 10px;text-align:right;" x-text="row.enc !== null ? row.enc : ''" x-show="conversionRows.some(r => r.enc !== null)"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </template>
 
       <div x-show="inlineCode" style="margin-top:14px;">
         <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Python for this step</div>
