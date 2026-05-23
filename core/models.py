@@ -47,6 +47,7 @@ class Step(models.Model):
         ("info", "Info"),
         ("input-numeric", "Numeric input"),
         ("input-multi", "Multi-numeric input"),
+        ("input-text", "Text input"),
         ("choose-from-list", "Choose from list"),
     ]
     lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name="steps")
