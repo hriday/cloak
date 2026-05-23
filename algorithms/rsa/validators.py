@@ -21,6 +21,10 @@ def pick_pq(input_obj, state):
         return {"ok": False, "hint": f"{p} is not prime."}
     if not is_prime(q):
         return {"ok": False, "hint": f"{q} is not prime."}
+    # φ = (p-1)(q-1) must leave room for at least one valid e (1 < e < φ with gcd(e,φ)=1).
+    # The only pair where φ < 4 is (2, 3) → φ = 2, which has no valid e at all.
+    if (p - 1) * (q - 1) < 4:
+        return {"ok": False, "hint": f"φ = (p-1)(q-1) = {(p-1)*(q-1)} is too small to find a valid e. Pick larger primes (try p=3 and q=5 as the smallest pair)."}
     return {"ok": True, "value": {"p": p, "q": q}}
 
 

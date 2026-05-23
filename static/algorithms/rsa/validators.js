@@ -26,6 +26,12 @@ export function pick_pq(input, _state) {
   }
   if (!isPrime(p)) return { ok: false, hint: `${p} is not prime.` };
   if (!isPrime(q)) return { ok: false, hint: `${q} is not prime.` };
+  // φ = (p-1)(q-1) must leave room for at least one valid e (1 < e < φ with gcd(e,φ)=1).
+  // The only pair where φ < 4 is (2, 3) → φ = 2, which has no valid e at all.
+  const phiVal = (p - 1n) * (q - 1n);
+  if (phiVal < 4n) {
+    return { ok: false, hint: `φ = (p-1)(q-1) = ${phiVal} is too small to find a valid e. Pick larger primes (try p=3 and q=5 as the smallest pair).` };
+  }
   return _ok({ p, q });
 }
 

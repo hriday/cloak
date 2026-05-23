@@ -13,6 +13,12 @@ test("pick_pq rejects non-prime", () => {
   assert.match(r.hint, /prime/i);
 });
 
+test("pick_pq rejects (2,3) — phi too small for any e", () => {
+  const r = v.pick_pq({ p: "2", q: "3" }, {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /too small|larger primes|φ|phi/i);
+});
+
 test("compute_phi wrong", () => {
   const r = v.compute_phi("3000", { p: 61, q: 53 });
   assert.equal(r.ok, false);

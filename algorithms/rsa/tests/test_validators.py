@@ -24,6 +24,14 @@ def test_pick_pq_rejects_too_large():
     assert r["ok"] is False
 
 
+def test_pick_pq_rejects_degenerate_pair():
+    # (2, 3) gives phi = 2, which leaves no integer e with 1 < e < phi.
+    # The lesson is unfinishable from this state, so reject upfront.
+    r = v.pick_pq({"p": "2", "q": "3"}, {})
+    assert r["ok"] is False
+    assert any(t in r["hint"].lower() for t in ("too small", "larger primes", "φ", "phi"))
+
+
 def test_compute_n_happy():
     r = v.compute_n("3233", {"p": 61, "q": 53})
     assert r == {"ok": True, "value": {"n": 3233}}

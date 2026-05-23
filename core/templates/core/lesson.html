@@ -65,10 +65,19 @@
       </template>
 
       <template x-if="step.kind === 'choose-from-list'">
-        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-          <template x-for="opt in coprimeOptions" :key="opt">
-            <button class="btn secondary" @click="inputValue = String(opt); check()" x-text="opt"></button>
-          </template>
+        <div style="margin-top:12px;">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;">
+            <template x-for="opt in coprimeOptions" :key="opt">
+              <button class="btn secondary" @click="inputValue = String(opt); check()" x-text="opt"></button>
+            </template>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <span style="color:var(--muted);font-size:0.85em;" x-show="coprimeOptions.length > 0">Or type one:</span>
+            <span style="color:var(--muted);font-size:0.85em;" x-show="coprimeOptions.length === 0">No quick picks available — type a value yourself:</span>
+            <input type="text" x-model="inputValue" placeholder="e" @keydown.enter="check()" style="min-width:90px">
+            <button class="btn" @click="check()">Check</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+          </div>
         </div>
       </template>
 
