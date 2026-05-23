@@ -115,8 +115,58 @@
     "model": "core.step",
     "pk": 10,
     "fields": {
-      "lesson": 1, "order": 10, "slug": "done", "kind": "info",
-      "prompt_template": "## Done!\n\nYou encrypted and decrypted a message with RSA. Your full Python script is above.\n\nTry another algorithm or check your progress dashboard.",
+      "lesson": 1, "order": 10, "slug": "toy-complete", "kind": "info",
+      "prompt_template": "## Toy lesson complete\n\nYou encrypted and decrypted a number with RSA. The script that does it is shown above.\n\n**Want to try this on a real sentence?** With these tiny primes (n = {{ state.n }}), an ASCII character won't even fit — 'space' is already ASCII 32, bigger than {{ state.n }}. The next step picks bigger primes and walks you through encrypting actual text.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 11,
+    "fields": {
+      "lesson": 1, "order": 11, "slug": "pick-big-primes", "kind": "input-multi",
+      "prompt_template": "### Pick bigger primes\n\nFor real text, n must be at least 256 (so any ASCII character fits). Pick two **different** primes, each at least **17**. Suggested pairs: (17, 19), (19, 23), (23, 29).",
+      "help_template": "**In plain English:** RSA can only encrypt numbers smaller than n. Printable ASCII goes up to 126, so n ≥ 127 is the minimum; we use 256 as the bound so even non-printable bytes (0–255) would fit. Both primes ≥ 17 guarantees n ≥ 17 × 19 = 323. Once you pick p and q, the lesson computes n, φ, e, and d for you.",
+      "validator_key": "pick_pq_big", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 12,
+    "fields": {
+      "lesson": 1, "order": 12, "slug": "type-sentence", "kind": "input-text",
+      "prompt_template": "### Type a sentence to encrypt\n\nKey ready: n = {{ state.n2 }}, e = {{ state.e2 }}, d = {{ state.d2 }}.\n\nType up to 500 printable ASCII characters. The table below shows how each character maps to binary and to its ASCII code as you type.",
+      "help_template": "**In plain English:** Every character on your keyboard has a numeric ID (its *ASCII code*) — 'A' is 65, 'a' is 97, space is 32. Computers store characters as those numbers, written in binary. RSA encrypts the number. So the chain is: char → binary (8 bits per char) → ASCII number → encrypted number.",
+      "validator_key": "pick_sentence", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 13,
+    "fields": {
+      "lesson": 1, "order": 13, "slug": "encrypt-sentence", "kind": "input-numeric",
+      "prompt_template": "### Encrypt the first character\n\nFirst char: **{{ state.sentence }}**[0] = ASCII {{ state.sentence }}.charCodeAt(0). Compute `c = m^e mod n` for that ASCII number using e = {{ state.e2 }}, n = {{ state.n2 }}.\n\nOnce you get the first one, the lesson will encrypt the rest of the sentence for you.",
+      "help_template": "**In plain English:** Same math as before — `pow(m, e, n)`. Just with a different m this time (the ASCII code of the first letter). Look at the table above to see the value of m for char[0].",
+      "validator_key": "encrypt_sentence_head", "codegen_key": "encode_sentence"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 14,
+    "fields": {
+      "lesson": 1, "order": 14, "slug": "decrypt-sentence", "kind": "info",
+      "prompt_template": "### Decrypt the ciphertext\n\nApply `m = c^d mod n` to each encrypted number, then assemble the characters. Recovered sentence:",
+      "help_template": "**In plain English:** Same as the toy decrypt — `pow(c, d, n)` per character. Each result is an ASCII code; `chr(code)` gives the character back.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 15,
+    "fields": {
+      "lesson": 1, "order": 15, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've encrypted and decrypted both a single number and a real sentence with RSA. Your full Python script is below — copy it, run it, modify it. The playground below lets you try any other text on the same key.",
       "help_template": "",
       "validator_key": "info", "codegen_key": "info"
     }
