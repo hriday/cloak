@@ -122,6 +122,7 @@ function wizardComponent(initial) {
         pick_pq: ["p", "q"], compute_n: ["n"], compute_phi: ["phi"],
         pick_e: ["e"], compute_d: ["d"], pick_message: ["m"],
         encrypt: ["c"], decrypt: ["m_decrypted"], info: [],
+        encode_sentence: ["sentence", "e2", "n2"],
       };
       const keys = map[step.codegen_key] || [];
       return keys.every((k) => k in this.state);
