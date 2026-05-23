@@ -8,7 +8,7 @@
       "family": "asymmetric",
       "status": "live",
       "order": 2,
-      "intro_template": "## Hybrid Encryption\n\nRSA can only encrypt small things — a 2048-bit key fits about 214 bytes of message per operation. So real systems don't RSA-encrypt your data. They generate a random symmetric key (typically for AES), use RSA to wrap that key, and use the symmetric cipher to encrypt the actual data. This lesson walks you through that pattern end-to-end using a hand-computable XOR cipher in place of AES."
+      "intro_template": "## Hybrid Encryption\n\nRSA can only encrypt small things. Real systems wrap a random symmetric key with RSA, then use that key with AES to encrypt the data. This lesson walks you through the pattern."
     }
   },
   {
