@@ -146,7 +146,7 @@
     "pk": 13,
     "fields": {
       "lesson": 1, "order": 13, "slug": "encrypt-sentence", "kind": "input-numeric",
-      "prompt_template": "### Encrypt the first character\n\nFirst char: **{{ state.sentence }}**[0] = ASCII {{ state.sentence }}.charCodeAt(0). Compute `c = m^e mod n` for that ASCII number using e = {{ state.e2 }}, n = {{ state.n2 }}.\n\nOnce you get the first one, the lesson will encrypt the rest of the sentence for you.",
+      "prompt_template": "### Encrypt the first character\n\nLook at the first row of the table above — that's your **m** (the ASCII code of the first character of your sentence). Compute `c = m^e mod n` using e = {{ state.e2 }}, n = {{ state.n2 }}.\n\nOnce you get the first one, the lesson will encrypt the rest of the sentence for you.",
       "help_template": "**In plain English:** Same math as before — `pow(m, e, n)`. Just with a different m this time (the ASCII code of the first letter). Look at the table above to see the value of m for char[0].",
       "validator_key": "encrypt_sentence_head", "codegen_key": "encode_sentence"
     }
