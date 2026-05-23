@@ -75,3 +75,32 @@ def test_decrypt_happy():
     c = pow(65, 17, 3233)
     r = v.decrypt("65", {"c": c, "d": 2753, "n": 3233})
     assert r == {"ok": True, "value": {"m_decrypted": 65}}
+
+
+def test_pick_pq_big_happy():
+    result = v.pick_pq_big({"p": "17", "q": "19"}, {})
+    assert result["ok"] is True
+    val = result["value"]
+    assert val["p2"] == 17 and val["q2"] == 19
+    assert val["n2"] == 323
+    assert val["phi2"] == 288
+    assert val["e2"] == 5  # smallest int >= 3 coprime to 288
+    assert val["d2"] == 173  # modinv(5, 288)
+
+
+def test_pick_pq_big_rejects_too_small():
+    r = v.pick_pq_big({"p": "11", "q": "19"}, {})
+    assert r["ok"] is False
+    assert "at least 17" in r["hint"]
+
+
+def test_pick_pq_big_rejects_equal():
+    r = v.pick_pq_big({"p": "17", "q": "17"}, {})
+    assert r["ok"] is False
+    assert "different" in r["hint"]
+
+
+def test_pick_pq_big_rejects_non_prime():
+    r = v.pick_pq_big({"p": "17", "q": "21"}, {})
+    assert r["ok"] is False
+    assert "21" in r["hint"] and "prime" in r["hint"]

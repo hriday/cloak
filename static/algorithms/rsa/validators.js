@@ -100,6 +100,28 @@ export function info(_input, _state) {
   return { ok: true, value: {} };
 }
 
+function _pickEDeterministic(phi) {
+  let e = 3n;
+  while (gcd(e, phi) !== 1n) e++;
+  return e;
+}
+
+export function pick_pq_big(input, _state) {
+  const p = _parseInt(input?.p);
+  const q = _parseInt(input?.q);
+  if (p === null || q === null) return { ok: false, hint: "Enter whole numbers for both p and q." };
+  if (p < 17n || q < 17n) return { ok: false, hint: "For real text, both primes need to be at least 17 so n ≥ 256." };
+  if (p === q) return { ok: false, hint: "p and q must be different primes." };
+  if (!isPrime(p)) return { ok: false, hint: `${p} is not prime.` };
+  if (!isPrime(q)) return { ok: false, hint: `${q} is not prime.` };
+  const n2 = p * q;
+  if (n2 < 256n) return { ok: false, hint: "n must be at least 256 to fit any ASCII character." };
+  const phi2 = (p - 1n) * (q - 1n);
+  const e2 = _pickEDeterministic(phi2);
+  const d2 = modInv(e2, phi2);
+  return _ok({ p2: p, q2: q, n2, phi2, e2, d2 });
+}
+
 // ---- Walkthroughs ----------------------------------------------------------
 // Each returns an array of escalating hint strings (method → worked example → answer).
 // Wizard reveals one rung per click of the "I don't know how" button.

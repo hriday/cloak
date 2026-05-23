@@ -31,3 +31,31 @@ test("decrypt happy", () => {
   const r = v.decrypt("65", { c, d: 2753, n: 3233 });
   assert.deepEqual(r, { ok: true, value: { m_decrypted: 65 } });
 });
+
+test("pick_pq_big happy", () => {
+  const r = v.pick_pq_big({ p: "17", q: "19" }, {});
+  assert.equal(r.ok, true);
+  assert.equal(r.value.p2, 17);
+  assert.equal(r.value.q2, 19);
+  assert.equal(r.value.n2, 323);
+  assert.equal(r.value.phi2, 288);
+  assert.equal(r.value.e2, 5);
+  assert.equal(r.value.d2, 173);
+});
+
+test("pick_pq_big rejects p<17", () => {
+  const r = v.pick_pq_big({ p: "11", q: "19" }, {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /at least 17/);
+});
+
+test("pick_pq_big rejects p==q", () => {
+  const r = v.pick_pq_big({ p: "17", q: "17" }, {});
+  assert.equal(r.ok, false);
+});
+
+test("pick_pq_big rejects non-prime", () => {
+  const r = v.pick_pq_big({ p: "17", q: "21" }, {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /21.*prime|prime.*21/);
+});

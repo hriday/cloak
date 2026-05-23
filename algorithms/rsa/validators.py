@@ -96,3 +96,34 @@ def decrypt(input_str, state):
 
 def info(_input, _state):
     return {"ok": True, "value": {}}
+
+
+def _pick_e_deterministic(phi):
+    e = 3
+    while gcd(e, phi) != 1:
+        e += 1
+    return e
+
+
+def pick_pq_big(input_obj, state):
+    p = _parse_int(input_obj.get("p"))
+    q = _parse_int(input_obj.get("q"))
+    if p is None or q is None:
+        return {"ok": False, "hint": "Enter whole numbers for both p and q."}
+    if p < 17 or q < 17:
+        return {"ok": False, "hint": "For real text, both primes need to be at least 17 so n ≥ 256."}
+    if p == q:
+        return {"ok": False, "hint": "p and q must be different primes."}
+    if not is_prime(p):
+        return {"ok": False, "hint": f"{p} is not prime."}
+    if not is_prime(q):
+        return {"ok": False, "hint": f"{q} is not prime."}
+    n2 = p * q
+    if n2 < 256:
+        return {"ok": False, "hint": "n must be at least 256 to fit any ASCII character."}
+    phi2 = (p - 1) * (q - 1)
+    e2 = _pick_e_deterministic(phi2)
+    d2 = modinv(e2, phi2)
+    return {"ok": True, "value": {
+        "p2": p, "q2": q, "n2": n2, "phi2": phi2, "e2": e2, "d2": d2,
+    }}
