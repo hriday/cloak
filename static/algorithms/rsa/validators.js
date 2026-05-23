@@ -99,3 +99,86 @@ export function decrypt(input, state) {
 export function info(_input, _state) {
   return { ok: true, value: {} };
 }
+
+// ---- Walkthroughs ----------------------------------------------------------
+// Each returns an array of escalating hint strings (method → worked example → answer).
+// Wizard reveals one rung per click of the "I don't know how" button.
+// Use **bold** for inline emphasis; newlines render as line breaks.
+
+function _modInvSearch(e, phi) {
+  for (let d = 1n; d < phi * 100n; d++) {
+    if ((d * e) % phi === 1n) return d;
+  }
+  return null;
+}
+
+export const walkthroughs = {
+  compute_n: (state) => {
+    const p = state.p, q = state.q;
+    return [
+      `**The method:** n is just p × q. Multiply your two primes.`,
+      `p = ${p}, q = ${q}, so n = ${p} × ${q}.`,
+      `**n = ${p * q}.**`,
+    ];
+  },
+
+  compute_phi: (state) => {
+    const p = state.p, q = state.q;
+    return [
+      `**The method:** For two primes, φ(n) = (p − 1)(q − 1). Subtract one from each prime, then multiply.`,
+      `p − 1 = ${p - 1}, q − 1 = ${q - 1}, so φ = ${p - 1} × ${q - 1}.`,
+      `**φ = ${(p - 1) * (q - 1)}.**`,
+    ];
+  },
+
+  compute_d: (state) => {
+    const e = BigInt(state.e), phi = BigInt(state.phi);
+    const answer = _modInvSearch(e, phi);
+    // Show a few non-solution rows so rung 2 shows the WORK without giving the answer.
+    // Skip the row where d === answer; rung 3 is where the answer lives.
+    const rows = [];
+    const maxRows = 3n;
+    for (let d = 1n; d < phi && BigInt(rows.length) < maxRows; d++) {
+      if (d === answer) continue;
+      const prod = d * e;
+      rows.push(`d=${d}: ${d}×${e} = ${prod}, mod ${phi} = ${prod % phi}`);
+    }
+    return [
+      `**The method:** Try d = 1, 2, 3, … For each one, compute (d × ${e}) mod ${phi}. Stop when the result is 1.`,
+      `**Walking the work:**\n${rows.join("\n")}\n…keep going until one of them gives remainder 1.`,
+      `**d = ${answer}.** Check: ${answer} × ${e} = ${answer * e}, and ${answer * e} mod ${phi} = 1. ✓`,
+    ];
+  },
+
+  pick_message: (state) => {
+    const n = state.n;
+    return [
+      `**The method:** Pick any whole number from 0 up to n − 1. Smaller numbers are easier to follow by hand.`,
+      `With n = ${n}, any value 0 ≤ m < ${n} works. Something like 5 or 7 keeps the arithmetic manageable.`,
+      `Try **m = ${Math.min(7, Math.max(2, Math.floor(Number(n) / 3)))}** — works for this n.`,
+    ];
+  },
+
+  encrypt: (state) => {
+    const m = BigInt(state.m), e = BigInt(state.e), n = BigInt(state.n);
+    const raw = m ** e;
+    return [
+      `**The method:** c = m^e mod n. Raise m to the e power, then take the remainder when divided by n.`,
+      `m = ${m}, e = ${e}, n = ${n}. So ${m}^${e} = ${raw}. Then ${raw} mod ${n} = ?`,
+      `**c = ${raw % n}.**`,
+    ];
+  },
+
+  decrypt: (state) => {
+    const c = BigInt(state.c), d = BigInt(state.d), n = BigInt(state.n);
+    const raw = c ** d;
+    const tooBig = raw.toString().length > 40;
+    return [
+      `**The method:** m = c^d mod n. Raise c to the d power, then take the remainder when divided by n. (Same shape as encrypt, just with d instead of e.)`,
+      tooBig
+        ? `c = ${c}, d = ${d}, n = ${n}. ${c}^${d} is enormous — in Python, use \`pow(c, d, n)\` so it doesn't compute the huge intermediate.`
+        : `c = ${c}, d = ${d}, n = ${n}. So ${c}^${d} = ${raw}. Then ${raw} mod ${n} = ?`,
+      `**m = ${raw % n}.** Should match the message you encrypted.`,
+    ];
+  },
+};

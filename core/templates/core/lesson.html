@@ -29,17 +29,19 @@
       </template>
 
       <template x-if="step.kind === 'input-numeric'">
-        <div style="margin-top:12px;">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input type="text" x-model="inputValue" placeholder="your answer" @keydown.enter="check()">
           <button class="btn" @click="check()">Check</button>
+          <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
         </div>
       </template>
 
       <template x-if="step.kind === 'input-multi'">
-        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <span>p =</span><input type="text" x-model="multiInput.p" style="min-width:90px">
           <span>q =</span><input type="text" x-model="multiInput.q" style="min-width:90px">
           <button class="btn" @click="check()">Check</button>
+          <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
         </div>
       </template>
 
@@ -75,6 +77,8 @@
       </template>
 
       <div x-show="hint" x-text="hint" class="hint"></div>
+
+      <div x-show="walkthroughHtml" class="hint" style="margin-top:10px;line-height:1.5;" x-html="walkthroughHtml"></div>
 
       <div x-show="inlineCode" style="margin-top:14px;">
         <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Python for this step</div>

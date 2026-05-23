@@ -23,6 +23,8 @@ function wizardComponent(initial) {
     codegen: null,
     coprimeOptions: [],
     inlineCode: "",
+    stuckLevel: 0,
+    walkthroughHtml: "",
 
     async init() {
       const mods = await loadAlgorithmModules(this.algorithmSlug);
@@ -104,6 +106,8 @@ function wizardComponent(initial) {
       this.inputValue = "";
       this.multiInput = {};
       this.hint = "";
+      this.stuckLevel = 0;
+      this.walkthroughHtml = "";
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
       if (this.currentStep?.slug === "done" && this.codegen) {
@@ -117,9 +121,39 @@ function wizardComponent(initial) {
       if (this.currentStepOrder > 1) {
         this.currentStepOrder -= 1;
         this.hint = "";
+        this.stuckLevel = 0;
+        this.walkthroughHtml = "";
         this.refreshInlineCode();
         this.maybeRefreshCoprimeOptions();
       }
+    },
+
+    hasWalkthrough() {
+      const step = this.currentStep;
+      if (!step || !this.validators?.walkthroughs) return false;
+      return typeof this.validators.walkthroughs[step.validator_key] === "function";
+    },
+
+    walkthroughLabel() {
+      // Escalating label costs the learner a little more pride per click.
+      return ["I don't know how", "Still stuck", "Just show me"][this.stuckLevel] || "";
+    },
+
+    showWalkthrough() {
+      const step = this.currentStep;
+      const fn = this.validators?.walkthroughs?.[step?.validator_key];
+      if (!fn) return;
+      let rungs;
+      try { rungs = fn(this.state); } catch (_e) { return; }
+      if (!Array.isArray(rungs) || rungs.length === 0) return;
+      const idx = Math.min(this.stuckLevel, rungs.length - 1);
+      const accumulated = rungs.slice(0, idx + 1).join("\n\n");
+      // Tiny markdown: **bold** + newlines → <br>. Escape HTML first.
+      const escape = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      this.walkthroughHtml = escape(accumulated)
+        .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+        .replace(/\n/g, "<br>");
+      if (this.stuckLevel < rungs.length - 1) this.stuckLevel += 1;
     },
 
     showFullScript() {
