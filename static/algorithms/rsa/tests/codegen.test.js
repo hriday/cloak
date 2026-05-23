@@ -24,3 +24,25 @@ test("full_script aggregates known steps", () => {
   assert.ok(s.includes("m_decrypted = pow(c, d, n)"));
   assert.ok(s.endsWith("\n"));
 });
+
+test("full_script includes sentence block when state has sentence", () => {
+  const state = { p: 3, q: 5, n: 15, phi: 8, e: 7, d: 7, m: 2, c: 4, m_decrypted: 2,
+                  p2: 17, q2: 19, n2: 323, phi2: 288, e2: 5, d2: 173,
+                  sentence: "Hi" };
+  const script = cg.full_script(state);
+  assert.match(script, /sentence = "Hi"/);
+  assert.match(script, /for ch in sentence/);
+  assert.match(script, /assert decrypted == sentence/);
+});
+
+test("full_script omits sentence block when state has no sentence", () => {
+  const state = { p: 3, q: 5, n: 15, phi: 8, e: 7, d: 7, m: 2, c: 4, m_decrypted: 2 };
+  const script = cg.full_script(state);
+  assert.doesNotMatch(script, /sentence/);
+});
+
+test("encode_sentence emits a small for-loop", () => {
+  const state = { e2: 5, n2: 323, sentence: "Hi" };
+  const code = cg.encode_sentence(state);
+  assert.match(code, /pow\(ord\(ch\), 5, 323\)/);
+});
