@@ -143,7 +143,7 @@ def pick_sentence(input_str, state):
         code = ord(ch)
         if code < 32 or code > 126:
             return {"ok": False, "hint": f"Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: {ch!r}."}
-    return {"ok": True, "value": {"sentence": s}}
+    return {"ok": True, "value": {"sentence": s, "first_char": s[0], "first_code": ord(s[0])}}
 
 
 def encrypt_sentence_head(input_str, state):

@@ -138,7 +138,7 @@ export function pick_sentence(input, _state) {
       return { ok: false, hint: `Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: '${s[i]}'.` };
     }
   }
-  return { ok: true, value: { sentence: s } };
+  return { ok: true, value: { sentence: s, first_char: s[0], first_code: s.charCodeAt(0) } };
 }
 
 export function encrypt_sentence_head(input, state) {

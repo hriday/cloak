@@ -71,6 +71,8 @@ test("pick_sentence happy", () => {
   const r = v.pick_sentence("Hello, world!", {});
   assert.equal(r.ok, true);
   assert.equal(r.value.sentence, "Hello, world!");
+  assert.equal(r.value.first_char, "H");
+  assert.equal(r.value.first_code, 72);
 });
 
 test("pick_sentence rejects empty", () => {

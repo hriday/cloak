@@ -118,6 +118,8 @@ def test_pick_sentence_happy():
     r = v.pick_sentence("Hello, world!", {})
     assert r["ok"] is True
     assert r["value"]["sentence"] == "Hello, world!"
+    assert r["value"]["first_char"] == "H"
+    assert r["value"]["first_code"] == 72
 
 
 def test_pick_sentence_rejects_empty():
