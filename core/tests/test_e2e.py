@@ -49,18 +49,47 @@ def test_logged_in_progress_full_rsa_flow(client, rsa_loaded):
         )
         assert resp.status_code == 200, f"step {i}: {resp.content}"
 
-    # Step 10: the 'done' info step — same final state, advances to step 10
-    final_state = {"p": p, "q": q, "n": n, "phi": phi_n, "e": e, "d": d, "m": m, "c": c, "m_decrypted": m}
+    # Step 10: the 'toy-complete' info step — same toy state, just an advance
+    toy_state = {"p": p, "q": q, "n": n, "phi": phi_n, "e": e, "d": d, "m": m, "c": c, "m_decrypted": m}
     resp = client.post(
         "/api/progress/rsa/encrypt-decrypt/",
-        data=json.dumps({"state": final_state, "current_step_order": 10}),
+        data=json.dumps({"state": toy_state, "current_step_order": 10}),
         content_type="application/json",
     )
     assert resp.status_code == 200, f"step 10: {resp.content}"
-    body = resp.json()
-    assert body["completed_at"] is not None, "done step must set completed_at"
+
+    # Steps 11-15: the sentence-encryption flow
+    p2, q2 = 17, 19
+    n2, phi2 = p2 * q2, (p2 - 1) * (q2 - 1)
+    e2, d2 = 5, 173
+    sentence = "Hi"
+    encrypted = [pow(72, e2, n2), pow(105, e2, n2)]
+
+    big_primes_state = {**toy_state, "p2": p2, "q2": q2, "n2": n2, "phi2": phi2, "e2": e2, "d2": d2}
+    sentence_state = {**big_primes_state, "sentence": sentence}
+    encrypted_state = {**sentence_state, "encrypted": encrypted}
+
+    later_states = [
+        (11, big_primes_state),
+        (12, sentence_state),
+        (13, encrypted_state),
+        (14, encrypted_state),
+        (15, encrypted_state),
+    ]
+    last_body = None
+    for order, state in later_states:
+        resp = client.post(
+            "/api/progress/rsa/encrypt-decrypt/",
+            data=json.dumps({"state": state, "current_step_order": order}),
+            content_type="application/json",
+        )
+        assert resp.status_code == 200, f"step {order}: {resp.content}"
+        last_body = resp.json()
+
+    assert last_body["completed_at"] is not None, "done step must set completed_at"
 
     final = UserProgress.objects.get(user=user, lesson__slug="encrypt-decrypt")
-    assert final.current_step_order == 10
+    assert final.current_step_order == 15
     assert final.state["m_decrypted"] == m
+    assert final.state["sentence"] == "Hi"
     assert final.completed_at is not None, "completed_at must be persisted after done step"
