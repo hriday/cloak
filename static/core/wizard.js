@@ -1,3 +1,5 @@
+console.log("[cheat] wizard.js loaded, build=", window.CLOAK_ASSETS_VERSION || "unknown");
+
 async function loadAlgorithmModules(slug) {
   const base = `/static/algorithms/${slug}`;
   // Cache-bust per page load. Chromium aggressively caches ES modules and a
@@ -8,6 +10,7 @@ async function loadAlgorithmModules(slug) {
     import(`${base}/validators.js${v}`),
     import(`${base}/codegen.js${v}`),
   ]);
+  console.log("[cheat] modules loaded; cheatState available?", typeof validators.cheatState === "function");
   return { validators, codegen };
 }
 
@@ -54,13 +57,17 @@ function wizardComponent(initial) {
                    "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight",
                    "KeyB", "KeyA"];
       let buf = [];
+      console.log("[cheat] handler installed; press ↑↑↓↓←→←→BA");
       document.addEventListener("keydown", (e) => {
         const tag = e.target?.tagName;
+        console.log("[cheat] keydown", { code: e.code, key: e.key, target: tag });
         if (tag === "INPUT" || tag === "TEXTAREA") return;  // don't intercept typing
         buf.push(e.code);
         if (buf.length > seq.length) buf.shift();
+        console.log("[cheat] buffer", buf.join(" "));
         if (buf.length === seq.length && buf.every((k, i) => k === seq[i])) {
           buf = [];
+          console.log("[cheat] sequence matched, activating");
           this._activateCheat();
         }
       });
