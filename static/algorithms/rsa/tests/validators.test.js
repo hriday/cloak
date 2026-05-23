@@ -106,6 +106,7 @@ test("encrypt_sentence_head happy", () => {
   assert.equal(r.ok, true);
   assert.equal(r.value.encrypted.length, 2);
   assert.equal(r.value.encrypted[0], expectedFirst);
+  assert.equal(r.value.first_encrypted, expectedFirst);
 });
 
 test("encrypt_sentence_head wrong", () => {
@@ -113,6 +114,25 @@ test("encrypt_sentence_head wrong", () => {
   const r = v.encrypt_sentence_head("999", state);
   assert.equal(r.ok, false);
   assert.match(r.hint, /72/);
+  assert.match(r.hint, /323/);
+});
+
+test("decrypt_sentence_head happy", () => {
+  const enc = [Number(m.modPow(72n, 5n, 323n)), Number(m.modPow(105n, 5n, 323n))];
+  const state = { sentence: "Hi", encrypted: enc, e2: 5, n2: 323, d2: 173 };
+  const expectedFirst = Number(m.modPow(BigInt(enc[0]), 173n, 323n));  // = 72
+  const r = v.decrypt_sentence_head(String(expectedFirst), state);
+  assert.equal(r.ok, true);
+  assert.equal(r.value.decrypted, "Hi");
+});
+
+test("decrypt_sentence_head wrong", () => {
+  const enc = [Number(m.modPow(72n, 5n, 323n)), Number(m.modPow(105n, 5n, 323n))];
+  const state = { sentence: "Hi", encrypted: enc, e2: 5, n2: 323, d2: 173 };
+  const r = v.decrypt_sentence_head("999", state);
+  assert.equal(r.ok, false);
+  assert.match(r.hint, new RegExp(String(enc[0])));
+  assert.match(r.hint, /173/);
   assert.match(r.hint, /323/);
 });
 

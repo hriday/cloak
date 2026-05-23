@@ -156,6 +156,7 @@ def test_encrypt_sentence_head_happy():
     assert len(enc) == 2
     assert enc[0] == expected_first
     assert enc[1] == pow(105, 5, 323)
+    assert r["value"]["first_encrypted"] == expected_first
 
 
 def test_encrypt_sentence_head_wrong():
@@ -165,3 +166,23 @@ def test_encrypt_sentence_head_wrong():
     assert "72" in r["hint"]  # mentions m = 72
     assert "5" in r["hint"]   # mentions e
     assert "323" in r["hint"] # mentions n
+
+
+def test_decrypt_sentence_head_happy():
+    # State as if user finished encrypt: state.encrypted = [encrypt("H"), encrypt("i")]
+    enc = [pow(72, 5, 323), pow(105, 5, 323)]
+    state = {"sentence": "Hi", "encrypted": enc, "e2": 5, "n2": 323, "d2": 173}
+    expected_first = pow(enc[0], 173, 323)  # should equal 72 (ASCII of "H")
+    r = v.decrypt_sentence_head(str(expected_first), state)
+    assert r["ok"] is True
+    assert r["value"]["decrypted"] == "Hi"
+
+
+def test_decrypt_sentence_head_wrong():
+    enc = [pow(72, 5, 323), pow(105, 5, 323)]
+    state = {"sentence": "Hi", "encrypted": enc, "e2": 5, "n2": 323, "d2": 173}
+    r = v.decrypt_sentence_head("999", state)
+    assert r["ok"] is False
+    assert str(enc[0]) in r["hint"]  # mentions c
+    assert "173" in r["hint"]         # mentions d
+    assert "323" in r["hint"]         # mentions n

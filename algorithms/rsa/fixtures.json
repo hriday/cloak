@@ -155,10 +155,10 @@
     "model": "core.step",
     "pk": 14,
     "fields": {
-      "lesson": 1, "order": 14, "slug": "decrypt-sentence", "kind": "info",
-      "prompt_template": "### Decrypt the ciphertext\n\nApply `m = c^d mod n` to each encrypted number, then assemble the characters. Recovered sentence:",
-      "help_template": "**In plain English:** Same as the toy decrypt — `pow(c, d, n)` per character. Each result is an ASCII code; `chr(code)` gives the character back.",
-      "validator_key": "info", "codegen_key": "info"
+      "lesson": 1, "order": 14, "slug": "decrypt-sentence", "kind": "input-numeric",
+      "prompt_template": "### Decrypt the first character\n\nThe first encrypted number is **{{ state.first_encrypted }}**. That's your **c**.\n\nCompute `m = c^d mod n` with c = {{ state.first_encrypted }}, d = {{ state.d2 }}, n = {{ state.n2 }}. The answer should equal **{{ state.first_code }}** — the ASCII code for **'{{ state.first_char }}'**.\n\nOnce you get the first one, the lesson decrypts the rest for you.",
+      "help_template": "**In plain English:** Same math as the toy decrypt — `pow(c, d, n)`. You're working backwards from the ciphertext using the private exponent d. Each result is an ASCII code; assemble them into a string and you should recover the original sentence.",
+      "validator_key": "decrypt_sentence_head", "codegen_key": "info"
     }
   },
   {

@@ -157,7 +157,26 @@ export function encrypt_sentence_head(input, state) {
   for (let i = 0; i < sentence.length; i++) {
     encrypted.push(Number(modPow(BigInt(sentence.charCodeAt(i)), e2, n2)));
   }
-  return { ok: true, value: { encrypted } };
+  return { ok: true, value: { encrypted, first_encrypted: encrypted[0] } };
+}
+
+export function decrypt_sentence_head(input, state) {
+  const got = _parseInt(input);
+  if (got === null) return { ok: false, hint: "Enter a whole number." };
+  const encrypted = state?.encrypted;
+  if (!Array.isArray(encrypted) || encrypted.length === 0) {
+    return { ok: false, hint: "No encrypted text in state — go back and encrypt first." };
+  }
+  const d2 = BigInt(state.d2);
+  const n2 = BigInt(state.n2);
+  const firstC = BigInt(encrypted[0]);
+  const expectedFirst = modPow(firstC, d2, n2);
+  if (got !== expectedFirst) {
+    return { ok: false, hint: `m = c^d mod n. With c=${firstC}, d=${d2}, n=${n2}.` };
+  }
+  const decoded = encrypted.map((c) => Number(modPow(BigInt(c), d2, n2)));
+  const decrypted = decoded.map((code) => String.fromCharCode(code)).join("");
+  return { ok: true, value: { decrypted } };
 }
 
 // ---- Cheat code -----------------------------------------------------------
@@ -277,6 +296,20 @@ export const walkthroughs = {
       `**The method:** Same as the toy encrypt — c = m^e mod n. Here m is the ASCII code of the first character.`,
       `For '${ch}', m = ${code}. So compute ${code}^${e} mod ${n}.`,
       `**Answer: ${result}.** (In Python: \`pow(${code}, ${e}, ${n})\`.)`,
+    ];
+  },
+
+  decrypt_sentence_head: (state) => {
+    const encrypted = Array.isArray(state?.encrypted) ? state.encrypted : [0];
+    const c = BigInt(encrypted[0]);
+    const d = BigInt(state?.d2 || 0);
+    const n = BigInt(state?.n2 || 1);
+    const result = modPow(c, d, n);
+    const ch = String.fromCharCode(Number(result));
+    return [
+      `**The method:** Same shape as decryption you already did — m = c^d mod n. Here c is the first encrypted number.`,
+      `c = ${c}, d = ${d}, n = ${n}. Compute ${c}^${d} mod ${n}.`,
+      `**Answer: ${result}.** That's the ASCII code for '${ch}'. (In Python: \`pow(${c}, ${d}, ${n})\`.)`,
     ];
   },
 };

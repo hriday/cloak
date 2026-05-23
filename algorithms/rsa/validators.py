@@ -159,4 +159,21 @@ def encrypt_sentence_head(input_str, state):
     if got != expected_first:
         return {"ok": False, "hint": f"c = m^e mod n. With m={first_code} (the ASCII of {sentence[0]!r}), e={e2}, n={n2}."}
     encrypted = [pow(ord(ch), e2, n2) for ch in sentence]
-    return {"ok": True, "value": {"encrypted": encrypted}}
+    return {"ok": True, "value": {"encrypted": encrypted, "first_encrypted": encrypted[0]}}
+
+
+def decrypt_sentence_head(input_str, state):
+    got = _parse_int(input_str)
+    if got is None:
+        return {"ok": False, "hint": "Enter a whole number."}
+    encrypted = state.get("encrypted")
+    if not encrypted:
+        return {"ok": False, "hint": "No encrypted text in state — go back and encrypt first."}
+    d2, n2 = state["d2"], state["n2"]
+    first_c = encrypted[0]
+    expected_first = pow(first_c, d2, n2)
+    if got != expected_first:
+        return {"ok": False, "hint": f"m = c^d mod n. With c={first_c}, d={d2}, n={n2}."}
+    decoded_codes = [pow(c, d2, n2) for c in encrypted]
+    decrypted = "".join(chr(code) for code in decoded_codes)
+    return {"ok": True, "value": {"decrypted": decrypted}}

@@ -134,19 +134,8 @@
             </div>
           </template>
 
-          <!-- Decrypt-sentence info step: actually decrypt state.encrypted and show -->
-          <template x-if="step.slug === 'decrypt-sentence'">
-            <div>
-              <p style="color:var(--muted);">Each encrypted number gets <code>^d mod n</code> applied. The result is the original ASCII code, which decodes back to the character. Recovered text (computed from <code>state.encrypted</code> with d=<span x-text="state.d2"></span>, n=<span x-text="state.n2"></span>):</p>
-              <pre class="code" x-text="recoveredText"></pre>
-              <p x-show="recoveredMatchesOriginal" style="color:var(--ok, #2a8a3e);">✓ Matches the original sentence.</p>
-              <p x-show="!recoveredMatchesOriginal" style="color:var(--err, #c0392b);">⚠ Does not match the original — key derivation bug. Please reload.</p>
-              <button class="btn" @click="advance()">Continue</button>
-            </div>
-          </template>
-
           <!-- Continue button on all other info steps -->
-          <template x-if="step.slug !== 'done' && step.slug !== 'toy-complete' && step.slug !== 'decrypt-sentence'">
+          <template x-if="step.slug !== 'done' && step.slug !== 'toy-complete'">
             <button class="btn" @click="advance()" x-text="isLast ? 'Done' : 'Continue'"></button>
           </template>
         </div>
