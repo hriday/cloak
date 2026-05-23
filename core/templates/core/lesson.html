@@ -127,6 +127,25 @@
                 </div>
               </div>
 
+              <div style="margin-bottom:16px;border-top:1px dashed var(--border, #ddd);padding-top:12px;">
+                <h3 style="margin:0 0 6px 0;">In the real world</h3>
+                <p style="margin:0 0 8px 0;font-size:0.9em;line-height:1.6;">What you just did is <em>textbook RSA</em> — the bare math. Production systems differ in three important ways:</p>
+                <ul style="margin:0 0 8px 18px;padding:0;font-size:0.9em;line-height:1.6;">
+                  <li style="margin-bottom:6px;">
+                    <strong>RSA almost never encrypts the actual message.</strong>
+                    Each RSA block can only hold a number smaller than n — for a 2048-bit key that's ~214 bytes after padding. For anything larger, you don't split-and-RSA. You generate a random <strong>AES key</strong>, RSA-encrypt that key (one small block), then AES-encrypt the message (no size limit). HTTPS, SSH, and PGP all work this way. It's called <em>hybrid encryption</em>.
+                  </li>
+                  <li style="margin-bottom:6px;">
+                    <strong>Real RSA always uses padding.</strong>
+                    Your per-character ciphertext leaks the alphabet — every <code>e</code> in <code x-text="`'${state.sentence}'`"></code> would encrypt to the same number, so frequency analysis breaks it instantly. Real protocols use <em>OAEP</em> padding to add randomness, so the same plaintext produces different ciphertexts each time.
+                  </li>
+                  <li>
+                    <strong>RSA also signs.</strong>
+                    Same math, opposite roles: hash the message (SHA-256), RSA-encrypt the hash with your <em>private</em> key. Anyone can verify with your <em>public</em> key. The message itself can be any size because only the fixed-size hash is touched by RSA.
+                  </li>
+                </ul>
+              </div>
+
               <div style="display:flex;gap:12px;flex-wrap:wrap;">
                 <a href="/" class="btn">Back to algorithms</a>
                 <a href="/dashboard/" class="btn secondary">My progress</a>
