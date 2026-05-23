@@ -37,3 +37,42 @@ test("wrap_key wrong value mentions m/e/n", () => {
   assert.match(r.hint, /\b7\b/); // e
   assert.match(r.hint, /143/);  // n
 });
+
+test("type_message happy", () => {
+  const r = v.type_message("hi", {});
+  assert.equal(r.ok, true);
+  assert.equal(r.value.h_message, "hi");
+  assert.equal(r.value.h_first_char, "h");
+  assert.equal(r.value.h_first_code, 104);
+});
+
+test("type_message rejects empty", () => {
+  const r = v.type_message("", {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /at least one/);
+});
+
+test("type_message rejects > 500 chars", () => {
+  const r = v.type_message("a".repeat(501), {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /500/);
+});
+
+test("type_message rejects non-ASCII", () => {
+  const r = v.type_message("Hi 🦊", {});
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /ASCII/i);
+});
+
+test("xor_encrypt_head happy — first byte of 'hi' XOR 42 = 66", () => {
+  const r = v.xor_encrypt_head("66", { h_message: "hi", h_sym_key: 42 });
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.value.h_ciphertext, [66, 67]);
+});
+
+test("xor_encrypt_head wrong value mentions both operands", () => {
+  const r = v.xor_encrypt_head("999", { h_message: "hi", h_sym_key: 42 });
+  assert.equal(r.ok, false);
+  assert.match(r.hint, /104/); // first_code
+  assert.match(r.hint, /42/);  // sym_key
+});

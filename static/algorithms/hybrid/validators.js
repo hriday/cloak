@@ -40,3 +40,30 @@ export function wrap_key(input, state) {
   }
   return _ok({ h_wrapped_key: got });
 }
+
+export function type_message(input, _state) {
+  const s = input == null ? "" : String(input);
+  if (s.length === 0) return { ok: false, hint: "Type at least one character." };
+  if (s.length > 500) return { ok: false, hint: "Keep it under 500 characters." };
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code < 32 || code > 126) {
+      return { ok: false, hint: `Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: '${s[i]}'.` };
+    }
+  }
+  return { ok: true, value: { h_message: s, h_first_char: s[0], h_first_code: s.charCodeAt(0) } };
+}
+
+export function xor_encrypt_head(input, state) {
+  const got = _parseInt(input);
+  if (got === null) return { ok: false, hint: "Enter a whole number." };
+  const msg = state?.h_message || "";
+  if (!msg) return { ok: false, hint: "No message in state — go back and type one first." };
+  const symKey = Number(state.h_sym_key);
+  const firstCode = msg.charCodeAt(0);
+  const expectedFirst = firstCode ^ symKey;
+  if (Number(got) !== expectedFirst) {
+    return { ok: false, hint: `Compute first_char XOR sym_key. With first_char = ${firstCode} (ASCII of '${msg[0]}') and sym_key = ${symKey}.` };
+  }
+  return { ok: true, value: { h_ciphertext: xorBytes(msg, symKey) } };
+}
