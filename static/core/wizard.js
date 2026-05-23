@@ -136,6 +136,23 @@ function wizardComponent(initial) {
       }
       return rows;
     },
+    get assembledCiphertext() {
+      // Shows how per-character encryptions combine into "the message you'd send".
+      // Two forms: comma-separated (readable) and fixed-width concatenated (so the
+      // receiver can split it back). Width = digits needed to encode n-1.
+      const slug = this.currentStep?.slug;
+      const source = slug === "done" ? this.playgroundEncoded : (this.state.encrypted || []);
+      if (!Array.isArray(source) || source.length === 0) return null;
+      const n = this.state.n2;
+      if (!n) return null;
+      const width = String(n - 1).length;
+      return {
+        list: source.join(", "),
+        padded: source.map((c) => String(c).padStart(width, "0")).join(""),
+        width,
+        n,
+      };
+    },
     get recoveredText() {
       // Used by step 14 (decrypt-sentence) to show the actual roundtrip.
       // Decrypts state.encrypted with d2/n2 and assembles the string.
