@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="csrf-token" content="{{ csrf_token }}">
   <title>{% block title %}cloak{% endblock %}</title>
+  <link rel="icon" type="image/svg+xml" href="{% static 'core/favicon.svg' %}">
   <link rel="stylesheet" href="{% static 'core/style.css' %}?v={% now 'U' %}">
   <script defer src="{% static 'vendor/htmx.min.js' %}"></script>
   <script defer src="{% static 'core/wizard.js' %}?v={% now 'U' %}"></script>
@@ -18,7 +19,7 @@
 </head>
 <body>
   <header class="site">
-    <a href="{% url 'landing' %}"><strong>cloak</strong></a>
+    <a href="{% url 'landing' %}" style="display:inline-flex;align-items:center;"><img src="{% static 'core/logo.svg' %}" alt="cloak" style="height:28px;display:block;"></a>
     <nav>
       {% if user.is_authenticated %}
         <a href="{% url 'dashboard' %}">{{ user.email|default:user.username }}</a>
