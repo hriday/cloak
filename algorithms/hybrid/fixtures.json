@@ -1,0 +1,114 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 2,
+    "fields": {
+      "slug": "hybrid",
+      "name": "Hybrid Encryption",
+      "family": "asymmetric",
+      "status": "live",
+      "order": 2,
+      "intro_template": "## Hybrid Encryption\n\nRSA can only encrypt small things — a 2048-bit key fits about 214 bytes of message per operation. So real systems don't RSA-encrypt your data. They generate a random symmetric key (typically for AES), use RSA to wrap that key, and use the symmetric cipher to encrypt the actual data. This lesson walks you through that pattern end-to-end using a hand-computable XOR cipher in place of AES."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 2,
+    "fields": {
+      "algorithm": 2,
+      "slug": "wrap-and-send",
+      "title": "Wrap a Key, Send a Message",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 21,
+    "fields": {
+      "lesson": 2, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Wrap a key, send a message\n\nRSA can only encrypt numbers smaller than n. For a 2048-bit real-world RSA key, that's about 214 bytes per block. So nobody RSA-encrypts a whole email or webpage. The pattern is:\n\n1. Generate a random **symmetric key**.\n2. **RSA-wrap** the key with the recipient's public key.\n3. **Symmetric-encrypt** the message with the key.\n4. Send both: `[wrapped_key, ciphertext]`.\n5. The recipient RSA-unwraps the key, then symmetric-decrypts the message.\n\nIn the next 7 steps you'll do every operation by hand.",
+      "help_template": "**In plain English:** RSA is slow and small. Symmetric ciphers (like AES) are fast and have no size limit. So we use each for what it's good at — RSA carries the key, the symmetric cipher carries the data. This is called *hybrid encryption* (or *envelope encryption*), and it's how HTTPS, SSH, and PGP all work.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 22,
+    "fields": {
+      "lesson": 2, "order": 2, "slug": "meet-symmetric", "kind": "info",
+      "prompt_template": "### Meet the symmetric cipher\n\nReal systems use **AES** for the symmetric step — a 10-round block cipher with S-boxes, state matrices, and mix columns. Nobody computes AES by hand. To keep this lesson compute-along, we'll use a tiny stand-in: byte-wise **XOR**.\n\n> XOR is dead-simple — the same operation encrypts and decrypts. It's not secure on its own (real systems wrap it in AES-GCM with a nonce), but it makes the *pattern* of hybrid encryption visible.\n\nIf you want to learn the real AES algorithm, see the [AES lesson](/algorithms/aes/) (coming soon).",
+      "help_template": "**In plain English:** AES takes a key and a chunk of data and scrambles them into ciphertext. It's reversible with the same key. Our XOR cipher does the same thing using one byte instead of 128 bits — same shape, much weaker, much easier to compute.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 23,
+    "fields": {
+      "lesson": 2, "order": 3, "slug": "pick-sym-key", "kind": "input-numeric",
+      "prompt_template": "### Pick a symmetric key\n\nPick any whole number from **0 to 127** — that's your symmetric key. (In a real system this would be 32 cryptographically-random bytes for AES-256. We use one small number here so you can do the XOR by hand.)",
+      "help_template": "**In plain English:** Any number 0–127 works. Pick something memorable like 42; the math works the same either way. The 127 cap is so the key fits in our toy RSA modulus n=143.",
+      "validator_key": "pick_sym_key", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 24,
+    "fields": {
+      "lesson": 2, "order": 4, "slug": "wrap-key", "kind": "input-numeric",
+      "prompt_template": "### Wrap the key with RSA\n\nWe're using a fixed RSA keypair for this lesson: **p = 11, q = 13, n = 143, e = 7, d = 103**. *(If you want to see where these come from, that's the [RSA lesson](/algorithms/rsa/learn/encrypt-decrypt/).)*\n\nWrap your symmetric key by computing `c = m^e mod n` with **m = {{ state.h_sym_key }}**, e = 7, n = 143. The result is your *wrapped key* — what you'd actually transmit.",
+      "help_template": "**In plain English:** Same `pow(m, e, n)` you did in the RSA lesson. The wrapped key is only meaningful to someone holding the matching private key (d).",
+      "validator_key": "wrap_key", "codegen_key": "wrap_key"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 25,
+    "fields": {
+      "lesson": 2, "order": 5, "slug": "type-message", "kind": "input-text",
+      "prompt_template": "### Type a message\n\nWith your symmetric key set ({{ state.h_sym_key }}) and wrapped ({{ state.h_wrapped_key }}), type the message you want to send. Up to 500 printable ASCII characters. We'll encrypt it byte-by-byte with the symmetric key on the next step.",
+      "help_template": "**In plain English:** Whatever you type here will be the plaintext input to the symmetric cipher. Real systems would handle arbitrary bytes (images, files, whatever); we limit to printable ASCII so the table is readable.",
+      "validator_key": "type_message", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 26,
+    "fields": {
+      "lesson": 2, "order": 6, "slug": "xor-encrypt", "kind": "input-numeric",
+      "prompt_template": "### Encrypt the first byte\n\nThe first character of your message is **'{{ state.h_first_char }}'** — ASCII **{{ state.h_first_code }}**. Compute `{{ state.h_first_code }} XOR {{ state.h_sym_key }}`.\n\nOnce you get the first one, the lesson XORs the rest for you and shows the full ciphertext.",
+      "help_template": "**In plain English:** XOR (exclusive OR) compares two numbers bit by bit. A 1 in each position is contributed by exactly one of the operands. You can do it in Python with the `^` operator: `{{ state.h_first_code }} ^ {{ state.h_sym_key }}`.",
+      "validator_key": "xor_encrypt_head", "codegen_key": "xor_encrypt_head"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 27,
+    "fields": {
+      "lesson": 2, "order": 7, "slug": "unwrap-key", "kind": "input-numeric",
+      "prompt_template": "### Receiver: unwrap the key\n\nNow you're the receiver. You have the wrapped key ({{ state.h_wrapped_key }}) and your private exponent d = 103. Recover the symmetric key by computing `m = c^d mod n` with **c = {{ state.h_wrapped_key }}**, d = 103, n = 143. The answer should equal **{{ state.h_sym_key }}** — the original symmetric key the sender chose.",
+      "help_template": "**In plain English:** Same `pow(c, d, n)` shape as the RSA decrypt. Only someone holding d can do this — that's the whole point of RSA being asymmetric.",
+      "validator_key": "unwrap_key", "codegen_key": "unwrap_key"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 28,
+    "fields": {
+      "lesson": 2, "order": 8, "slug": "xor-decrypt", "kind": "input-numeric",
+      "prompt_template": "### Receiver: decrypt the first byte\n\nThe first ciphertext byte is **{{ state.h_first_encrypted }}** *(displayed below)* and you've recovered the key — **{{ state.h_recovered_key }}**. Compute `{{ state.h_first_encrypted }} XOR {{ state.h_recovered_key }}`. The answer should be **{{ state.h_first_code }}** — the ASCII code for **'{{ state.h_first_char }}'**.\n\nOn Check, the lesson decrypts the rest and assembles your message back.",
+      "help_template": "**In plain English:** XOR is self-inverse: the same operation that encrypted decrypts. That's why a single key works for both directions in symmetric ciphers like this one.",
+      "validator_key": "xor_decrypt_head", "codegen_key": "xor_decrypt_head"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 29,
+    "fields": {
+      "lesson": 2, "order": 9, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou just did **hybrid encryption** by hand. Your roundtrip:\n\n- **Symmetric key:** {{ state.h_sym_key }} → **RSA-wrapped as:** {{ state.h_wrapped_key }}\n- **Message:** '{{ state.h_message }}' → **ciphertext:** {{ state.h_ciphertext_str }}\n- **Receiver recovered the key** ({{ state.h_recovered_key }}) **and decrypted back to:** '{{ state.h_recovered_message }}' ✓\n\nThe pattern you used — random symmetric key + RSA wraps the key + symmetric cipher encrypts the data — is what HTTPS, SSH, and PGP all use.\n\nIn production, swap the XOR for **AES** (see the [AES lesson](/algorithms/aes/) when it ships) and the toy RSA keys for 2048-bit primes with OAEP padding.\n\n**Where this leads:** the pattern of \"a key that encrypts a key\" is called a **KEK** (Key Encryption Key). Production key-management systems — AWS KMS, GCP KMS, Azure Key Vault, hardware HSMs — build whole hierarchies of KEKs on top of this idea. There'll be a KEK/HSM lesson covering that.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]

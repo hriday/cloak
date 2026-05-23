@@ -68,6 +68,8 @@ test("xor_encrypt_head happy — first byte of 'hi' XOR 42 = 66", () => {
   const r = v.xor_encrypt_head("66", { h_message: "hi", h_sym_key: 42 });
   assert.equal(r.ok, true);
   assert.deepEqual(r.value.h_ciphertext, [66, 67]);
+  assert.equal(r.value.h_first_encrypted, 66);
+  assert.equal(r.value.h_ciphertext_str, "66, 67");
 });
 
 test("xor_encrypt_head wrong value mentions both operands", () => {

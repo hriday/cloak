@@ -65,7 +65,15 @@ export function xor_encrypt_head(input, state) {
   if (Number(got) !== expectedFirst) {
     return { ok: false, hint: `Compute first_char XOR sym_key. With first_char = ${firstCode} (ASCII of '${msg[0]}') and sym_key = ${symKey}.` };
   }
-  return { ok: true, value: { h_ciphertext: xorBytes(msg, symKey) } };
+  const ciphertext = xorBytes(msg, symKey);
+  return {
+    ok: true,
+    value: {
+      h_ciphertext: ciphertext,
+      h_first_encrypted: ciphertext[0],
+      h_ciphertext_str: ciphertext.join(", "),
+    },
+  };
 }
 
 export function unwrap_key(input, state) {
