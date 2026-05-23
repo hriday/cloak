@@ -79,6 +79,8 @@ class UserProgress(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = "user progress"
+        verbose_name_plural = "user progress"
         constraints = [
             models.UniqueConstraint(fields=["user", "lesson"], name="unique_progress_per_user_lesson"),
         ]
