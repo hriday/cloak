@@ -25,6 +25,10 @@ function wizardComponent(initial) {
     inlineCode: "",
     stuckLevel: 0,
     walkthroughHtml: "",
+    sentenceInput: "",        // bound to the input-text textarea on step 12
+    playgroundSentence: "",   // ephemeral, step 15 only — not persisted
+    playgroundEncoded: [],    // ephemeral derived array for the playground table
+    playgroundDecoded: "",    // ephemeral derived string
 
     async init() {
       const mods = await loadAlgorithmModules(this.algorithmSlug);
@@ -42,14 +46,61 @@ function wizardComponent(initial) {
       return this.steps.find((s) => s.order === this.currentStepOrder);
     },
     get progressBar() {
-      return this.steps.map((s) => {
+      const hasOptedIn = this.currentStepOrder > 10 || !!this.state.sentence;
+      const total = hasOptedIn ? this.steps.length : Math.min(10, this.steps.length);
+      const visible = this.steps.slice(0, total);
+      return visible.map((s) => {
         if (s.order < this.currentStepOrder) return "done";
         if (s.order === this.currentStepOrder) return "current";
         return "pending";
       });
     },
+    get displayedStepTotal() {
+      const hasOptedIn = this.currentStepOrder > 10 || !!this.state.sentence;
+      return hasOptedIn ? this.steps.length : Math.min(10, this.steps.length);
+    },
     get isLast() {
       return this.currentStepOrder >= this.steps.length;
+    },
+    get conversionRows() {
+      // Used by step 12 (live as user types), 13–14 (locked sentence + encrypted), and 15 (playground).
+      const slug = this.currentStep?.slug;
+      let source, encArray;
+      if (slug === "type-sentence") {
+        source = this.sentenceInput; encArray = [];
+      } else if (slug === "done") {
+        source = this.playgroundSentence; encArray = this.playgroundEncoded;
+      } else {
+        source = this.state.sentence || ""; encArray = this.state.encrypted || [];
+      }
+      if (!source) return [];
+      const rows = [];
+      for (let i = 0; i < source.length; i++) {
+        const code = source.charCodeAt(i);
+        rows.push({
+          ch: source[i],
+          code,
+          bin: code.toString(2).padStart(8, "0"),
+          enc: encArray[i] !== undefined ? encArray[i] : null,
+        });
+      }
+      return rows;
+    },
+    get recoveredText() {
+      // Used by step 14 (decrypt-sentence) to show the actual roundtrip.
+      // Decrypts state.encrypted with d2/n2 and assembles the string.
+      const enc = this.state.encrypted;
+      if (!Array.isArray(enc) || !this.state.d2 || !this.state.n2) return "";
+      const d2 = BigInt(this.state.d2), n2 = BigInt(this.state.n2);
+      const modPow = (base, exp, mod) => {
+        let r = 1n; base = ((base % mod) + mod) % mod;
+        while (exp > 0n) { if (exp & 1n) r = (r * base) % mod; exp >>= 1n; base = (base * base) % mod; }
+        return r;
+      };
+      return enc.map((c) => String.fromCharCode(Number(modPow(BigInt(c), d2, n2)))).join("");
+    },
+    get recoveredMatchesOriginal() {
+      return this.recoveredText === (this.state.sentence || "");
     },
 
     refreshInlineCode() {
@@ -87,7 +138,10 @@ function wizardComponent(initial) {
     async check() {
       const step = this.currentStep;
       if (!step) return;
-      const input = step.kind === "input-multi" ? { ...this.multiInput } : this.inputValue;
+      let input;
+      if (step.kind === "input-multi") input = { ...this.multiInput };
+      else if (step.kind === "input-text") input = this.sentenceInput;
+      else input = this.inputValue;
       const fn = this.validators[step.validator_key];
       const result = fn(input, this.state);
       if (!result.ok) { this.hint = result.hint; return; }
@@ -104,6 +158,7 @@ function wizardComponent(initial) {
         this.currentStepOrder = this.steps.length;
       }
       this.inputValue = "";
+      this.sentenceInput = "";
       this.multiInput = {};
       this.hint = "";
       this.stuckLevel = 0;
@@ -120,6 +175,8 @@ function wizardComponent(initial) {
     back() {
       if (this.currentStepOrder > 1) {
         this.currentStepOrder -= 1;
+        this.inputValue = "";
+        this.sentenceInput = "";
         this.hint = "";
         this.stuckLevel = 0;
         this.walkthroughHtml = "";
@@ -171,6 +228,31 @@ function wizardComponent(initial) {
       const a = document.createElement("a");
       a.href = url; a.download = `${this.algorithmSlug}_lesson.py`; a.click();
       URL.revokeObjectURL(url);
+    },
+
+    recomputePlayground() {
+      const s = this.playgroundSentence || "";
+      if (!s || !this.state.e2 || !this.state.d2 || !this.state.n2) {
+        this.playgroundEncoded = []; this.playgroundDecoded = ""; return;
+      }
+      // Reject non-printable or oversize input; show invalid marker rather than half-encrypting
+      for (let i = 0; i < s.length; i++) {
+        const c = s.charCodeAt(i);
+        if (c < 32 || c > 126 || s.length > 500) {
+          this.playgroundEncoded = []; this.playgroundDecoded = "(invalid input)"; return;
+        }
+      }
+      const e2 = BigInt(this.state.e2), n2 = BigInt(this.state.n2), d2 = BigInt(this.state.d2);
+      // Local modPow (the validators module's modPow isn't directly exposed on this.validators).
+      const modPow = (base, exp, mod) => {
+        let r = 1n; base = ((base % mod) + mod) % mod;
+        while (exp > 0n) { if (exp & 1n) r = (r * base) % mod; exp >>= 1n; base = (base * base) % mod; }
+        return r;
+      };
+      const enc = [];
+      for (let i = 0; i < s.length; i++) enc.push(Number(modPow(BigInt(s.charCodeAt(i)), e2, n2)));
+      this.playgroundEncoded = enc;
+      this.playgroundDecoded = enc.map((c) => String.fromCharCode(Number(modPow(BigInt(c), d2, n2)))).join("");
     },
 
     persistLocal() {
