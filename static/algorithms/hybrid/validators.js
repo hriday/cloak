@@ -100,3 +100,54 @@ export function xor_decrypt_head(input, state) {
 export function info(_input, _state) {
   return { ok: true, value: {} };
 }
+
+// ---- Walkthroughs (powering the "I don't know how" button) ----
+// Each returns an array of 3 escalating string rungs: method → worked
+// example → answer. Same pattern as the RSA lesson's walkthroughs.
+
+export const walkthroughs = {
+  wrap_key: (state) => {
+    const m = BigInt(state?.h_sym_key ?? 0);
+    const result = modPow(m, HYBRID_E, HYBRID_N);
+    return [
+      `**The method:** c = m^e mod n. Here m is the symmetric key you picked, e and n are the public RSA key.`,
+      `m = ${m}, e = 7, n = 143. So compute ${m}^7 mod 143.`,
+      `**Answer: ${result}.** (In Python: \`pow(${m}, 7, 143)\`.)`,
+    ];
+  },
+
+  xor_encrypt_head: (state) => {
+    const msg = state?.h_message || "";
+    const ch = msg[0] || "?";
+    const code = msg.charCodeAt(0) || 0;
+    const k = Number(state?.h_sym_key ?? 0);
+    const result = code ^ k;
+    return [
+      `**The method:** XOR the ASCII code of the first character with your symmetric key. XOR is bit-wise; the answer is a byte value (0–255).`,
+      `For '${ch}', ASCII = ${code}. sym_key = ${k}. Compute ${code} XOR ${k}.`,
+      `**Answer: ${result}.** (In Python: \`${code} ^ ${k}\`.)`,
+    ];
+  },
+
+  unwrap_key: (state) => {
+    const c = BigInt(state?.h_wrapped_key ?? 0);
+    const result = modPow(c, HYBRID_D, HYBRID_N);
+    return [
+      `**The method:** m = c^d mod n. Same shape as the toy RSA decrypt — d is the private exponent that undoes the wrap.`,
+      `c = ${c}, d = 103, n = 143. Compute ${c}^103 mod 143.`,
+      `**Answer: ${result}.** (In Python: \`pow(${c}, 103, 143)\`.)`,
+    ];
+  },
+
+  xor_decrypt_head: (state) => {
+    const cipher = Array.isArray(state?.h_ciphertext) ? state.h_ciphertext : [0];
+    const c = cipher[0];
+    const k = Number(state?.h_recovered_key ?? 0);
+    const result = c ^ k;
+    return [
+      `**The method:** XOR is self-inverse — the same operation that encrypted decrypts. Take the first ciphertext byte and XOR with the recovered key.`,
+      `c[0] = ${c}, recovered_key = ${k}. Compute ${c} XOR ${k}.`,
+      `**Answer: ${result}.** That's the ASCII code for '${String.fromCharCode(result)}'. (In Python: \`${c} ^ ${k}\`.)`,
+    ];
+  },
+};

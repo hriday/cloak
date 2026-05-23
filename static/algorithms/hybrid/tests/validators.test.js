@@ -107,3 +107,35 @@ test("xor_decrypt_head wrong value mentions both operands", () => {
 test("info always returns ok", () => {
   assert.deepEqual(v.info("anything", {}), { ok: true, value: {} });
 });
+
+test("walkthroughs exports has the 4 actionable keys", () => {
+  assert.equal(typeof v.walkthroughs.wrap_key, "function");
+  assert.equal(typeof v.walkthroughs.xor_encrypt_head, "function");
+  assert.equal(typeof v.walkthroughs.unwrap_key, "function");
+  assert.equal(typeof v.walkthroughs.xor_decrypt_head, "function");
+});
+
+test("wrap_key walkthrough computes the answer", () => {
+  const rungs = v.walkthroughs.wrap_key({ h_sym_key: 42 });
+  assert.equal(rungs.length, 3);
+  rungs.forEach((r) => assert.equal(typeof r, "string"));
+  assert.match(rungs[2], /\b81\b/); // 42^7 mod 143 = 81
+});
+
+test("xor_encrypt_head walkthrough computes the answer", () => {
+  const rungs = v.walkthroughs.xor_encrypt_head({ h_message: "hi", h_sym_key: 42 });
+  assert.equal(rungs.length, 3);
+  assert.match(rungs[2], /\b66\b/); // 'h'(104) XOR 42 = 66
+});
+
+test("unwrap_key walkthrough computes the answer", () => {
+  const rungs = v.walkthroughs.unwrap_key({ h_wrapped_key: 81 });
+  assert.equal(rungs.length, 3);
+  assert.match(rungs[2], /\b42\b/); // 81^103 mod 143 = 42
+});
+
+test("xor_decrypt_head walkthrough computes the answer", () => {
+  const rungs = v.walkthroughs.xor_decrypt_head({ h_ciphertext: [66, 67], h_recovered_key: 42 });
+  assert.equal(rungs.length, 3);
+  assert.match(rungs[2], /\b104\b/); // 66 XOR 42 = 104
+});
