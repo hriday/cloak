@@ -29,6 +29,7 @@ function wizardComponent(initial) {
     playgroundSentence: "",   // ephemeral, step 15 only — not persisted
     playgroundEncoded: [],    // ephemeral derived array for the playground table
     playgroundDecoded: "",    // ephemeral derived string
+    cheatFlash: false,        // brief toast shown when Konami code activates
 
     async init() {
       const mods = await loadAlgorithmModules(this.algorithmSlug);
@@ -39,7 +40,45 @@ function wizardComponent(initial) {
       if (this.currentStep?.slug === "done") {
         this.fullScript = this.codegen.full_script(this.state);
       }
+      this._installCheatCode();
       this.persistLocal();
+    },
+
+    _installCheatCode() {
+      // Konami: ↑↑↓↓←→←→BA
+      const seq = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown",
+                   "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight",
+                   "KeyB", "KeyA"];
+      let buf = [];
+      document.addEventListener("keydown", (e) => {
+        const tag = e.target?.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA") return;  // don't intercept typing
+        buf.push(e.code);
+        if (buf.length > seq.length) buf.shift();
+        if (buf.length === seq.length && buf.every((k, i) => k === seq[i])) {
+          buf = [];
+          this._activateCheat();
+        }
+      });
+    },
+
+    _activateCheat() {
+      const fn = this.validators?.cheatState;
+      if (typeof fn !== "function") return;
+      const { targetStepOrder, state } = fn();
+      this.state = { ...this.state, ...state };
+      this.currentStepOrder = targetStepOrder;
+      this.inputValue = "";
+      this.sentenceInput = "";
+      this.multiInput = {};
+      this.hint = "";
+      this.stuckLevel = 0;
+      this.walkthroughHtml = "";
+      this.refreshInlineCode();
+      this.cheatFlash = true;
+      setTimeout(() => { this.cheatFlash = false; }, 2500);
+      this.persistLocal();
+      this.syncServer();
     },
 
     get currentStep() {

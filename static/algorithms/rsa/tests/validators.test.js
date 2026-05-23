@@ -116,6 +116,18 @@ test("encrypt_sentence_head wrong", () => {
   assert.match(r.hint, /323/);
 });
 
+test("cheatState returns target step 12 with full toy + big keypair", () => {
+  const { targetStepOrder, state } = v.cheatState();
+  assert.equal(targetStepOrder, 12);
+  // toy
+  assert.equal(state.p, 3); assert.equal(state.q, 5); assert.equal(state.n, 15);
+  assert.equal(state.phi, 8); assert.equal(state.e, 7); assert.equal(state.d, 7);
+  assert.equal(state.m, 2); assert.equal(state.c, 8); assert.equal(state.m_decrypted, 2);
+  // big keypair
+  assert.equal(state.p2, 17); assert.equal(state.q2, 19); assert.equal(state.n2, 323);
+  assert.equal(state.phi2, 288); assert.equal(state.e2, 5); assert.equal(state.d2, 173);
+});
+
 test("walkthroughs has entries for new actionable steps", () => {
   assert.equal(typeof v.walkthroughs.pick_pq_big, "function");
   assert.equal(typeof v.walkthroughs.encrypt_sentence_head, "function");

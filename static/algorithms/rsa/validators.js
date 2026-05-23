@@ -160,6 +160,24 @@ export function encrypt_sentence_head(input, state) {
   return { ok: true, value: { encrypted } };
 }
 
+// ---- Cheat code -----------------------------------------------------------
+// Returns the state + step order to jump to when the user enters the Konami
+// code. Skips the toy math entirely and lands at step 12 (type-sentence) with
+// both keypairs pre-filled so the playground is fully wired.
+
+export function cheatState() {
+  return {
+    targetStepOrder: 12,
+    state: {
+      // Toy keypair (smallest workable: p=3, q=5)
+      p: 3, q: 5, n: 15, phi: 8, e: 7, d: 7,
+      m: 2, c: 8, m_decrypted: 2,
+      // Bigger keypair for text encryption (p=17, q=19)
+      p2: 17, q2: 19, n2: 323, phi2: 288, e2: 5, d2: 173,
+    },
+  };
+}
+
 // ---- Walkthroughs ----------------------------------------------------------
 // Each returns an array of escalating hint strings (method → worked example → answer).
 // Wizard reveals one rung per click of the "I don't know how" button.
