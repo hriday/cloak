@@ -38,8 +38,14 @@ def progress_detail(request, algo_slug, lesson_slug):
         defaults={"state": state, "current_step_order": current},
     )
 
-    # Mark lesson complete when user reaches the final step.
-    if current == lesson.steps.count() and progress.completed_at is None:
+    # Mark lesson complete at a designated completion step (soft-done or full-done).
+    # Spec: "Lesson is marked complete here even if user exits" at toy-complete.
+    current_step = lesson.steps.filter(order=current).first()
+    if (
+        current_step
+        and current_step.slug in ("toy-complete", "done")
+        and progress.completed_at is None
+    ):
         progress.completed_at = timezone.now()
         progress.save(update_fields=["completed_at"])
 

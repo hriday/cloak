@@ -93,3 +93,23 @@ def test_logged_in_progress_full_rsa_flow(client, rsa_loaded):
     assert final.state["m_decrypted"] == m
     assert final.state["sentence"] == "Hi"
     assert final.completed_at is not None, "completed_at must be persisted after done step"
+
+
+@pytest.mark.django_db
+def test_completion_fires_on_opt_out_at_toy_complete(client, rsa_loaded):
+    """User who reaches step 10 (toy-complete) gets completed_at set, even without continuing."""
+    User = get_user_model()
+    user = User.objects.create_user(username="optout", email="optout@e.com", password="pw")
+    client.force_login(user)
+    # Jump straight to step 10 with toy state
+    p, q = 61, 53
+    n, phi_n = p * q, (p - 1) * (q - 1)
+    e, d = 17, pow(17, -1, phi_n)
+    final_state = {"p": p, "q": q, "n": n, "phi": phi_n, "e": e, "d": d, "m": 65, "c": pow(65, e, n), "m_decrypted": 65}
+    resp = client.post(
+        "/api/progress/rsa/encrypt-decrypt/",
+        data=json.dumps({"state": final_state, "current_step_order": 10}),
+        content_type="application/json",
+    )
+    assert resp.status_code == 200
+    assert resp.json()["completed_at"] is not None, "opt-out at step 10 must set completed_at"
