@@ -1,8 +1,12 @@
 async function loadAlgorithmModules(slug) {
   const base = `/static/algorithms/${slug}`;
+  // Cache-bust per page load. Chromium aggressively caches ES modules and a
+  // normal reload doesn't refetch them; without this, validators.js stays
+  // stale across deploys until the user hard-refreshes.
+  const v = `?v=${(window.CLOAK_ASSETS_VERSION || Date.now())}`;
   const [validators, codegen] = await Promise.all([
-    import(`${base}/validators.js`),
-    import(`${base}/codegen.js`),
+    import(`${base}/validators.js${v}`),
+    import(`${base}/codegen.js${v}`),
   ]);
   return { validators, codegen };
 }
@@ -169,7 +173,8 @@ function wizardComponent(initial) {
 
     maybeRefreshCoprimeOptions() {
       if (this.currentStep?.kind === "choose-from-list" && this.currentStep.slug === "pick-e" && "phi" in this.state) {
-        import(`/static/algorithms/${this.algorithmSlug}/math.js`).then((m) => {
+        const v = `?v=${(window.CLOAK_ASSETS_VERSION || Date.now())}`;
+        import(`/static/algorithms/${this.algorithmSlug}/math.js${v}`).then((m) => {
           this.coprimeOptions = m.coprimeCandidates(BigInt(this.state.phi), 12).map((b) => Number(b));
         });
       }
