@@ -111,7 +111,7 @@
                 <pre class="code" style="max-height:320px;overflow:auto;" x-text="fullScript"></pre>
               </div>
 
-              <div style="margin-bottom:16px;border-top:1px dashed var(--border, #ddd);padding-top:12px;">
+              <div x-show="state.n2 !== undefined" style="margin-bottom:16px;border-top:1px dashed var(--border, #ddd);padding-top:12px;">
                 <h3 style="margin:0 0 6px 0;">Playground</h3>
                 <p style="color:var(--muted);margin:0 0 8px 0;font-size:0.9em;">Type anything (≤500 printable ASCII chars). The table re-encrypts as you type, using <span x-text="`n=${state.n2}, e=${state.e2}, d=${state.d2}`"></span>.</p>
                 <textarea
@@ -127,7 +127,7 @@
                 </div>
               </div>
 
-              <div style="margin-bottom:16px;border-top:1px dashed var(--border, #ddd);padding-top:12px;">
+              <div x-show="state.n2 !== undefined" style="margin-bottom:16px;border-top:1px dashed var(--border, #ddd);padding-top:12px;">
                 <h3 style="margin:0 0 6px 0;">In the real world</h3>
                 <p style="margin:0 0 8px 0;font-size:0.9em;line-height:1.6;">What you just did is <em>textbook RSA</em> — the bare math. Production systems differ in three important ways:</p>
                 <ul style="margin:0 0 8px 18px;padding:0;font-size:0.9em;line-height:1.6;">
