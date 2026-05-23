@@ -235,4 +235,24 @@ export const walkthroughs = {
       `**m = ${raw % n}.** Should match the message you encrypted.`,
     ];
   },
+
+  pick_pq_big: (_state) => [
+    `**The method:** Pick two different primes, each at least 17. We need n = p × q ≥ 256 so any ASCII character fits.`,
+    `**Why 17?** 17 × 19 = 323, which is the smallest product ≥ 256 with two distinct primes both ≥ 17. Anything smaller and you can't encrypt a space (ASCII 32).`,
+    `**A pair that works: p = 17, q = 19.** That gives n = 323, φ = 288. (Try p = 19, q = 23 if you want a slightly bigger key.)`,
+  ],
+
+  encrypt_sentence_head: (state) => {
+    const sentence = state?.sentence || "";
+    const ch = sentence[0] || "?";
+    const code = BigInt(sentence.charCodeAt(0) || 0);
+    const e = BigInt(state?.e2 || 0);
+    const n = BigInt(state?.n2 || 1);
+    const result = modPow(code, e, n);
+    return [
+      `**The method:** Same as the toy encrypt — c = m^e mod n. Here m is the ASCII code of the first character.`,
+      `For '${ch}', m = ${code}. So compute ${code}^${e} mod ${n}.`,
+      `**Answer: ${result}.** (In Python: \`pow(${code}, ${e}, ${n})\`.)`,
+    ];
+  },
 };

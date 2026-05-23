@@ -107,3 +107,25 @@ test("encrypt_sentence_head wrong", () => {
   assert.match(r.hint, /72/);
   assert.match(r.hint, /323/);
 });
+
+test("walkthroughs has entries for new actionable steps", () => {
+  assert.equal(typeof v.walkthroughs.pick_pq_big, "function");
+  assert.equal(typeof v.walkthroughs.encrypt_sentence_head, "function");
+});
+
+test("pick_pq_big walkthrough returns 3 string rungs", () => {
+  const rungs = v.walkthroughs.pick_pq_big({});
+  assert.equal(rungs.length, 3);
+  rungs.forEach((r) => assert.equal(typeof r, "string"));
+  // final rung must mention a concrete prime pair
+  assert.match(rungs[2], /17.*19|19.*17/);
+});
+
+test("encrypt_sentence_head walkthrough computes the answer", () => {
+  const state = { sentence: "Hi", e2: 5, n2: 323 };
+  const rungs = v.walkthroughs.encrypt_sentence_head(state);
+  assert.equal(rungs.length, 3);
+  // 72^5 mod 323 — verify the final rung includes the computed value
+  const expected = Number(m.modPow(72n, 5n, 323n));
+  assert.match(rungs[2], new RegExp(String(expected)));
+});
