@@ -1,0 +1,104 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 3,
+    "fields": {
+      "slug": "aes",
+      "name": "AES",
+      "family": "symmetric",
+      "status": "live",
+      "order": 3,
+      "intro_template": "## AES\n\nThe Advanced Encryption Standard — the symmetric block cipher used everywhere. This lesson teaches the four moves AES applies to a 16-byte block, then encrypts a real message."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 3,
+    "fields": {
+      "algorithm": 3,
+      "slug": "four-transformations",
+      "title": "The Four Moves",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 31,
+    "fields": {
+      "lesson": 3, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## AES — the four moves\n\nAES (Advanced Encryption Standard) is a **block cipher**: it takes a 16-byte block + a key and produces 16 bytes of ciphertext. AES-128 applies 4 transformations 10 times, with a rotating round key.\n\nThe transformations:\n\n1. **SubBytes** — substitute each byte via a fixed lookup table.\n2. **ShiftRows** — rotate each row of the state.\n3. **MixColumns** — multiply each column by a matrix in a finite field.\n4. **AddRoundKey** — XOR with the round key.\n\nWe'll do each move in isolation, watch them composed in one real round, then encrypt a real message with browser-native AES-GCM.",
+      "help_template": "**In plain English:** AES is the symmetric cipher everyone uses. It's too complex to compute by hand end-to-end (10 rounds × 4 moves × 16 bytes), but each move is simple enough to do on a small example. That's the lesson: learn the moves, then watch them work for real.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 32,
+    "fields": {
+      "lesson": 3, "order": 2, "slug": "sub-bytes", "kind": "input-numeric",
+      "prompt_template": "### SubBytes — look up a byte in the S-box\n\nAES replaces each byte with the value from a fixed 16×16 lookup table called the **S-box**. The high nibble of the input picks the row; the low nibble picks the column.\n\nLook up byte **0x53** (row 5, column 3 — highlighted below). Enter the answer in decimal or hex (e.g. `237` or `0xED`).",
+      "help_template": "**In plain English:** The S-box is just a fixed list of 256 bytes. It scrambles the input nonlinearly — that nonlinearity is what makes AES hard to invert without the key.",
+      "validator_key": "sub_byte", "codegen_key": "sub_byte"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 33,
+    "fields": {
+      "lesson": 3, "order": 3, "slug": "shift-rows", "kind": "input-multi",
+      "prompt_template": "### ShiftRows — rotate a row\n\nShiftRows rotates each row of the 4×4 state by its row index: row 0 unchanged, row 1 by 1, row 2 by 2, row 3 by 3.\n\nGiven the input row `[0x09, 0xCF, 0x4F, 0x3C]` (shown below), enter the 4 bytes of the row **after shifting left by 1**.",
+      "help_template": "**In plain English:** Shifting left by 1 moves the first byte to the end. So `[A, B, C, D]` becomes `[B, C, D, A]`. ShiftRows spreads bytes across columns so MixColumns can mix them effectively.",
+      "validator_key": "shift_row", "codegen_key": "shift_row"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 34,
+    "fields": {
+      "lesson": 3, "order": 4, "slug": "mix-columns", "kind": "info",
+      "prompt_template": "### MixColumns — the spread step\n\nMixColumns multiplies each column of the state by a fixed 4×4 matrix in **GF(2⁸)** (a 256-element finite field). It's the diffusion step — a change in one byte affects all 4 bytes of the column.\n\nBelow: one column `[0xDB, 0x13, 0x53, 0x45]` becomes `[0x8E, 0x4D, 0xA1, 0xBC]` after MixColumns. The GF(2⁸) math (multiply-by-2 with reducing polynomial 0x11B) is too involved for hand computation — this step is demo-only.",
+      "help_template": "**In plain English:** Without MixColumns, AES would just be byte substitutions and shuffling — each output byte would depend on only one input byte. MixColumns blends bytes within each column so changes ripple out.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 35,
+    "fields": {
+      "lesson": 3, "order": 5, "slug": "add-round-key", "kind": "input-numeric",
+      "prompt_template": "### AddRoundKey — XOR with the key\n\nThe final move of each round: XOR every state byte with the matching byte of the round key. Same XOR you've seen in the toy lessons.\n\nGiven state byte = **0xED** (the SubBytes output from step 2) and round-key byte = **0x2B**, compute `0xED XOR 0x2B`.",
+      "help_template": "**In plain English:** XOR is the only point in the round where the key affects the state. Without AddRoundKey, the cipher would have no key at all — just a fixed scramble.",
+      "validator_key": "add_round_key", "codegen_key": "add_round_key"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 36,
+    "fields": {
+      "lesson": 3, "order": 6, "slug": "one-real-round", "kind": "info",
+      "prompt_template": "### Watch one real round\n\nNow watch all four moves applied to a real 16-byte state with a real round key. Below: input state, then after each transformation in sequence.\n\nValues are computed client-side using the actual S-box, ShiftRows offsets, MixColumns matrix, and XOR.\n\n> AES-128 does this **10 times** with 10 different round keys (derived from your master key via the key schedule). The last round skips MixColumns.",
+      "help_template": "**In plain English:** This is one round of AES. Multiply by 10, add a fresh round key each time, and you have the full encryption. The exact byte patterns shown here aren't meaningful (they're just an example) — what matters is seeing the moves compose.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 37,
+    "fields": {
+      "lesson": 3, "order": 7, "slug": "encrypt-a-message", "kind": "input-text",
+      "prompt_template": "### Encrypt a real message\n\nType a sentence — your browser's built-in AES-GCM will encrypt it.\n\nWe'll generate a random 128-bit key + 12-byte IV, encrypt with `crypto.subtle.encrypt`, and decrypt to confirm. You'll see the key, IV, and ciphertext as hex strings.",
+      "help_template": "**In plain English:** AES-GCM is the authenticated mode used by HTTPS. It takes the four moves you just learned, runs them 10 times, and adds an integrity tag so any tampering is detected. The browser does all of this in milliseconds.",
+      "validator_key": "pick_aes_message", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 38,
+    "fields": {
+      "lesson": 3, "order": 8, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen each AES move in isolation, watched them composed in one real round, and encrypted a real message with browser-native AES-GCM.\n\nWhat we skipped (next lessons, eventually):\n- **AES modes** (ECB / CBC / CTR / GCM) — how AES extends beyond a single 16-byte block to encrypt arbitrary data.\n- **Key expansion** — how the round keys are derived from the master key.\n- **KEK / HSM hierarchies** — how production systems chain keys (the hybrid lesson teaches the pattern; a future lesson generalizes it).",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]
