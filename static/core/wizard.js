@@ -8,7 +8,9 @@ async function loadAlgorithmModules(slug) {
     import(`${base}/validators.js${v}`),
     import(`${base}/codegen.js${v}`),
   ]);
-  return { validators, codegen };
+  let tables = null;
+  try { tables = await import(`${base}/tables.js${v}`); } catch (_e) { /* not all algorithms have tables */ }
+  return { validators, codegen, tables };
 }
 
 function wizardComponent(initial) {
@@ -25,6 +27,9 @@ function wizardComponent(initial) {
     fullScript: "",
     validators: null,
     codegen: null,
+    tables: null,
+    aesSBOX: [],
+    aesOneRoundStates: [],
     coprimeOptions: [],
     inlineCode: "",
     stuckLevel: 0,
@@ -40,6 +45,11 @@ function wizardComponent(initial) {
       const mods = await loadAlgorithmModules(this.algorithmSlug);
       this.validators = mods.validators;
       this.codegen = mods.codegen;
+      this.tables = mods.tables;
+      if (mods.tables?.SBOX) this.aesSBOX = mods.tables.SBOX;
+      if (mods.tables?.SBOX && mods.tables?.mixColumn) {
+        this.aesOneRoundStates = this._computeOneRound(mods.tables);
+      }
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
       if (this.currentStep?.slug === "done") {
@@ -75,6 +85,37 @@ function wizardComponent(initial) {
           this._activateCheat();
         }
       });
+    },
+
+    _computeOneRound(tables) {
+      const { SBOX, mixColumn } = tables;
+      // Fixed lesson input (16 bytes) — using a memorable byte pattern
+      const input = [0x32, 0x88, 0x31, 0xe0, 0x43, 0x5a, 0x31, 0x37, 0xf6, 0x30, 0x98, 0x07, 0xa8, 0x8d, 0xa2, 0x34];
+      // Fixed round key — for clarity (matches Add-Round-Key step's key byte)
+      const roundKey = [0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f, 0x3c];
+      // 1. SubBytes
+      const afterSub = input.map((b) => SBOX[b]);
+      // 2. ShiftRows: state laid out row-major for visualization; shift row i by i.
+      const afterShift = [...afterSub];
+      // row 1: indices 4,5,6,7 → shift left by 1 → 5,6,7,4
+      [afterShift[4], afterShift[5], afterShift[6], afterShift[7]] = [afterSub[5], afterSub[6], afterSub[7], afterSub[4]];
+      // row 2: indices 8,9,10,11 → shift left by 2 → 10,11,8,9
+      [afterShift[8], afterShift[9], afterShift[10], afterShift[11]] = [afterSub[10], afterSub[11], afterSub[8], afterSub[9]];
+      // row 3: indices 12,13,14,15 → shift left by 3 → 15,12,13,14
+      [afterShift[12], afterShift[13], afterShift[14], afterShift[15]] = [afterSub[15], afterSub[12], afterSub[13], afterSub[14]];
+      // 3. MixColumns: 4 columns, each [row0, row1, row2, row3]
+      const afterMix = [...afterShift];
+      for (let c = 0; c < 4; c++) {
+        const col = [afterShift[c], afterShift[c + 4], afterShift[c + 8], afterShift[c + 12]];
+        const mixed = mixColumn(col);
+        afterMix[c] = mixed[0];
+        afterMix[c + 4] = mixed[1];
+        afterMix[c + 8] = mixed[2];
+        afterMix[c + 12] = mixed[3];
+      }
+      // 4. AddRoundKey
+      const afterArk = afterMix.map((b, i) => b ^ roundKey[i]);
+      return [input, afterSub, afterShift, afterMix, afterArk];
     },
 
     _activateCheat() {

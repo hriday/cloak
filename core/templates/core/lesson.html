@@ -164,6 +164,136 @@
 
       <div x-show="walkthroughHtml" class="hint" style="margin-top:10px;line-height:1.5;" x-html="walkthroughHtml"></div>
 
+      <template x-if="step.slug === 'sub-bytes'">
+        <div style="margin-top:14px;overflow:auto;">
+          <div style="color:var(--muted);font-size:0.8em;margin-bottom:6px;">AES S-box (highlighted cell = answer for input 0x53)</div>
+          <table style="border-collapse:collapse;font-family:ui-monospace, monospace;font-size:0.85em;">
+            <thead>
+              <tr>
+                <th></th>
+                <template x-for="c in 16" :key="c">
+                  <th style="padding:3px 6px;color:var(--muted);font-weight:normal;" x-text="(c-1).toString(16).toUpperCase()"></th>
+                </template>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="r in 16" :key="r">
+                <tr>
+                  <th style="padding:3px 6px;color:var(--muted);font-weight:normal;" x-text="(r-1).toString(16).toUpperCase()"></th>
+                  <template x-for="c in 16" :key="c">
+                    <td :style="((r-1)===5 && (c-1)===3) ? 'padding:3px 6px;background:#1e3a8a;color:#fff;border:1px solid #475569;font-weight:bold;' : 'padding:3px 6px;border:1px solid #334155;color:var(--text);'" x-text="aesSBOX[(r-1)*16 + (c-1)].toString(16).toUpperCase().padStart(2,'0')"></td>
+                  </template>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </template>
+
+      <template x-if="step.slug === 'shift-rows'">
+        <div style="margin-top:14px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Row 1 (input)</div>
+            <div style="display:flex;gap:4px;">
+              <template x-for="b in [0x09, 0xCF, 0x4F, 0x3C]" :key="b">
+                <div style="padding:6px 10px;background:var(--code-bg);border:1px solid #475569;border-radius:4px;font-family:ui-monospace, monospace;font-size:0.9em;" x-text="'0x' + b.toString(16).toUpperCase().padStart(2,'0')"></div>
+              </template>
+            </div>
+          </div>
+          <div style="font-size:1.4em;color:var(--muted);">→</div>
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Row 1 (after shift left by 1)</div>
+            <div style="display:flex;gap:4px;color:var(--muted);">
+              <template x-for="i in 4" :key="i">
+                <div style="padding:6px 10px;background:var(--code-bg);border:1px dashed #475569;border-radius:4px;font-family:ui-monospace, monospace;font-size:0.9em;">??</div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="step.slug === 'mix-columns'">
+        <div style="margin-top:14px;display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">One column (input)</div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <template x-for="b in [0xDB, 0x13, 0x53, 0x45]" :key="b">
+                <div style="padding:6px 10px;background:var(--code-bg);border:1px solid #475569;border-radius:4px;font-family:ui-monospace, monospace;font-size:0.9em;text-align:center;" x-text="'0x' + b.toString(16).toUpperCase().padStart(2,'0')"></div>
+              </template>
+            </div>
+          </div>
+          <div style="color:var(--muted);font-family:ui-monospace, monospace;font-size:0.85em;line-height:1.6;">
+            ×<br>
+            [2 3 1 1]<br>
+            [1 2 3 1]<br>
+            [1 1 2 3]<br>
+            [3 1 1 2]<br>
+            <span style="font-size:0.8em;">(GF(2⁸))</span>
+          </div>
+          <div style="font-size:1.4em;color:var(--muted);">→</div>
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Output column</div>
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <template x-for="b in [0x8E, 0x4D, 0xA1, 0xBC]" :key="b">
+                <div style="padding:6px 10px;background:var(--code-bg);border:1px solid #475569;border-radius:4px;font-family:ui-monospace, monospace;font-size:0.9em;text-align:center;color:#5eead4;" x-text="'0x' + b.toString(16).toUpperCase().padStart(2,'0')"></div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="step.slug === 'add-round-key'">
+        <div style="margin-top:14px;display:flex;gap:16px;align-items:center;flex-wrap:wrap;font-family:ui-monospace, monospace;">
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">State byte</div>
+            <div style="padding:8px 14px;background:var(--code-bg);border:1px solid #475569;border-radius:4px;font-size:1em;">0xED <span style="color:var(--muted);font-size:0.85em;">(237 = 11101101)</span></div>
+          </div>
+          <div style="font-size:1.4em;color:var(--muted);">XOR</div>
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Round-key byte</div>
+            <div style="padding:8px 14px;background:var(--code-bg);border:1px solid #475569;border-radius:4px;font-size:1em;">0x2B <span style="color:var(--muted);font-size:0.85em;">(43 = 00101011)</span></div>
+          </div>
+          <div style="font-size:1.4em;color:var(--muted);">=</div>
+          <div>
+            <div style="color:var(--muted);font-size:0.8em;margin-bottom:4px;">Output</div>
+            <div style="padding:8px 14px;background:var(--code-bg);border:1px dashed #475569;border-radius:4px;font-size:1em;color:var(--muted);">??</div>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="step.slug === 'one-real-round'">
+        <div style="margin-top:14px;">
+          <div style="color:var(--muted);font-size:0.85em;margin-bottom:6px;">A real 16-byte state going through all four transformations of one round. Demo uses a fixed input + round key; values computed client-side via the actual S-box, ShiftRows offsets, MixColumns matrix, and XOR.</div>
+          <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;margin-top:12px;font-family:ui-monospace, monospace;font-size:0.75em;">
+            <template x-for="(stateSnap, idx) in aesOneRoundStates" :key="idx">
+              <div>
+                <div style="color:var(--muted);font-size:0.85em;margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;" x-text="['Input', 'After SubBytes', 'After ShiftRows', 'After MixColumns', 'After AddRoundKey'][idx]"></div>
+                <table style="border-collapse:collapse;">
+                  <template x-for="r in 4" :key="r">
+                    <tr>
+                      <template x-for="c in 4" :key="c">
+                        <td style="padding:3px 5px;border:1px solid #334155;background:var(--code-bg);color:var(--text);text-align:center;" x-text="stateSnap[(r-1)*4 + (c-1)]?.toString(16).toUpperCase().padStart(2,'0')"></td>
+                      </template>
+                    </tr>
+                  </template>
+                </table>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+
+      <template x-if="state.a_message && (step.slug === 'encrypt-a-message' || (step.kind === 'info' && step.slug === 'done' && state.a_ciphertext_hex))">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Original:</strong> <span x-text="state.a_message"></span></div>
+          <div x-show="state.a_key_hex" style="margin-top:4px;"><strong>AES-128 key:</strong> <span x-text="state.a_key_hex"></span></div>
+          <div x-show="state.a_iv_hex"><strong>IV (nonce):</strong> <span x-text="state.a_iv_hex"></span></div>
+          <div x-show="state.a_ciphertext_hex" style="word-break:break-all;"><strong>Ciphertext:</strong> <span x-text="state.a_ciphertext_hex"></span></div>
+          <div x-show="state.a_recovered" style="margin-top:6px;"><strong>Decrypted:</strong> <span x-text="state.a_recovered"></span> <span x-show="state.a_recovered === state.a_message" style="color:var(--ok, #2a8a3e);">✓ matches</span></div>
+          <div x-show="state.a_encrypt_error" style="color:var(--bad, #c0392b);margin-top:6px;">⚠ <span x-text="state.a_encrypt_error"></span></div>
+        </div>
+      </template>
+
       <template x-if="conversionRows.length > 0 && (step.kind === 'input-text' || step.slug === 'encrypt-sentence' || step.slug === 'decrypt-sentence' || step.slug === 'done')">
         <div style="margin-top:14px;max-height:300px;overflow:auto;border:1px solid var(--border, #ddd);border-radius:4px;">
           <table style="width:100%;border-collapse:collapse;font-family:monospace;font-size:0.9em;">
