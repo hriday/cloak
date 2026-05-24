@@ -107,3 +107,28 @@ test("pick_aes_message rejects non-ASCII", () => {
 test("info always ok", () => {
   assert.deepEqual(v.info("anything", {}), { ok: true, value: {} });
 });
+
+test("walkthroughs has entries for 3 actionable steps", () => {
+  assert.equal(typeof v.walkthroughs.sub_byte, "function");
+  assert.equal(typeof v.walkthroughs.shift_row, "function");
+  assert.equal(typeof v.walkthroughs.add_round_key, "function");
+});
+
+test("sub_byte walkthrough reveals 0xED in the final rung", () => {
+  const rungs = v.walkthroughs.sub_byte({});
+  assert.equal(rungs.length, 3);
+  rungs.forEach((r) => assert.equal(typeof r, "string"));
+  assert.match(rungs[2], /0xED|237/);
+});
+
+test("shift_row walkthrough reveals the shifted row", () => {
+  const rungs = v.walkthroughs.shift_row({});
+  assert.equal(rungs.length, 3);
+  assert.match(rungs[2], /0xCF.*0x4F.*0x3C.*0x09/);
+});
+
+test("add_round_key walkthrough reveals 0xC6", () => {
+  const rungs = v.walkthroughs.add_round_key({});
+  assert.equal(rungs.length, 3);
+  assert.match(rungs[2], /0xC6|198/);
+});

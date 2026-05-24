@@ -81,3 +81,35 @@ export function pick_aes_message(input, _state) {
 export function info(_input, _state) {
   return { ok: true, value: {} };
 }
+
+export const walkthroughs = {
+  sub_byte: (_state) => {
+    const result = SBOX[SUB_BYTE_INPUT];
+    return [
+      `**The method:** AES SubBytes replaces each byte with the value from a fixed 16×16 table called the S-box. The high nibble of the input picks the row; the low nibble picks the column.`,
+      `Input 0x53 — high nibble 5, low nibble 3. Look at row 5, column 3 of the S-box grid above (it's highlighted).`,
+      `**Answer: 0x${result.toString(16).toUpperCase()} (decimal ${result}).** (In Python: \`SBOX[0x53]\`.)`,
+    ];
+  },
+
+  shift_row: (_state) => {
+    const hex = (b) => `0x${b.toString(16).toUpperCase().padStart(2, "0")}`;
+    const inStr = SHIFT_INPUT_ROW.map(hex).join(", ");
+    const expected = [SHIFT_INPUT_ROW[1], SHIFT_INPUT_ROW[2], SHIFT_INPUT_ROW[3], SHIFT_INPUT_ROW[0]];
+    const outStr = expected.map(hex).join(", ");
+    return [
+      `**The method:** ShiftRows rotates each row of the state left by its row index. Row 0 unchanged, row 1 by 1, row 2 by 2, row 3 by 3. We're doing row 1, so shift left by 1.`,
+      `Input row: [${inStr}]. Drop the first byte to the end; everything else moves left by 1.`,
+      `**Answer: [${outStr}].**`,
+    ];
+  },
+
+  add_round_key: (_state) => {
+    const result = ARK_STATE_BYTE ^ ARK_ROUND_KEY_BYTE;
+    return [
+      `**The method:** AddRoundKey XORs each state byte with the corresponding round-key byte. Same XOR you've seen — bit-wise exclusive OR.`,
+      `State byte = 0x${ARK_STATE_BYTE.toString(16).toUpperCase()} (${ARK_STATE_BYTE}), round-key byte = 0x${ARK_ROUND_KEY_BYTE.toString(16).toUpperCase()} (${ARK_ROUND_KEY_BYTE}). Compute ${ARK_STATE_BYTE} XOR ${ARK_ROUND_KEY_BYTE}.`,
+      `**Answer: 0x${result.toString(16).toUpperCase()} (decimal ${result}).** (In Python: \`${ARK_STATE_BYTE} ^ ${ARK_ROUND_KEY_BYTE}\`.)`,
+    ];
+  },
+};
