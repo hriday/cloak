@@ -164,7 +164,7 @@
 
       <div x-show="walkthroughHtml" class="hint" style="margin-top:10px;line-height:1.5;" x-html="walkthroughHtml"></div>
 
-      <template x-if="step.slug === 'sub-bytes'">
+      <template x-if="step.slug === 'sub-bytes' && aesSBOX.length === 256">
         <div style="margin-top:14px;overflow:auto;">
           <div style="color:var(--muted);font-size:0.8em;margin-bottom:6px;">AES S-box (highlighted cell = answer for input 0x53)</div>
           <table style="border-collapse:collapse;font-family:ui-monospace, monospace;font-size:0.85em;">
@@ -261,7 +261,7 @@
         </div>
       </template>
 
-      <template x-if="step.slug === 'one-real-round'">
+      <template x-if="step.slug === 'one-real-round' && aesOneRoundStates.length === 5">
         <div style="margin-top:14px;">
           <div style="color:var(--muted);font-size:0.85em;margin-bottom:6px;">A real 16-byte state going through all four transformations of one round. Demo uses a fixed input + round key; values computed client-side via the actual S-box, ShiftRows offsets, MixColumns matrix, and XOR.</div>
           <div style="display:grid;grid-template-columns:repeat(5, 1fr);gap:10px;margin-top:12px;font-family:ui-monospace, monospace;font-size:0.75em;">
