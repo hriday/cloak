@@ -43,3 +43,41 @@ export function add_round_key(input, _state) {
   }
   return { ok: true, value: { a_ark_input: ARK_STATE_BYTE, a_ark_key: ARK_ROUND_KEY_BYTE, a_ark_output: expected } };
 }
+
+// ShiftRows input row used in the lesson — kept here so the prompt can reference it.
+export const SHIFT_INPUT_ROW = [0x09, 0xCF, 0x4F, 0x3C];
+
+export function shift_row(input, _state) {
+  const fields = ["b0", "b1", "b2", "b3"];
+  const parsed = fields.map((k) => _parseByte(input?.[k]));
+  if (parsed.some((n) => n === null)) {
+    return { ok: false, hint: "Enter 4 bytes (one per column)." };
+  }
+  if (parsed.some((n) => !_byteRangeOk(n))) {
+    return { ok: false, hint: "Each value must be 0–255." };
+  }
+  const expected = [SHIFT_INPUT_ROW[1], SHIFT_INPUT_ROW[2], SHIFT_INPUT_ROW[3], SHIFT_INPUT_ROW[0]];
+  if (parsed.some((n, i) => n !== expected[i])) {
+    const inStr = SHIFT_INPUT_ROW.map((b) => `0x${b.toString(16).toUpperCase()}`).join(", ");
+    const outStr = expected.map((b) => `0x${b.toString(16).toUpperCase()}`).join(", ");
+    return { ok: false, hint: `Row 1 shifts left by 1, so input [${inStr}] becomes [${outStr}] — the first byte wraps to the end.` };
+  }
+  return { ok: true, value: { a_shifted_row: expected } };
+}
+
+export function pick_aes_message(input, _state) {
+  const s = input == null ? "" : String(input);
+  if (s.length === 0) return { ok: false, hint: "Type at least one character." };
+  if (s.length > 500) return { ok: false, hint: "Keep it under 500 characters." };
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code < 32 || code > 126) {
+      return { ok: false, hint: `Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: '${s[i]}'.` };
+    }
+  }
+  return { ok: true, value: { a_message: s } };
+}
+
+export function info(_input, _state) {
+  return { ok: true, value: {} };
+}
