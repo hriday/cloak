@@ -38,3 +38,20 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
 .help p:first-of-type { margin-top: 0; }
 .help p:last-of-type { margin-bottom: 0; }
 .help code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.95em; color: #e2e8f0; }
+
+/* ---- auth forms (signup, login, logged-out) ---- */
+.auth-card { max-width: 400px; margin: 40px auto; }
+.auth-card h1 { margin-top: 0; font-size: 1.5em; }
+.auth-card .auth-subtitle { color: var(--muted); margin-top: -8px; margin-bottom: 24px; font-size: 0.95em; }
+.field { margin-bottom: 14px; }
+.field > label { display: block; font-size: 0.85em; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.field > input { width: 100%; min-width: 0; font-family: ui-sans-serif, system-ui, sans-serif; }
+.field small { display: block; font-size: 0.8em; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+.field small.field-error { color: var(--bad); }
+.field small ul { margin: 4px 0 0 16px; padding: 0; }
+.field small li { margin-bottom: 2px; }
+.form-error { background: rgba(239, 68, 68, 0.1); border-left: 3px solid var(--bad); padding: 8px 12px; border-radius: 4px; margin-bottom: 14px; color: var(--bad); font-size: 0.9em; }
+.btn.btn-block { width: 100%; padding: 12px; font-size: 1em; margin-top: 6px; }
+.auth-footer { margin-top: 18px; text-align: center; font-size: 0.9em; color: var(--muted); }
+.auth-footer a { color: var(--accent); text-decoration: none; }
+.auth-footer a:hover { text-decoration: underline; }
