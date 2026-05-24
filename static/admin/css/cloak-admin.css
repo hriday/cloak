@@ -1,0 +1,127 @@
+/* ---- Cloak admin theme overrides ----
+   Overrides Django admin's built-in dark theme to match the cloak brand
+   (--accent #3b82f6 blue, #0f172a slate-navy bg, light slate text).
+   Applied via `data-theme="dark"` which we force in base_site.html. */
+
+html[data-theme="dark"] {
+  /* Primary brand color used for buttons, links, table headers */
+  --primary: #1e3a8a;
+  --primary-fg: #fff;
+  --secondary: #3b82f6;
+
+  /* Header bar */
+  --header-bg: #0a0f1e;
+  --header-color: #e2e8f0;
+  --header-branding-color: #fff;
+  --header-link-color: #93c5fd;
+
+  /* Page body */
+  --body-bg: #0f172a;
+  --body-fg: #e2e8f0;
+  --body-quiet-color: #94a3b8;
+  --body-loud-color: #f1f5f9;
+
+  /* Module / card backgrounds */
+  --darkened-bg: #1e293b;
+  --selected-bg: #1e3a8a;
+  --selected-row: #1e293b;
+
+  /* Inputs */
+  --input-bg: #0a0f1e;
+  --input-focus-color: #e2e8f0;
+  --input-focus-bg: #0a0f1e;
+  --border-color: #475569;
+  --hairline-color: #334155;
+
+  /* Buttons */
+  --button-bg: #3b82f6;
+  --button-fg: #fff;
+  --button-hover-bg: #2563eb;
+  --default-button-bg: #3b82f6;
+  --default-button-hover-bg: #2563eb;
+  --close-button-bg: #475569;
+  --close-button-hover-bg: #64748b;
+  --delete-button-bg: #ef4444;
+  --delete-button-hover-bg: #dc2626;
+
+  /* Link colors */
+  --link-fg: #93c5fd;
+  --link-hover-color: #bfdbfe;
+  --link-selected-fg: #fff;
+
+  /* Messages */
+  --message-success-bg: #14532d;
+  --message-warning-bg: #78350f;
+  --message-error-bg: #7f1d1d;
+
+  /* Object tools */
+  --object-tools-bg: #1e3a8a;
+  --object-tools-fg: #fff;
+  --object-tools-hover-bg: #2563eb;
+}
+
+/* Snap the branding bar to match cloak's site header look */
+#header {
+  border-bottom: 1px solid #334155;
+}
+
+#branding h1 {
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+/* Hide Django's auto theme-toggle button — we force dark */
+#user-tools button[type="button"][aria-label*="theme"],
+.theme-toggle {
+  display: none !important;
+}
+
+/* Slight refinement: rounder buttons matching site style */
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+  border-radius: 6px;
+}
+
+/* Table header rows */
+thead th, .module h2, .module caption {
+  background: #0a0f1e;
+  color: #f1f5f9;
+}
+
+/* Selected nav item */
+.module a:hover, .module a:focus {
+  color: #bfdbfe;
+}
+
+/* Site name (logo + 'admin') — override Django's default yellow brand color */
+#site-name a,
+#site-name a:link,
+#site-name a:visited,
+#branding h1,
+#branding h1 a,
+#branding h1 a:link,
+#branding h1 a:visited {
+  color: #e2e8f0 !important;
+  text-decoration: none;
+}
+
+#site-name a:hover,
+#branding h1 a:hover {
+  color: #fff !important;
+}
+
+/* Module section headers — give them a bit more contrast against the page bg */
+.module h2, .module caption, .inline-group .tabular caption {
+  background: #1e3a8a;
+  color: #fff;
+}
+
+/* "Add" and "Change" icons in the module list — soften the bright green/orange */
+.addlink, .changelink, .deletelink {
+  color: #93c5fd !important;
+}
+
+/* Page-level Site administration title */
+.dashboard #content > h1,
+#content > h1 {
+  color: #f1f5f9;
+}
