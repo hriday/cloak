@@ -6,3 +6,4 @@ whitenoise>=6.6
 pytest>=8
 pytest-django>=4.8
 markdown>=3.6
+pycryptodome>=3.20
