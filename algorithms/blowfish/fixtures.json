@@ -1,0 +1,84 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 6,
+    "fields": {
+      "slug": "blowfish",
+      "name": "Blowfish",
+      "family": "symmetric",
+      "status": "live",
+      "order": 6,
+      "intro_template": "## Blowfish\n\nA 1993 Feistel cipher by Bruce Schneier — free alternative to DES. 64-bit block, variable key. Still in bcrypt password hashing; mostly legacy elsewhere."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 6,
+    "fields": {
+      "algorithm": 6,
+      "slug": "feistel-rounds",
+      "title": "Feistel rounds: how Blowfish works",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 61,
+    "fields": {
+      "lesson": 6, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Blowfish — Schneier's free DES replacement\n\nIn 1993, Bruce Schneier published **Blowfish** as a deliberately unpatented, royalty-free alternative to DES. The motivation was practical: DES's 56-bit key was already getting weak, and the leading replacements were either patent-encumbered (IDEA) or government-designed (Skipjack, with its classified S-boxes). Schneier wanted something anyone could use, in any product, with no licensing call to make.\n\n**The shape of it:**\n\n- **64-bit block** (same as DES — half the size of AES's 128).\n- **Variable key** from 32 to 448 bits.\n- **16 rounds** of a Feistel construction.\n- Built around 4 large **S-boxes** (256 × 32-bit entries each) and an 18-entry **P-array**, all initialized from the hex digits of π and then mangled by the key schedule.\n- **Deliberately slow key setup** — re-keying runs the full cipher 521 times on the key. This is the property that made Blowfish the basis for `bcrypt`, OpenBSD's password hash.\n\n**Where you still encounter it:**\n\n- `bcrypt` password hashing (everywhere — Rails, Django, Node ecosystems).\n- Some legacy VPNs and disk-encryption tools.\n- A handful of file formats and protocols frozen in the late 1990s.\n\n**Where you shouldn't:** NIST recommends AES for new symmetric work. Blowfish's 64-bit block is too small for modern bulk encryption (the [SWEET32](https://sweet32.info/) birthday attack on 64-bit block ciphers landed in 2016). For *new* code, reach for AES.\n\nThis lesson focuses on the **structure**: the Feistel pattern, what the F function actually computes, and what one round looks like. We won't hand-compute all 16 rounds — but you'll see exactly what one of them does.",
+      "help_template": "**In plain English:** Blowfish is a 1993 cipher most people now meet through `bcrypt`. The interesting thing isn't the specific numbers — it's the **Feistel structure** it shares with DES, 3DES, CAST, and many others. Learn the pattern once and you recognize half the historical block ciphers.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 62,
+    "fields": {
+      "lesson": 6, "order": 2, "slug": "feistel-structure", "kind": "info",
+      "prompt_template": "### The Feistel construction\n\nBlowfish, DES, 3DES, CAST-128, and many others share a single structural trick called the **Feistel network**, named after Horst Feistel who designed it at IBM in the early 1970s.\n\nThe idea is simple. Split the 64-bit block into two 32-bit halves, `L` and `R`. Each round does:\n\n```\nL' = R\nR' = L XOR F(R, K)\n```\n\nThat's it. One half gets replaced with the other; the other half gets XORed with `F` applied to it. After the round, the halves swap.\n\n```\n  ┌── L ──┐    ┌── R ──┐\n  │       │    │       │\n  │       │    ├──► F(R, K) ──┐\n  │       │    │              │\n  │       └────┼──────────────┤ XOR\n  │            │              │\n  │            └──────────────┘\n  │                            │\n  ▼                            ▼\n  L' = R                       R' = L XOR F(R, K)\n```\n\n**The magic property:** every round is **reversible** if you know the round key `K`, *no matter what F does*. Decryption runs the same network backwards with the round keys reversed. `F` itself doesn't have to be invertible — it can be any function you like. That's a huge design freedom: the cipher designer focuses all their effort on making `F` *confusing*, not on making it reversible.\n\nDES, 3DES, Blowfish, CAST, MARS, Twofish — all Feistel. AES is **not** Feistel (it's a substitution-permutation network); it took a different design path. But understanding Feistel unlocks an entire generation of ciphers.\n\nThe next step zooms into Blowfish's specific `F`.",
+      "help_template": "**In plain English:** Cut the block in half. Mangle one half with a function. XOR the mangled mess into the other half. Swap. Repeat. Because of the symmetry, the same machine runs in both directions — you just feed it the round keys in reverse to decrypt.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 63,
+    "fields": {
+      "lesson": 6, "order": 3, "slug": "f-function", "kind": "input-numeric",
+      "prompt_template": "### Compute Blowfish's F function\n\nBlowfish's `F` takes a 32-bit input, splits it into 4 bytes, looks each byte up in one of 4 S-boxes (each maps 8 bits → 32 bits), then combines the four 32-bit results:\n\n```\nF(x) = ((S1[a] + S2[b]) XOR S3[c]) + S4[d]\n```\n\nwhere `x = a || b || c || d` (the four bytes of `x`, most significant first) and **all additions are mod 2³²** (overflow wraps).\n\n**Your input:** the 32-bit value `0x12345678`. Splitting into bytes:\n\n- `a = 0x12`\n- `b = 0x34`\n- `c = 0x56`\n- `d = 0x78`\n\nThe real Blowfish S-boxes are 1024 32-bit entries initialized from π's hex digits. We're not rendering all of them — instead, the values you need for *this* input are:\n\n- `S1[0x12] = 0xD7CABA51`\n- `S2[0x34] = 0x4BCA8A93`\n- `S3[0x56] = 0x9A3FE5C1`\n- `S4[0x78] = 0x1E45EE99`\n\nCompute `F(0x12345678) = ((S1[a] + S2[b]) XOR S3[c]) + S4[d]` mod 2³² and enter the result in hex (e.g. `0xD7F08FBE`) or decimal.",
+      "help_template": "**In plain English:** Add the first two S-box values (wrap on overflow). XOR with the third. Add the fourth (wrap again). The mix of `+` and `XOR` is intentional — XOR is linear over GF(2), addition isn't, and combining the two makes algebraic attacks much harder.\n\n**Walkthrough:**\n```\n0xD7CABA51 + 0x4BCA8A93 = 0x239544E4  (mod 2³², overflow drops the leading 1)\n0x239544E4 XOR 0x9A3FE5C1 = 0xB9AAA125\n0xB9AAA125 + 0x1E45EE99 = 0xD7F08FBE  (mod 2³²)\n```",
+      "validator_key": "f_function", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 64,
+    "fields": {
+      "lesson": 6, "order": 4, "slug": "one-round", "kind": "info",
+      "prompt_template": "### Watch one Blowfish round\n\nYou just computed `F(0x12345678) = {{state.bf_f_output}}`. Now let's plug that into a full Blowfish round.\n\nSay the block coming into this round is split into halves:\n\n```\nL = 0xAABBCCDD\nR = 0x12345678\n```\n\nAnd the round key is `P_i = 0x243F6A88` (the first entry of the real P-array — the first 32 bits of π in hex, before any key mangling).\n\n**Step 1 — XOR R with the round key:**\n```\nR XOR P_i = 0x12345678 XOR 0x243F6A88 = 0x360B3CF0\n```\n\n**Step 2 — Apply F to the result.** (In a real round, `F` runs on `R XOR P_i`. We computed `F(0x12345678)` in the previous step to keep the math hand-traceable, but the structural pattern is what matters here.) Call the F output `f`.\n\n**Step 3 — XOR `f` into L:**\n```\nL' = L XOR f = 0xAABBCCDD XOR {{state.bf_f_output}}\n```\n\n**Step 4 — Swap the halves.** The new R is the old L XOR f; the new L is what used to be in R XOR P_i.\n\nThat's one round. Blowfish does this **16 times**, with a fresh `P_i` round key each time. After all 16, two final whitening XORs with `P_17` and `P_18` finish the encryption.\n\nThe round itself is tiny — four XORs and one F call. All the cryptographic strength is bundled into:\n\n1. **F's nonlinearity** (the mix of `+` and `XOR`, plus the data-dependent S-box lookups).\n2. **The 16-round depth**, which compounds that nonlinearity.\n3. **The key schedule**, which scrambles the P-array and S-boxes from your key (and is famously slow — that's the property `bcrypt` exploits).",
+      "help_template": "**In plain English:** A Blowfish round is mechanically simple: XOR, F, XOR, swap. The strength comes from doing it 16 times with 16 different round keys, plus the fact that the round keys themselves were derived from your key by running the whole cipher 521 times. Lots of stirring.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 65,
+    "fields": {
+      "lesson": 6, "order": 5, "slug": "encrypt-a-message", "kind": "info",
+      "prompt_template": "### Encrypt a message with Blowfish\n\nUnlike AES, **Blowfish isn't in Web Crypto** — browsers don't ship a Blowfish implementation, so we can't run encryption in-page. The deliverable for this step is a runnable Python script using the `cryptography` library, which still supports Blowfish for legacy interop.\n\nClick **Show full script** below to see a complete, copy-pasteable program that:\n\n1. Generates a random 128-bit Blowfish key and an 8-byte IV (Blowfish's block size is 64 bits, not AES's 128).\n2. PKCS#7-pads the plaintext to a multiple of 8 bytes.\n3. Encrypts with `algorithms.Blowfish(key)` in CBC mode.\n4. Decrypts and asserts the roundtrip matches the original.\n\nCopy it into a `.py` file and run it locally with `pip install cryptography` — you'll get the printed key, IV, ciphertext (hex), and the recovered plaintext.\n\nA note on the library: `cryptography.hazmat` keeps Blowfish in the `algorithms` module specifically because real production systems still need to decrypt old data sealed with it. For *new* data, the same library will happily give you `algorithms.AES` — and that's what you should reach for.",
+      "help_template": "**In plain English:** No browser-side demo this time — there's no Web Crypto Blowfish to call. The Python script below is the real thing: 16 rounds of the structure you just learned, on whatever message you want, with proper padding and an IV. Run it, change the message, watch the ciphertext change.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 66,
+    "fields": {
+      "lesson": 6, "order": 6, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen Blowfish end to end at the right level of detail:\n\n- **The history** — Schneier's 1993 free, unpatented response to DES's shrinking security margin.\n- **The Feistel construction** — split into halves, mangle one with `F`, XOR into the other, swap. Reversible by design, no matter what `F` does. Shared with DES, 3DES, CAST, Twofish, and many others.\n- **The F function** — `((S1[a] + S2[b]) XOR S3[c]) + S4[d]` mod 2³². You computed one. The mix of addition and XOR is what makes it hard to attack algebraically.\n- **One full round** — XOR with the round key, apply F, XOR into the other half, swap. Repeated 16 times with different round keys.\n- **Why you'd still write Blowfish code** — `bcrypt` password hashing, or decrypting legacy data. Not for new bulk encryption (use [AES](/algorithms/aes/)).\n\nWhat we skipped, on purpose:\n\n- **The full P-array and S-boxes** initialized from π's hex digits.\n- **The key schedule** — the part that runs Blowfish 521 times on your key and makes `bcrypt` deliberately expensive to brute-force.\n- **The 64-bit block size problem** — [SWEET32](https://sweet32.info/) and why any 64-bit block cipher is risky for long-lived encrypted streams.\n\n**What's next:** [Twofish](/algorithms/twofish/) is Schneier's own follow-up (an AES finalist, 128-bit block, Feistel-like). [AES](/algorithms/aes/) is the cipher that won that competition and is what you should use today.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]

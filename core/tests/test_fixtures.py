@@ -123,3 +123,30 @@ def test_hsm_fixture_loads(db):
     by_slug = {s.slug: s for s in steps}
     assert by_slug["simulated-hsm"].kind == "input-text"
     assert by_slug["simulated-hsm"].validator_key == "hsm_operation"
+
+
+@pytest.mark.django_db
+def test_blowfish_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/blowfish/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    assert Algorithm.objects.filter(slug="blowfish").count() == 1
+    algo = Algorithm.objects.get(pk=6)
+    assert algo.slug == "blowfish"
+    assert algo.name == "Blowfish"
+    assert algo.family == "symmetric"
+    assert algo.status == "live"
+
+    lesson = Lesson.objects.get(pk=6)
+    assert lesson.algorithm_id == 6
+    assert lesson.slug == "feistel-rounds"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 6
+    assert [s.slug for s in steps] == [
+        "intro", "feistel-structure", "f-function",
+        "one-round", "encrypt-a-message", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["f-function"].kind == "input-numeric"
+    assert by_slug["f-function"].validator_key == "f_function"
