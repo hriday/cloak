@@ -150,3 +150,34 @@ def test_blowfish_fixture_loads(db):
     by_slug = {s.slug: s for s in steps}
     assert by_slug["f-function"].kind == "input-numeric"
     assert by_slug["f-function"].validator_key == "f_function"
+
+
+@pytest.mark.django_db
+def test_twofish_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/twofish/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    assert Algorithm.objects.filter(slug="twofish").count() == 1
+    algo = Algorithm.objects.get(pk=7)
+    assert algo.slug == "twofish"
+    assert algo.name == "Twofish"
+    assert algo.family == "symmetric"
+    assert algo.status == "live"
+
+    lesson = Lesson.objects.get(pk=7)
+    assert lesson.algorithm_id == 7
+    assert lesson.slug == "aes-finalist"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 6
+    assert [s.slug for s in steps] == [
+        "intro", "vs-aes", "key-dependent-sboxes",
+        "whitening", "encrypt-a-message", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["whitening"].kind == "input-numeric"
+    assert by_slug["whitening"].validator_key == "whitening"
+    # Step 2 prompt contains a markdown table.
+    vs_aes_prompt = by_slug["vs-aes"].prompt_template
+    assert "|" in vs_aes_prompt
+    assert "---" in vs_aes_prompt

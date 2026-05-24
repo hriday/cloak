@@ -1,0 +1,84 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 7,
+    "fields": {
+      "slug": "twofish",
+      "name": "Twofish",
+      "family": "symmetric",
+      "status": "live",
+      "order": 7,
+      "intro_template": "## Twofish\n\n1998 AES finalist by Schneier et al. 128-bit block, 16 Feistel-like rounds, key-dependent S-boxes, whitening. Lost to Rijndael; still used in some VPN/disk tools."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 7,
+    "fields": {
+      "algorithm": 7,
+      "slug": "aes-finalist",
+      "title": "Twofish: the AES finalist",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 71,
+    "fields": {
+      "lesson": 7, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Twofish — the cipher that almost was AES\n\nIn **1998**, NIST ran an open competition to pick the successor to DES. Fifteen ciphers were submitted from teams around the world. After two rounds of public cryptanalysis, **five finalists** remained:\n\n- **Rijndael** (Joan Daemen and Vincent Rijmen, Belgium) — the eventual winner, now known as **AES**.\n- **Twofish** (Bruce Schneier, John Kelsey, Doug Whiting, David Wagner, Chris Hall, Niels Ferguson).\n- **MARS** (IBM).\n- **RC6** (Ron Rivest et al., RSA Security).\n- **Serpent** (Ross Anderson, Eli Biham, Lars Knudsen).\n\nTwofish is Schneier's own follow-up to [Blowfish](/algorithms/blowfish/). It scales Blowfish's ideas up to a **128-bit block** (matching what NIST required), keeps the Feistel-style construction, but layers in several new design tricks: **key-dependent S-boxes**, an **MDS matrix** for diffusion, a **Pseudo-Hadamard Transform** for mixing the Feistel halves, and **input/output whitening** to harden the first and last rounds against attacks that target round-key recovery.\n\n**The shape of it:**\n\n- **128-bit block**, key sizes of **128, 192, or 256 bits** — same parameters as AES.\n- **16 rounds** (fixed; AES varies 10/12/14 depending on key length).\n- **Feistel-like network** — strictly speaking it's a *generalized* Feistel, but the rotate-half-mangle-the-other-half pattern is the family resemblance.\n- **Key-dependent S-boxes** — the substitution tables are derived from your key (more on this in step 3).\n\n**Where Twofish lives today:** TrueCrypt and its successors (VeraCrypt) ship it as one of three available ciphers. Some OpenVPN configurations allow it. It's free, unpatented, and well-cryptanalyzed — but AES won the standardization battle, and most production systems just use AES.\n\nThis lesson is shorter and more conceptual than the others in this track. Twofish's internals (the MDS matrix, the Reed-Solomon key schedule, the PHT) are too dense for a hand-walk. Instead we'll compare it to AES head-to-head, look at the two architectural ideas worth knowing (key-dependent S-boxes and whitening), and finish with a Python script you can run.",
+      "help_template": "**In plain English:** Twofish was one of five finalists in the 1998 NIST competition to replace DES. Rijndael won and became AES; Twofish came in second-place-ish. It's still a perfectly good cipher — just not *the* cipher.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 72,
+    "fields": {
+      "lesson": 7, "order": 2, "slug": "vs-aes", "kind": "info",
+      "prompt_template": "### Twofish vs AES — head to head\n\nBoth ciphers were designed against the same NIST requirements, so they match on the obvious parameters (block size, key sizes) and diverge on internal structure. Side by side:\n\n| Property | **AES** (Rijndael) | **Twofish** |\n| --- | --- | --- |\n| Block size | 128 bits | 128 bits |\n| Key sizes | 128 / 192 / 256 bits | 128 / 192 / 256 bits |\n| Round count | 10 / 12 / 14 (key-dependent) | 16 (fixed) |\n| Structure | Substitution-permutation network (SPN) | Generalized Feistel network |\n| S-boxes | **Fixed** (FIPS 197 table from `x⁻¹` in GF(2⁸)) | **Key-dependent** (derived from the key schedule) |\n| Diffusion | ShiftRows + MixColumns over GF(2⁸) | 4×4 MDS matrix + Pseudo-Hadamard Transform |\n| Input/output whitening | No (first/last rounds use AddRoundKey only) | **Yes** — XOR with extra subkeys before round 1 and after round 16 |\n| Key schedule | Lightweight (a few hundred bytes of state) | Heavy (Reed-Solomon code derives S-boxes) |\n| AES competition | **Winner** (October 2000) | Finalist (one of 5) |\n| Real-world adoption | Dominant — TLS, disk encryption, file formats everywhere | Niche — VeraCrypt, some OpenVPN configs |\n\n**Why AES won:** NIST's report cited Rijndael's combination of speed, simplicity, and especially its **lightweight key schedule** and **good fit for hardware** (S-boxes are small and constant; no per-key precomputation). Twofish's key-dependent S-boxes made it slower to rekey and more memory-hungry in constrained environments. On security, both were judged solid — the decision came down to engineering trade-offs, not cryptanalysis.\n\n**What survived from Twofish:** the *ideas* — key-dependent substitutions, whitening, MDS-based diffusion — show up across modern cipher and hash designs even when AES is the actual cipher being used. Schneier later [wrote](https://www.schneier.com/blog/archives/2005/05/twofish_cryptan.html) that he didn't mind losing: \"I have nothing but good things to say about NIST and the AES process.\"\n\nThe next two steps zoom into the two architectural ideas worth knowing on their own — **key-dependent S-boxes** (step 3) and **whitening** (step 4).",
+      "help_template": "**In plain English:** Same block size, same key sizes, very different insides. AES uses a fixed substitution table and a substitution-permutation network. Twofish uses a Feistel network with substitution tables that are *derived from your key*, plus an XOR with extra round keys at the very start and very end. AES won the competition mainly because its key schedule is simpler and it maps better to small hardware.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 73,
+    "fields": {
+      "lesson": 7, "order": 3, "slug": "key-dependent-sboxes", "kind": "info",
+      "prompt_template": "### Key-dependent S-boxes\n\nAn **S-box** (substitution box) is just a lookup table: input byte → output byte. It's the *only* nonlinear part of most modern block ciphers. Linear operations (XOR, bit rotation, matrix multiply) compose neatly with each other and are easy to attack algebraically; the S-box is what breaks that linearity.\n\n**Fixed S-boxes (the AES approach).** AES uses a single substitution table, the same in every AES installation in the world. It's defined in FIPS 197 and burned into hardware. The 256 output bytes are derived from the multiplicative inverse in GF(2⁸) composed with an affine transformation — a beautifully clean algebraic construction with excellent differential and linear properties.\n\n```\nAES S-box (first row, 16 of 256 entries):\nin:  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\nout: 63 7C 77 7B F2 6B 6F C5 30 01 67 2B FE D7 AB 76\n```\n\n**Key-dependent S-boxes (the Twofish approach).** Twofish derives its S-boxes from your key. Two different Twofish keys produce *two different substitution tables*. The derivation runs your key through a **Reed-Solomon code** to produce S-vectors, which then parameterize four 8×8 S-boxes built on top of two fixed permutations called `q₀` and `q₁`.\n\n```\nTwofish S-box S0 with key K_A (illustrative — values depend on K_A):\nin:  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\nout: A9 67 B3 E8 04 FD A3 76 9A 92 80 78 E4 DD D1 38\n\nTwofish S-box S0 with key K_B (different key → different table):\nin:  00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F\nout: 75 F3 C6 F4 DB 7B FB C8 4A D3 E6 6B 45 7D E8 4B\n```\n\n**What you trade.** Key-dependent S-boxes give you:\n\n- **Resistance to precomputed-table attacks.** An attacker can't build a giant lookup table once and reuse it across keys, because there isn't a single table.\n- **Resistance to algebraic attacks** that exploit a known S-box's algebraic structure. The structure changes per key.\n\nIn exchange you pay:\n\n- **Slower key setup.** The S-boxes have to be computed every time you load a new key. For a long-lived key (encrypting a disk) this is invisible; for a session key on a tiny IoT device, it can sting.\n- **More state per key.** Four 256-byte S-boxes is 1 KB of per-key state, vs AES's single shared 256-byte table.\n- **Harder to implement in constant time.** Per-key tables in cache are more vulnerable to timing side-channels unless implemented very carefully.\n\nNIST's AES decision essentially landed on the hardware-engineering side of this trade-off. Both designs work; AES is just cheaper to deploy at scale.",
+      "help_template": "**In plain English:** Twofish builds custom substitution tables for each key. Two different keys produce two different ciphers, essentially. It's a clever way to make precomputed attacks useless — but it slows down rekeying, and that cost mattered enough that AES (with a single fixed table) won the competition.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 74,
+    "fields": {
+      "lesson": 7, "order": 4, "slug": "whitening", "kind": "input-numeric",
+      "prompt_template": "### Whitening — XOR an extra subkey before round 1\n\n**Whitening** is one of Twofish's simplest and cleverest ideas. Before the first round of the cipher even starts, XOR the input block with a **whitening subkey** (different from the round keys). After the last round, do the same with another whitening subkey. That's it.\n\n```\n  plaintext  ──XOR──►  ┌─ round 1 ─┐  ...  ┌─ round 16 ─┐  ──XOR──►  ciphertext\n             whiten1   └───────────┘       └────────────┘   whiten2\n```\n\n**Why it works.** Many classical attacks on block ciphers target the *first* and *last* rounds — those are the rounds where the attacker has the most information (known plaintext on one side, known ciphertext on the other). Whitening masks both ends with an extra unknown XOR, effectively giving the attacker rounds 2 through 15 to attack instead of 1 through 16. It's a tiny cost (one extra XOR each way) for a real improvement against round-recovery attacks.\n\nAES doesn't have explicit whitening — but its first round starts with `AddRoundKey` *before* `SubBytes`, which gets you most of the same property for free. Twofish's whitening is more pronounced because the whitening subkeys are *separate* from the per-round subkeys; an attacker who recovers a round key has not also recovered a whitening key.\n\n**Compute one whitening XOR.**\n\n- Plaintext byte: `0x6A` = `01101010`\n- Whitening byte: `0x35` = `00110101`\n\nXOR them bit by bit (1 where the bits differ, 0 where they match):\n\n```\n  0 1 1 0 1 0 1 0   ← 0x6A\n  0 0 1 1 0 1 0 1   ← 0x35\n  ─────────────── XOR\n  ? ? ? ? ? ? ? ?\n```\n\nEnter the result as hex (e.g. `0x5F`) or decimal.",
+      "help_template": "**In plain English:** Whitening = XOR with an extra subkey at the very start and very end of the cipher. Hides the first and last rounds from attackers without changing the cipher's structure. The XOR itself is the same operation you've done in every other symmetric lesson.\n\n**Walkthrough:**\n```\n  0 1 1 0 1 0 1 0   ← 0x6A (106)\n  0 0 1 1 0 1 0 1   ← 0x35 (53)\n  ─────────────── XOR\n  0 1 0 1 1 1 1 1   ← 0x5F (95)\n```",
+      "validator_key": "whitening", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 75,
+    "fields": {
+      "lesson": 7, "order": 5, "slug": "encrypt-a-message", "kind": "info",
+      "prompt_template": "### Encrypt a message with Twofish\n\nLike Blowfish, **Twofish isn't in Web Crypto** — browsers don't ship a Twofish implementation. It's also not in `cryptography.hazmat` (which is the usual go-to Python library). For Twofish in Python you reach for **`pycryptodome`**, which keeps it in `Crypto.Cipher.Twofish`.\n\nClick **Show full script** below to see a complete, copy-pasteable program that:\n\n1. `pip install pycryptodome` (one-time setup, noted in the script comment).\n2. Generates a random 128-bit Twofish key and a 16-byte IV (Twofish's block size is 128 bits, same as AES).\n3. PKCS#7-pads the plaintext to a multiple of 16 bytes.\n4. Encrypts with `Twofish.new(key, Twofish.MODE_CBC, iv)`.\n5. Decrypts and asserts the roundtrip matches the original.\n\nThe API will feel familiar from the AES lesson — `pycryptodome`'s cipher classes all share the same `.new(key, mode, iv)` / `.encrypt(data)` / `.decrypt(data)` shape. Swap `AES` for `Twofish` and you're done.\n\n**A practical note.** If you're writing new code in 2026, prefer AES. Twofish is well-cryptanalyzed and unpatented, but the deployment ecosystem is much thinner — fewer hardware accelerators, fewer audited libraries, and most protocols you'd plug it into (TLS, SSH, age) only negotiate AES anyway. The interesting reasons to encounter Twofish today are reading existing VeraCrypt volumes or matching an OpenVPN config that someone else picked.",
+      "help_template": "**In plain English:** No browser-side demo (Web Crypto doesn't ship Twofish). The Python script below is the real cipher, via `pycryptodome` — same shape as the AES script, just `Twofish` instead of `AES`. Run it, change the message, watch the ciphertext change.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 76,
+    "fields": {
+      "lesson": 7, "order": 6, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen Twofish at the right level of detail for a cipher that lost the AES competition but still earns a spot in the symmetric track:\n\n- **The history** — 1998 NIST competition, Schneier + Kelsey + Whiting + Wagner + Hall + Ferguson, one of 5 finalists, runner-up to Rijndael.\n- **The comparison with AES** — same block and key sizes; Feistel-like vs SPN; key-dependent vs fixed S-boxes; explicit whitening vs none; heavy key schedule vs light.\n- **Key-dependent S-boxes** — the substitution table is derived from your key, so precomputed and algebraic attacks lose their footing. Pay for it in rekey cost.\n- **Whitening** — XOR the block with an extra subkey before round 1 and after round 16. Tiny cost, real improvement against round-recovery attacks.\n- **Why AES won anyway** — Rijndael's simpler key schedule and better hardware fit. Not a cryptographic verdict; an engineering one.\n\nWhat we skipped, on purpose:\n\n- **The 16-round Feistel-like structure** in detail — MDS matrix, Pseudo-Hadamard Transform, the four round-key-dependent S-boxes per round. Cleanly documented in the [original Twofish paper](https://www.schneier.com/academic/twofish/) if you want to go deeper.\n- **The Reed-Solomon key schedule** that derives the S-boxes from your key. ~100 lines of dense GF(2⁸) arithmetic.\n- **A side-by-side speed benchmark vs AES.** AES wins on any modern x86 with AES-NI; Twofish is competitive in pure software, especially on 32-bit platforms without AES instructions.\n\n**Further reading:**\n\n- [Twofish: A 128-Bit Block Cipher](https://www.schneier.com/academic/paperfiles/paper-twofish-paper.pdf) — the original 1998 submission paper. Surprisingly readable.\n- [NIST's AES selection report](https://csrc.nist.gov/csrc/media/publications/conference-paper/2000/10/16/the-aes-selection-process-and-the-second-round/documents/r2report.pdf) — the official write-up of why Rijndael was chosen over Twofish, MARS, RC6, and Serpent.\n- Schneier's [retrospective blog post](https://www.schneier.com/blog/archives/2005/05/twofish_cryptan.html) on Twofish's cryptanalysis history.\n\n**What's next:** if you came here from [Blowfish](/algorithms/blowfish/), you've now seen the whole Schneier symmetric lineage. [AES](/algorithms/aes/) is the cipher you should actually reach for in new code.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]
