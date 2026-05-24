@@ -7,6 +7,7 @@ class Algorithm(models.Model):
         ("asymmetric", "Asymmetric"),
         ("symmetric", "Symmetric"),
         ("pq", "Post-Quantum"),
+        ("hsm", "HSM"),
     ]
     STATUS_CHOICES = [
         ("live", "Live"),
