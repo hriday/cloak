@@ -71,3 +71,28 @@ def test_aes_fixture_loads(db):
     assert by_slug["shift-rows"].validator_key == "shift_row"
     assert by_slug["add-round-key"].validator_key == "add_round_key"
     assert by_slug["encrypt-a-message"].validator_key == "pick_aes_message"
+
+
+@pytest.mark.django_db
+def test_3des_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/triple-des/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    assert Algorithm.objects.filter(slug="triple-des").count() == 1
+    algo = Algorithm.objects.get(slug="triple-des")
+    assert algo.name == "Triple DES"
+    assert algo.family == "symmetric"
+
+    lesson = Lesson.objects.get(algorithm=algo, slug="why-3des")
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "single-des-weakness", "naive-2des-intro",
+        "mitm-attack", "3des-ede", "encrypt-with-3des", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["mitm-attack"].validator_key == "mitm_attack"
+    assert by_slug["mitm-attack"].kind == "input-multi"
+    assert by_slug["encrypt-with-3des"].validator_key == "pick_3des_message"
+    assert by_slug["encrypt-with-3des"].kind == "input-text"

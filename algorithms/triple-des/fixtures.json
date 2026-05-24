@@ -1,0 +1,94 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 4,
+    "fields": {
+      "slug": "triple-des",
+      "name": "Triple DES",
+      "family": "symmetric",
+      "status": "live",
+      "order": 4,
+      "intro_template": "## Triple DES\n\nDES with a 56-bit key is too weak for modern compute. Tripling DES with three keys gives ~112-bit effective security — explained via the meet-in-the-middle attack."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 4,
+    "fields": {
+      "algorithm": 4,
+      "slug": "why-3des",
+      "title": "Why Triple DES?",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 41,
+    "fields": {
+      "lesson": 4, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Triple DES — why three keys?\n\nDES is a 1977 Feistel cipher with a 64-bit block and a **56-bit key**. The short key is the problem: a 56-bit key has ~7 × 10¹⁶ possibilities, brute-forceable in hours on modern GPUs.\n\nThe natural fix: chain DES with multiple keys. But how many? And why does the math not work out the way you'd expect?\n\nIn the next steps we'll show why doubling DES doesn't double its security (the *meet-in-the-middle* attack), and how Triple DES gets around it.",
+      "help_template": "**In plain English:** DES was strong in 1977 when 56 bits was hard to brute force. Today, dedicated hardware can crack it in hours. The lesson here is less about DES and more about **why chaining ciphers doesn't always give you the security you'd expect**.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 42,
+    "fields": {
+      "lesson": 4, "order": 2, "slug": "single-des-weakness", "kind": "info",
+      "prompt_template": "### Single DES — too small\n\nA 56-bit key has 2⁵⁶ ≈ 7.2 × 10¹⁶ possibilities. At 10⁹ keys/sec on a desktop GPU, that's about 2 years. On a purpose-built cracker (like EFF's *Deep Crack* from 1998 — yes, 1998), DES fell in days. Today: hours.\n\nThe naive fix: chain DES with two keys, K1 and K2. Encrypt with K1, then with K2. That's a 112-bit effective key space — should be 2⁵⁶ × harder than single DES. **Should be.**",
+      "help_template": "**In plain English:** Bigger key = more brute force work. 2⁵⁶ vs 2¹¹² *looks* like a huge upgrade. But brute force isn't always the best attack against chained ciphers. Next step: the trick.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 43,
+    "fields": {
+      "lesson": 4, "order": 3, "slug": "naive-2des-intro", "kind": "info",
+      "prompt_template": "### 2DES — naive doubling\n\nDefine 2DES as: `C = E(K2, E(K1, P))`. The effective key is (K1, K2), 112 bits total. Brute forcing 2¹¹² keys should be infeasible for the lifetime of the universe.\n\nIn the next step you'll run a *meet-in-the-middle* attack on a toy version of 2DES and discover something unsettling: it breaks in O(2 × 2⁵⁶) work, not O(2¹¹²). That's only **2×** the effort of single DES, not 2⁵⁶× — and that's why 2DES is useless.",
+      "help_template": "**In plain English:** MITM works because you can attack the *middle* of the cipher. You know the plaintext and the ciphertext. The intermediate value (what comes out of E(K1, P)) is unknown — but you can guess every possible K1, compute the intermediate, store it, then guess every K2 and check which intermediate matches.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 44,
+    "fields": {
+      "lesson": 4, "order": 4, "slug": "mitm-attack", "kind": "input-multi",
+      "prompt_template": "### Meet-in-the-middle attack — find (K1, K2)\n\nWe use a toy 2DES (a 2-round XOR cipher with 8-bit keys) so the attack is computable in your browser. The math pattern is the same as real DES.\n\n**Given:**\n- plaintext: `0x42`\n- ciphertext: `0x72`\n\nFind any (K1, K2) such that `toyEncrypt(plaintext, K1, K2) = ciphertext`, where `toyEncrypt(p, k1, k2) = ((p ^ k1) ^ k2) & 0xFF`.\n\nFor this toy cipher, valid pairs satisfy `K1 XOR K2 = 0x30`. There are **256 such pairs**. The MITM lookup table finds all of them in O(2 × 256) time. Pick any one and enter it.",
+      "help_template": "**In plain English:** The attack is: build a lookup of `E(K1, plaintext)` for all 256 K1s. Then for each K2, compute `D(K2, ciphertext)` and see if it's in the lookup. When it matches, you've found a valid pair. For real DES that's 2 × 2⁵⁶ work, not 2¹¹² — defeating the security you thought 2DES had.",
+      "validator_key": "mitm_attack", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 45,
+    "fields": {
+      "lesson": 4, "order": 5, "slug": "3des-ede", "kind": "info",
+      "prompt_template": "### Triple DES — E(K3, D(K2, E(K1, P)))\n\nTriple DES uses three keys and the **E-D-E** (Encrypt-Decrypt-Encrypt) pattern:\n\n`C = E(K3, D(K2, E(K1, P)))`\n\nWith K1=K2=K3, 3DES reduces to single DES (the middle D undoes the first E, then the third E reduces to one DES). That's intentional — it lets 3DES hardware run in single-DES-compatible mode if you set all three keys equal.\n\nThe **effective security** of 3DES against MITM is ~112 bits (not 168), because the same attack pattern applies — you can MITM the middle. But 112 bits is still acceptable, and 3DES was the standard for decades.\n\nNIST deprecated 3DES for new use in 2023 (SP 800-131A). For new systems: use AES.",
+      "help_template": "**In plain English:** Three keys → 168 bits naively, ~112 bits under MITM. Why E-D-E? So a single-DES device can run 3DES code by setting K1=K2=K3. Why is 3DES still in some systems? Backwards compatibility — banks, payment terminals, legacy enterprise.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 46,
+    "fields": {
+      "lesson": 4, "order": 6, "slug": "encrypt-with-3des", "kind": "input-text",
+      "prompt_template": "### Encrypt a message with Triple DES\n\nType a sentence — the Done page will show a runnable Python script that encrypts it with 3DES using the `cryptography` library.\n\n*(3DES isn't in Web Crypto, so we don't run encryption in-browser. The Python script is the deliverable.)*",
+      "help_template": "**In plain English:** Python's `cryptography` library still supports 3DES for legacy compatibility. The code will generate a random 24-byte key (= three 8-byte DES keys), encrypt your message in CBC mode with PKCS#7 padding, and decrypt to verify.",
+      "validator_key": "pick_3des_message", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 47,
+    "fields": {
+      "lesson": 4, "order": 7, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen why 2DES isn't trusted (meet-in-the-middle reduces 2¹¹² to 2 × 2⁵⁶), why 3DES exists (E-D-E with three keys), and how to use it in Python.\n\n**For new systems: use [AES](/algorithms/aes/) instead.** 3DES is officially deprecated by NIST as of 2023 (SP 800-131A) and removed from TLS 1.3.\n\nNext lessons (coming): **Blowfish**, **Twofish**, **HSM key management**.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]
