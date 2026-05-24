@@ -254,7 +254,9 @@ function wizardComponent(initial) {
       const step = this.currentStep;
       if (!step) return;
       let input;
-      if (step.kind === "input-multi") input = { ...this.multiInput };
+      // simulated-hsm has kind='input-text' but the UI is multi-field (op + message + signature),
+      // so route it through multiInput like the input-multi kinds.
+      if (step.kind === "input-multi" || step.slug === "simulated-hsm") input = { ...this.multiInput };
       else if (step.kind === "input-text") input = this.sentenceInput;
       else input = this.inputValue;
       const fn = this.validators[step.validator_key];
@@ -263,6 +265,13 @@ function wizardComponent(initial) {
       this.hint = "";
       this.state = { ...this.state, ...result.value };
       this.refreshInlineCode();
+      // simulated-hsm is exploratory — let the user run sign/verify multiple times
+      // before manually advancing via the Continue button.
+      if (step.slug === "simulated-hsm") {
+        this.persistLocal();
+        this.syncServer();
+        return;
+      }
       this.advance();
     },
 
