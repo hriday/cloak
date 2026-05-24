@@ -217,7 +217,7 @@ function wizardComponent(initial) {
       else if (step.kind === "input-text") input = this.sentenceInput;
       else input = this.inputValue;
       const fn = this.validators[step.validator_key];
-      const result = fn(input, this.state);
+      const result = await fn(input, this.state);
       if (!result.ok) { this.hint = result.hint; return; }
       this.hint = "";
       this.state = { ...this.state, ...result.value };

@@ -1,4 +1,5 @@
 import { SBOX } from "./tables.js";
+import { encryptMessage } from "./aes_demo.js";
 
 // Canonical lesson values — referenced from prompts so they stay in sync.
 export const SUB_BYTE_INPUT = 0x53;          // S-box row 5, col 3
@@ -65,7 +66,7 @@ export function shift_row(input, _state) {
   return { ok: true, value: { a_shifted_row: expected } };
 }
 
-export function pick_aes_message(input, _state) {
+export async function pick_aes_message(input, _state) {
   const s = input == null ? "" : String(input);
   if (s.length === 0) return { ok: false, hint: "Type at least one character." };
   if (s.length > 500) return { ok: false, hint: "Keep it under 500 characters." };
@@ -75,7 +76,27 @@ export function pick_aes_message(input, _state) {
       return { ok: false, hint: `Only printable ASCII for now — no emoji, accents, tabs, or newlines. Found: '${s[i]}'.` };
     }
   }
-  return { ok: true, value: { a_message: s } };
+  // Validation passed — encrypt via Web Crypto (browser only). In Node tests,
+  // crypto.subtle may not be available; gracefully degrade so the validation
+  // tests still pass.
+  let encryptionResult = null;
+  let encryptError = null;
+  try {
+    if (typeof crypto !== "undefined" && crypto.subtle) {
+      encryptionResult = await encryptMessage(s);
+    }
+  } catch (e) {
+    encryptError = String(e.message || e);
+  }
+  const value = { a_message: s };
+  if (encryptionResult) {
+    value.a_key_hex = encryptionResult.keyHex;
+    value.a_iv_hex = encryptionResult.ivHex;
+    value.a_ciphertext_hex = encryptionResult.ciphertextHex;
+    value.a_recovered = encryptionResult.recovered;
+  }
+  if (encryptError) value.a_encrypt_error = encryptError;
+  return { ok: true, value };
 }
 
 export function info(_input, _state) {
