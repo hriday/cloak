@@ -1,0 +1,104 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 5,
+    "fields": {
+      "slug": "hsm",
+      "name": "HSM",
+      "family": "hsm",
+      "status": "live",
+      "order": 5,
+      "intro_template": "## HSM — key vaults\n\nA hardware security module holds private keys and exposes only operations: sign, verify, wrap, unwrap. The keys never leave the box."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 5,
+    "fields": {
+      "algorithm": 5,
+      "slug": "key-vaults",
+      "title": "Key vaults & HSMs",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 51,
+    "fields": {
+      "lesson": 5, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## HSM — keys you can use but can't see\n\nA **hardware security module** is a physical device (or, in the cloud, a managed service backed by physical devices) that holds private keys. Production systems use HSMs for the most sensitive secrets: TLS root CAs, payment processor card keys, bank signing keys, certificate-authority issuing keys.\n\nThe defining feature: the HSM **never reveals key material**. It exposes only *operations* — `sign`, `verify`, `wrap`, `unwrap`, `encrypt`, `decrypt`. You feed in data, it returns a result. The bytes of the private key never cross the device boundary.\n\nThis lesson teaches the **pattern**, not a specific HSM product. We'll build a mental model, simulate an HSM in your browser using Web Crypto's non-extractable keys, then look at how AWS / GCP / Azure expose the same pattern as a cloud KMS.",
+      "help_template": "**In plain English:** Everywhere else in this site you've held the key in a variable. In production, the most valuable keys live inside a vault that has no \"read the key\" API. You only get \"do something with the key.\"",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 52,
+    "fields": {
+      "lesson": 5, "order": 2, "slug": "the-vault-analogy", "kind": "info",
+      "prompt_template": "### The vault analogy\n\nPicture a steel vault in a bank basement. The vault has a slot. You can:\n\n- Slip a document through the slot and ask the vault to **stamp** it (sign).\n- Hand over a stamp + document and ask the vault to confirm the stamp is real (verify).\n- Pass in a sealed envelope and ask the vault to **open** it (unwrap).\n\nWhat you **cannot** do, no matter how nicely you ask: *open the vault and look at the stamp.* There is no API for that. There never was. The vault was built without one.\n\nThat's an HSM. The \"stamp\" is the private key. The slot is the operations API. Every operation the HSM performs is logged, audited, and (in real deployments) physically tamper-evident — try to drill the vault open and it incinerates its own contents.",
+      "help_template": "**In plain English:** You can use the key. You can't read the key. That's the whole idea. Everything else — the audit logs, the tamper resistance, the FIPS certifications — exists to enforce that one rule.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 53,
+    "fields": {
+      "lesson": 5, "order": 3, "slug": "operations-api", "kind": "info",
+      "prompt_template": "### The operations API\n\nEvery HSM (and every cloud KMS) exposes roughly the same small set of calls:\n\n- `generate_key(spec)` — create a new key inside the HSM. Returns a **handle** (an opaque ID), not the key bytes.\n- `sign(handle, message)` — produce a signature.\n- `verify(handle, message, signature)` — check a signature. Returns true / false.\n- `wrap(kek_handle, data_key)` — encrypt a data key under a key-encryption-key. Returns ciphertext.\n- `unwrap(kek_handle, wrapped_blob)` — decrypt a wrapped key. Returns a new handle (the unwrapped key also stays inside the HSM).\n- `encrypt(handle, plaintext)` / `decrypt(handle, ciphertext)` — direct symmetric or asymmetric encryption.\n\nNotice what's missing: `export_key`, `get_key_bytes`, `read_private`. **They don't exist.** A tiny API surface is itself a security property — there's less to misuse, less to attack, less to audit.",
+      "help_template": "**In plain English:** Everything you'd want to do with a key is a function. The key itself isn't a value you can hold — it's a *reference* you pass around. Think of it like a file descriptor: you can write to fd 3, but the OS owns the file.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 54,
+    "fields": {
+      "lesson": 5, "order": 4, "slug": "simulated-hsm", "kind": "input-text",
+      "prompt_template": "### Try a simulated HSM\n\nThis page generated an RSA-2048 keypair using `crypto.subtle.generateKey(..., extractable: false, ...)`. The browser's Web Crypto API enforces the `extractable: false` flag — even if you open devtools and inspect this page, you can't recover the private key bytes. The key is referenced by an opaque `CryptoKey` object.\n\nThat's the same guarantee a real HSM provides, just in software. (A real HSM adds tamper-resistant hardware on top.)\n\n**Try it:**\n1. Pick **Sign**, type a message, and submit. The HSM returns a signature.\n2. Pick **Verify**, paste the message + signature back, and submit. Should return `valid`.\n3. Tamper with one character of the signature, verify again. Should return `invalid`.\n\nThere is no fourth button labeled *\"reveal the private key.\"* There is no DOM inspector trick. The key is unreachable from JavaScript.",
+      "help_template": "**In plain English:** The key was generated by the browser, lives inside the browser's crypto engine, and only the engine can use it. Your code holds a handle that says \"key #4793\" — never the actual bytes.\n\n**Note:** The keypair regenerates on every page reload. Signatures from a previous visit won't verify after refresh.",
+      "validator_key": "hsm_operation", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 55,
+    "fields": {
+      "lesson": 5, "order": 5, "slug": "kek-hierarchy", "kind": "info",
+      "prompt_template": "### Key hierarchies — KEKs and DEKs\n\nReal systems don't put one master key in the HSM and call it done. They build a **hierarchy**:\n\n```\n            Master Key  ── (in HSM, never exported)\n                │ wraps\n                ▼\n         Tenant KEK     ── (in HSM, per-customer)\n                │ wraps\n                ▼\n       Data Encryption ── (ephemeral, per-record or per-session)\n         Keys (DEKs)       Lives outside the HSM, in app memory.\n```\n\nThe **DEKs** do the bulk encryption — fast, in your application, using AES. Each DEK is short-lived. The DEK is encrypted (\"wrapped\") with the **tenant KEK**, which lives in the HSM. The tenant KEK is itself wrapped with the **master key**.\n\nWhy bother with three layers?\n\n- **Rotation:** to rotate a tenant's keys, generate a new KEK and re-wrap the (small number of) DEKs. The (large amount of) ciphertext on disk stays put.\n- **Revocation:** delete one tenant's KEK and all of their data is instantly unreadable. No need to find and shred every record.\n- **Blast radius:** a leaked DEK exposes one record. A leaked KEK exposes one tenant. The master key never leaves the HSM.\n\nThis is the same KEK pattern you saw in the hybrid-encryption lesson — generalized into a tree.",
+      "help_template": "**In plain English:** One key isn't enough. You want a small number of long-lived keys you protect carefully (in the HSM), and a large number of short-lived keys you use freely (in app memory). The long-lived keys *wrap* the short-lived ones.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 56,
+    "fields": {
+      "lesson": 5, "order": 6, "slug": "real-world-kms", "kind": "info",
+      "prompt_template": "### Cloud KMS — the same pattern, as a service\n\nThe big three clouds each expose the HSM pattern as a managed key service. Same operations, different SDK.\n\n**AWS KMS** (Python via `boto3`):\n```python\nimport boto3\nkms = boto3.client(\"kms\")\nct = kms.encrypt(KeyId=\"alias/my-key\", Plaintext=b\"hello\")[\"CiphertextBlob\"]\npt = kms.decrypt(CiphertextBlob=ct)[\"Plaintext\"]\n```\n\n**Google Cloud KMS** (`google-cloud-kms`):\n```python\nfrom google.cloud import kms\nclient = kms.KeyManagementServiceClient()\nname = client.crypto_key_path(\"proj\", \"loc\", \"ring\", \"key\")\nct = client.encrypt(name=name, plaintext=b\"hello\").ciphertext\npt = client.decrypt(name=name, ciphertext=ct).plaintext\n```\n\n**Azure Key Vault** (`azure-keyvault-keys`):\n```python\nfrom azure.keyvault.keys.crypto import CryptographyClient, EncryptionAlgorithm\nclient = CryptographyClient(key_id, credential=DefaultAzureCredential())\nct = client.encrypt(EncryptionAlgorithm.rsa_oaep, b\"hello\").ciphertext\npt = client.decrypt(EncryptionAlgorithm.rsa_oaep, ct).plaintext\n```\n\nIn every case: you reference the key by ID. You pass plaintext or ciphertext. You never touch key bytes. The Done page will show a copy-pasteable boto3 script.",
+      "help_template": "**In plain English:** Cloud KMS is HSM-as-a-service. The provider runs the hardware; you call an API. Same pattern, no on-prem cabling. Most production systems built after ~2018 use KMS rather than self-managing an HSM.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 57,
+    "fields": {
+      "lesson": 5, "order": 7, "slug": "where-required", "kind": "info",
+      "prompt_template": "### Where HSMs are *required*\n\nFor most apps, HSMs are a *good idea*. For some industries, they're *legally mandatory*:\n\n- **PCI DSS** (payment card data) — Requirement 3.5 mandates key storage that meets FIPS 140-2 Level 3 or equivalent. In practice: an HSM.\n- **FIPS 140-2 / 140-3** — US federal standard for cryptographic modules. Required for any system handling US government data. Levels 1-4 describe increasing physical tamper resistance.\n- **Common Criteria EAL 4+** — international evaluation standard, often required in EU government and defense.\n- **eIDAS** (EU digital signatures) — qualified electronic signatures must use a *Qualified Signature Creation Device*, which is an HSM.\n- **HIPAA** (US healthcare) — doesn't mandate HSMs explicitly, but \"reasonable safeguards\" are interpreted to require them for production PHI at most large providers.\n- **SOC 2 Type II** — auditors will ask how you protect key material; an HSM is the standard answer.\n\nIf you're building a payment processor, a CA, a bank, a healthcare exchange, or anything for a US/EU government customer: an HSM (or cloud KMS backed by one) isn't optional.",
+      "help_template": "**In plain English:** \"We use an HSM\" is also a compliance answer. Auditors stop asking follow-up questions once they hear it. That's part of why HSMs are so common in regulated industries — they shortcut a long conversation.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 58,
+    "fields": {
+      "lesson": 5, "order": 8, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen the HSM pattern end to end:\n\n- The **operations API** — sign, verify, wrap, unwrap — with no `export_key` call by design.\n- The **vault analogy** — keys you can use but can't read.\n- A **simulated HSM** in your browser via Web Crypto's non-extractable keys.\n- The **KEK / DEK hierarchy** that production systems use to scope blast radius and enable rotation.\n- **Cloud KMS** code samples (AWS / GCP / Azure) for the same pattern as a managed service.\n- **Compliance contexts** where HSMs are legally required: PCI DSS, FIPS 140, eIDAS.\n\nWhat we skipped, for a future lesson:\n\n- **Key ceremony** — split-knowledge, M-of-N quorum auth, dual-control procedures for initializing a master key.\n- **PKCS#11 / KMIP** — the wire protocols HSMs actually speak.\n- **TPM / Secure Enclave** — client-side secure hardware (different threat model from a network HSM).\n\nGo back to the [home page](/) to revisit any algorithm. The hybrid lesson's KEK pattern is the simplest version of what you just learned.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]

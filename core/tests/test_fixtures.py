@@ -96,3 +96,30 @@ def test_3des_fixture_loads(db):
     assert by_slug["mitm-attack"].kind == "input-multi"
     assert by_slug["encrypt-with-3des"].validator_key == "pick_3des_message"
     assert by_slug["encrypt-with-3des"].kind == "input-text"
+
+
+@pytest.mark.django_db
+def test_hsm_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/hsm/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    assert Algorithm.objects.filter(slug="hsm").count() == 1
+    algo = Algorithm.objects.get(pk=5)
+    assert algo.slug == "hsm"
+    assert algo.name == "HSM"
+    assert algo.family == "hsm"
+    assert algo.status == "live"
+
+    lesson = Lesson.objects.get(pk=5)
+    assert lesson.algorithm_id == 5
+    assert lesson.slug == "key-vaults"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    assert [s.slug for s in steps] == [
+        "intro", "the-vault-analogy", "operations-api", "simulated-hsm",
+        "kek-hierarchy", "real-world-kms", "where-required", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["simulated-hsm"].kind == "input-text"
+    assert by_slug["simulated-hsm"].validator_key == "hsm_operation"
