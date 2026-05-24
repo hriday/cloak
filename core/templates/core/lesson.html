@@ -40,10 +40,19 @@
         </div>
       </template>
 
-      <template x-if="step.kind === 'input-multi'">
+      <template x-if="step.kind === 'input-multi' && step.slug !== 'mitm-attack'">
         <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <span>p =</span><input type="text" x-model="multiInput.p" style="min-width:90px">
           <span>q =</span><input type="text" x-model="multiInput.q" style="min-width:90px">
+          <button class="btn" @click="check()">Check</button>
+          <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+        </div>
+      </template>
+
+      <template x-if="step.slug === 'mitm-attack'">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span>K1 =</span><input type="text" x-model="multiInput.k1" placeholder="0xNN or decimal" style="min-width:110px">
+          <span>K2 =</span><input type="text" x-model="multiInput.k2" placeholder="0xNN or decimal" style="min-width:110px">
           <button class="btn" @click="check()">Check</button>
           <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
         </div>
