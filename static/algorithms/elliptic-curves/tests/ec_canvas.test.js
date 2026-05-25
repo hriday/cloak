@@ -65,6 +65,13 @@ function fakeCanvas(cssW, cssH) {
     clientWidth: cssW, clientHeight: cssH,
     style: {},
     getContext: () => ctx,
+    // Mirror the HTML-attribute API setupCanvas uses to recover the original
+    // CSS-pixel dimensions before applying DPR scaling.
+    getAttribute(name) {
+      if (name === "width") return String(cssW);
+      if (name === "height") return String(cssH);
+      return null;
+    },
   };
 }
 

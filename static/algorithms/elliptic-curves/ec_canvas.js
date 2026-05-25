@@ -65,31 +65,44 @@ export function easeInOut(t) {
 // pixel coordinates. We render with `transform(1,0,0,1,0,0)` in the CSS
 // pixel coordinate system after `ctx.scale(dpr, dpr)`, so callers do not
 // need to think about devicePixelRatio.
+// Original logical (CSS-pixel) dimensions per canvas, captured at first
+// setupCanvas() call. We use a module-level WeakMap rather than a property
+// on the DOM node because (a) Alpine sometimes shuffles canvas state across
+// effect re-runs and the property gets lost, (b) browser-cached state from
+// a previous (buggy) version of this code can leave the canvas with stale
+// `_dprApplied` set but bogus dimensions, locking out re-setup. The WeakMap
+// is keyed by the *current* canvas node so a fresh node always gets a fresh
+// dimension capture; the entry vanishes automatically when the node is GC'd.
+const _origDims = new WeakMap();
+
 export function setupCanvas(canvas, viewport) {
   const dpr = window.devicePixelRatio || 1;
-  // One-shot HiDPI setup. The first call captures the canvas's logical
-  // dimensions from its HTML attributes (which the template sets to a fixed
-  // size), multiplies by DPR for the backing store, and caches both. Every
-  // subsequent call short-circuits — we DO NOT re-read clientWidth/height
-  // (which can oscillate due to CSS max-width / page-layout constraints,
-  // causing runaway resize feedback inside per-frame animation loops).
-  if (!canvas._dprApplied) {
-    // Pull the *logical* size from the HTML attributes set in the template.
-    // canvas.width/height at this point are the integers the template set
-    // (e.g., 600x400). Once we mutate them to apply DPR, we never read them
-    // back — we trust _cssW/_cssH instead.
-    const cssW = canvas.width;
-    const cssH = canvas.height;
-    canvas._cssW = cssW;
-    canvas._cssH = cssH;
-    canvas.width  = Math.round(cssW * dpr);
-    canvas.height = Math.round(cssH * dpr);
-    canvas.style.width  = cssW + "px";
-    canvas.style.height = cssH + "px";
-    canvas._dprApplied = dpr;
+  // Capture original CSS-pixel dimensions on first call. We read them from
+  // canvas.getAttribute('width'/'height') — those are the *HTML attribute*
+  // values the template specified. Note: canvas.width and the HTML attribute
+  // are normally synonyms, but once we assign to canvas.width below it would
+  // become impossible to recover the original. So we record them ONCE per
+  // canvas DOM node into the WeakMap and trust that as the source of truth.
+  let dims = _origDims.get(canvas);
+  if (!dims) {
+    const attrW = parseInt(canvas.getAttribute("width"), 10);
+    const attrH = parseInt(canvas.getAttribute("height"), 10);
+    // Sanity: if the attribute is missing or nonsensical, fall back to a
+    // safe default. Real values come from the template (e.g., 600x400, 380x380).
+    const cssW = (attrW && attrW < 4000) ? attrW : 600;
+    const cssH = (attrH && attrH < 4000) ? attrH : 400;
+    dims = { cssW, cssH };
+    _origDims.set(canvas, dims);
   }
-  const cssW = canvas._cssW;
-  const cssH = canvas._cssH;
+  const { cssW, cssH } = dims;
+  // Always re-assert the backing-store + CSS dimensions every call. Cheap
+  // when already correct (browser no-op), self-healing if anything reset them.
+  const targetW = Math.round(cssW * dpr);
+  const targetH = Math.round(cssH * dpr);
+  if (canvas.width !== targetW) canvas.width = targetW;
+  if (canvas.height !== targetH) canvas.height = targetH;
+  canvas.style.width  = cssW + "px";
+  canvas.style.height = cssH + "px";
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
