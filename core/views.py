@@ -36,7 +36,10 @@ def lesson_runner(request, algo_slug, lesson_slug):
     # Render markdown only; leave `{{ state.X }}` placeholders intact so the
     # client substitutes live values from the wizard's reactive state.
     def render_md(template_str):
-        return md_lib.markdown(template_str or "")
+        return md_lib.markdown(
+            template_str or "",
+            extensions=["fenced_code", "tables"],
+        )
 
     steps_payload = [
         {
