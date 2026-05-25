@@ -1,0 +1,94 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 9,
+    "fields": {
+      "slug": "hmac",
+      "name": "HMAC",
+      "family": "hash",
+      "status": "live",
+      "order": 9,
+      "intro_template": "## HMAC\n\nMACs prove a message came from someone with the shared key. HMAC is the standard MAC — used by TLS, JWT (HS256), AWS SigV4, and webhook signatures."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 9,
+    "fields": {
+      "algorithm": 9,
+      "slug": "mac-the-message",
+      "title": "HMAC: authenticate the message",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 91,
+    "fields": {
+      "lesson": 9, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## HMAC — \"who sent this?\"\n\nA **hash** answers one question: *did this message change?* You hash the message at the source and again at the destination; if the two digests match, nothing was altered in transit.\n\nThat's not enough on its own. Anyone — including an attacker who intercepted the message — can recompute the hash on whatever they like. The hash by itself tells you nothing about *who* produced the message.\n\nA **message authentication code (MAC)** fixes that by mixing in a **shared secret key** known only to the sender and receiver. The MAC is a short tag (256 bits, here) that anyone holding the key can produce — and that anyone *not* holding the key cannot. Receiver recomputes the MAC over the received message with their copy of the key; if it matches the tag they got with the message, the message came from someone with the key AND wasn't altered.\n\n**HMAC** (RFC 2104, 1997) is the standard way to turn any hash function into a MAC. \"HMAC-SHA256\" means HMAC built on SHA-256 (which the [SHA-256 lesson](/algorithms/sha256/learn/digest-this/) covers in detail). It's used in:\n\n| System | Where HMAC shows up |\n|---|---|\n| TLS 1.2 | Record-layer authentication |\n| JWT | The `HS256` signing algorithm |\n| AWS SigV4 | API request signatures |\n| OAuth 1.0a | Request signing |\n| Stripe / GitHub webhooks | `X-Signature` headers |\n| `git` | Commit hashes? No — that's just SHA-1, not HMAC |\n\nThis lesson teaches HMAC by first showing why the *obvious* construction `H(key || message)` is broken (length-extension attack), and then why HMAC's two-nested-hash design defeats that attack.",
+      "help_template": "**In plain English:** A hash tells you the bytes didn't change. A MAC tells you the bytes didn't change AND were produced by someone with the key. The key is what turns a hash into a MAC.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 92,
+    "fields": {
+      "lesson": 9, "order": 2, "slug": "naive-mac", "kind": "info",
+      "prompt_template": "### The obvious idea: `MAC = H(key || message)`\n\nYou have a hash function. You have a shared secret. The first construction anyone would reach for is:\n\n```\nMAC = SHA256(key || message)\n```\n\nConcatenate the key in front, hash the whole thing. Receiver does the same, compares.\n\nIt *looks* fine. An attacker who doesn't know the key can't produce the same MAC, because they can't include the key in their hash. Right?\n\nThis was, in fact, the very first MAC construction people built — in the early-1990s SSL drafts, in early Kerberos, in handfuls of bespoke protocols. **It is broken**, and the way it's broken is one of the more elegant exploits in applied cryptography. The next step shows you the attack.\n\nThe broken-ness isn't in SHA-256, or in concatenation, or in the key. It's in a structural property of every hash built like SHA-256 (or SHA-1, or MD5, or RIPEMD-160) — the **Merkle-Damgard** construction. The internal state of the hash, mid-computation, is the same shape as the output. If you know the output and the input length, you can resume the computation. Which means you can extend the message and produce a valid-looking MAC, *without ever seeing the key*.\n\nHold that thought. Step 3 walks through the attack.",
+      "help_template": "**In plain English:** \"Hash the key and the message together\" is the first thing you'd try. It's also wrong. The attack in step 3 is what convinced the crypto community to standardize HMAC instead.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 93,
+    "fields": {
+      "lesson": 9, "order": 3, "slug": "length-extension", "kind": "info",
+      "prompt_template": "### The length-extension attack\n\nMerkle-Damgard hashes (SHA-256, SHA-1, MD5, ...) compute a digest like this:\n\n```\nstate = IV                          # fixed initial value\nfor each 64-byte block of input:\n    state = compress(state, block)  # one-way mixing step\ndigest = state                      # final state IS the output\n```\n\nThe digest IS the internal state at the end. That means: **if you know the digest and the message length, you can resume hashing from that state** as if you were the original hasher midway through. The attacker doesn't need the secret prefix — they just need its length, so they can correctly compute the padding that goes between the original input and their extension.\n\n#### The exploit, step by step\n\nGiven a server that authenticates `transfer=100&to=alice` with `naive_MAC = SHA256(secret || transfer=100&to=alice)`:\n\n```\n1. Attacker intercepts: message + naive_MAC + (server reveals or attacker guesses)\n                       len(secret || message)\n\n2. Attacker reconstructs the SHA-256 padding the server's hash would have\n   appended for that length. SHA-256 padding is deterministic: a 0x80 byte,\n   zeros, then the bit-length as a 64-bit big-endian integer.\n\n3. Attacker loads `naive_MAC` into a fresh SHA-256 instance AS the\n   chaining state (not as input).\n\n4. Attacker feeds in their extension: \"&account=evil\".\n\n5. Attacker reads out the new digest. It is identical to what the server\n   would compute on:\n      secret || transfer=100&to=alice || PADDING || &account=evil\n\n6. Attacker sends the server:\n      message = transfer=100&to=alice<PADDING>&account=evil\n      MAC     = the resumed digest\n\n7. Server recomputes SHA256(secret || that message), matches, ACCEPTS.\n```\n\nThe attacker forged a valid MAC on extended data **without ever seeing the secret**.\n\n#### About the simulation in this lesson\n\nWhen we wire up the interactive widget for this step (see the spec — coming in the integration commit), it will **simulate** the attack rather than mount a real Merkle-Damgard extension. The reason: Web Crypto's SHA-256 doesn't expose its internal chaining state, and shipping a 300-line hand-rolled SHA-256 just to demo this attack is too much weight. The simulation cheats by using its own knowledge of the secret to compute `SHA256(secret || message || extension)` honestly — what the user sees (a forged MAC that the server accepts) is exactly what a real attacker produces. Only the under-the-hood mechanic is fudged.\n\nIf you want the real exploit, [Skullsecurity's writeup](https://blog.skullsecurity.org/2012/everything-you-need-to-know-about-hash-length-extension-attacks) walks through a Python implementation against a vulnerable demo server.\n\n#### The fix in one sentence\n\nDon't let the MAC equal the internal state of a hash whose input the attacker partially controls. HMAC's solution: nest two hashes so the outer hash sees only the inner hash's *output*, never its mid-computation state. Step 4 shows the construction.",
+      "help_template": "**In plain English:** SHA-256's output IS the engine's RAM contents at the end. An attacker who steals that output can spin up a fresh engine, drop in those exact RAM contents, type more characters, and read a new valid-looking digest. The key never enters their machine. The widget on this page demonstrates the attack outcome — see the disclosure above about why we simulate rather than truly exploit.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 94,
+    "fields": {
+      "lesson": 9, "order": 4, "slug": "hmac-construction", "kind": "info",
+      "prompt_template": "### HMAC — two nested hashes\n\nRFC 2104's definition:\n\n```\nHMAC(K, m) = H( (K\\u2032 XOR opad) || H( (K\\u2032 XOR ipad) || m ) )\n```\n\nWhere:\n\n| Symbol | Meaning |\n|---|---|\n| `H` | The underlying hash function (SHA-256 here; could be SHA-1, MD5, etc.) |\n| `K` | The secret key |\n| `K\\u2032` | `K` padded with zero bytes out to the hash's **block size** (64 bytes for SHA-256). If `K` is longer than the block size, `K\\u2032 = H(K)` zero-padded. |\n| `ipad` | The byte `0x36` (`00110110`) repeated to block size — the **inner pad** |\n| `opad` | The byte `0x5C` (`01011100`) repeated to block size — the **outer pad** |\n| `XOR` | Byte-wise XOR |\n| `\\|\\|` | Concatenation |\n\nUnpacked into steps:\n\n```\n1. Normalize K to K' (zero-pad to 64 bytes, or hash if too long).\n2. Compute K' XOR ipad   (key-derived prefix #1, distinct from #2)\n3. Compute K' XOR opad   (key-derived prefix #2)\n4. inner = SHA256( (K' XOR ipad) || message )    ← first hash\n5. outer = SHA256( (K' XOR opad) || inner )      ← second hash\n6. HMAC = outer\n```\n\n#### Why the nesting defeats length extension\n\nIn the naive construction, the output `SHA256(key || m)` IS the chaining state at the end of hashing `key || m` — so an attacker can resume from it and extend. HMAC breaks that chain:\n\n- The **inner** hash's output (`inner`) is still a chaining state — but the attacker doesn't get to see it directly. It's hidden inside the outer hash.\n- The **outer** hash starts from a fresh IV with a *different* key-derived prefix (`opad`-based, not `ipad`-based). To extend the outer hash, an attacker would need to know its chaining state — but the only thing they see is the outer's final output, after which the computation is complete.\n- The attacker also cannot extend `inner` and then re-run the outer step, because computing the outer step requires the key (to derive `K' XOR opad`).\n\nTwo layers, two distinct key-derived prefixes (`ipad` vs `opad`), and the length-extension attack vanishes.\n\n#### Why `ipad` and `opad` specifically?\n\n`0x36` and `0x5C` differ in many bit positions (Hamming distance 4 out of 8 bits). The two key-derived prefixes need to look uncorrelated to the hash, which is easier when their per-byte XOR mask is structurally unlike the other. The values are otherwise arbitrary — any pair with high Hamming distance would work. RFC 2104 picked these two.\n\n#### What you don't have to think about\n\nIn practice you never write this yourself. Every language ships HMAC in stdlib:\n\n- Python: `hmac.new(key, msg, hashlib.sha256).hexdigest()`\n- Node: `crypto.createHmac('sha256', key).update(msg).digest('hex')`\n- Browser: `crypto.subtle.sign({name:'HMAC'}, key, data)` (after `importKey({hash:'SHA-256'})`)\n- Go: `hmac.New(sha256.New, key)`\n\nNext step: do it.",
+      "help_template": "**In plain English:** Hash the message twice with two different key-flavored prefixes. The inner hash produces a digest that goes INSIDE the outer hash, so the outer hash's output isn't the internal state of anything an attacker can extend. The `ipad` (0x36) and `opad` (0x5C) constants are just \"two byte values that look different enough.\"",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 95,
+    "fields": {
+      "lesson": 9, "order": 5, "slug": "compute-hmac", "kind": "input-text",
+      "prompt_template": "### Compute an HMAC\n\nType a **secret key** (any non-empty printable-ASCII string) and a **message**. The page imports your key as an HMAC key via\n\n```js\ncrypto.subtle.importKey(\"raw\", keyBytes, {name:\"HMAC\", hash:\"SHA-256\"}, false, [\"sign\",\"verify\"])\n```\n\nthen signs the message with\n\n```js\ncrypto.subtle.sign({name:\"HMAC\"}, key, messageBytes)\n```\n\nand prints the result as 64 lowercase hex characters (256 bits — SHA-256's output size).\n\nKeep both inputs under 500 printable-ASCII characters; the demo doesn't need more. The browser handles the `ipad`/`opad` padding and the two-pass hashing for you. The same `(key, message)` pair always produces the same MAC — that determinism is what lets the receiver re-derive and compare on step 6.",
+      "help_template": "**In plain English:** Type a key and a message. The browser does HMAC-SHA256 with them and shows the hex output.\n\n**Sidebar — timing-safe comparison:** In production, never compare two MACs with `==`. Most language comparisons exit early on the first byte that differs, leaking information about how many leading bytes the attacker has guessed correctly. Use `hmac.compare_digest` (Python) or `crypto.subtle.timingSafeEqual` (Node) instead — both run in constant time regardless of where the first difference is. The codegen on the Done step uses `hmac.compare_digest`.",
+      "validator_key": "compute_hmac", "codegen_key": "compute_hmac"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 96,
+    "fields": {
+      "lesson": 9, "order": 6, "slug": "verify-and-tamper", "kind": "input-text",
+      "prompt_template": "### Verify and tamper\n\nThe page now holds your `(key, message, MAC)` from the previous step. Two buttons:\n\n- **Verify** — recompute HMAC over the unchanged message with the unchanged key, compare against the saved MAC. Should return `valid`.\n- **Tamper** — flip one byte of the message (the page picks the last character), recompute the MAC against the *new* message, compare against the *original* MAC. Should return `invalid`.\n\nThat second result is the integrity guarantee in action: changing a single bit of the message changes the MAC completely (avalanche from SHA-256), so any modification — by an attacker in flight, by bit-flip corruption, by an honest typo — is detected as long as the original MAC survives.\n\n**Why this also gives you authenticity:** an attacker who modifies the message would need to recompute a new valid MAC to make the tampering undetectable. That requires the key. The key is only held by the sender and receiver. Anyone else's altered message will produce a MAC mismatch and be rejected.",
+      "help_template": "**In plain English:** Click Verify (valid). Click Tamper (invalid). MACs catch changes — that's their job.",
+      "validator_key": "verify_hmac", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 97,
+    "fields": {
+      "lesson": 9, "order": 7, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've worked through HMAC end to end:\n\n- A **MAC** is a hash + a shared key. It answers \"did this message change AND was it produced by someone with the key?\"\n- The naive construction `H(key || message)` is broken via **length extension** — Merkle-Damgard's chaining state IS the output, so an attacker can resume from a stolen MAC and append data without the key.\n- **HMAC** (RFC 2104) fixes this with nested hashing: `H((K\\u2032 XOR opad) || H((K\\u2032 XOR ipad) || m))`. The outer hash never sees a state an attacker can extend.\n- You ran HMAC-SHA256 via `crypto.subtle.sign({name:\"HMAC\"}, ...)`, watched it produce a stable hex MAC, and saw a single-byte tamper detected.\n- The Python script on the right uses stdlib `hmac.new(KEY, MESSAGE, hashlib.sha256)` — the same algorithm, same construction.\n\n#### What we skipped, for future lessons\n\n- **HKDF** — using HMAC as a *key derivation function* (RFC 5869). One HMAC-based KDF underpins TLS 1.3 and Signal.\n- **KMAC, CMAC, GMAC, Poly1305** — other MAC constructions. KMAC is the SHA-3 era MAC; CMAC and GMAC are AES-based; Poly1305 (paired with ChaCha20 in TLS 1.3) is a Wegman-Carter MAC, much faster than HMAC on short messages.\n- **HMAC-SHA1 and HMAC-SHA384/512** — same construction, different inner hash. HMAC-SHA1 is *still considered safe* (HMAC's security doesn't reduce to the underlying hash's collision resistance, only to its PRF property — and SHA-1's PRF is still fine even though its collision resistance is broken). But new systems use SHA-256 or SHA-3 anyway because there's no good reason not to.\n\n#### Forward links\n\n- **HMAC needs a shared key.** What if you don't already have one with the other party? That's what key exchange is for — see the future **X25519** lesson on Diffie-Hellman.\n- **HMAC requires the verifier to hold the same key as the signer**, which means the verifier could also produce signatures. What if you want **public verification** — anyone can verify, but only one party can sign? That's a digital signature scheme — see RSA-PSS in the [HSM lesson](/algorithms/hsm/learn/key-vaults/), and a future **Ed25519** lesson.",
+      "help_template": "**In plain English:** You learned the MAC family. Use HMAC-SHA256 with stdlib `hmac.compare_digest` and you'll be fine for 95% of authentication needs.",
+      "validator_key": "info", "codegen_key": "done"
+    }
+  }
+]
