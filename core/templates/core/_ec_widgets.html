@@ -125,16 +125,39 @@
   </div>
 </template>
 
-{# Step 7: discrete-log orbit — auto-loops 1G, 2G, … pulsing in sequence #}
+{# Step 7: discrete-log problem — text-only orbit listing.
+
+   We deliberately do NOT render a canvas here. Earlier versions tried both
+   an animated rAF loop and a static one-shot redraw; both somehow ended
+   up triggering pathological canvas resize (the canvas height grew into
+   the millions of pixels, blowing the page layout). The pedagogical point
+   (an unpredictable hop through the finite-field scatter that brute force
+   would have to enumerate) lands fine in a plain numeric table — what k=1,
+   2, 3, … evaluate to, side by side. The scatter visual itself is already
+   on step 6 (finite-field-curve). #}
 <template x-if="step.slug === 'discrete-log-problem'">
-  <div style="margin-top:14px;">
-    <canvas
-      x-ref="ecCanvasDlp"
-      x-effect="demo && $nextTick(() => { if (!$refs.ecCanvasDlp._orbitStarted) { $refs.ecCanvasDlp._orbitStarted = true; demo.runDlpOrbitAnimation($refs.ecCanvasDlp, demo.FF_A, demo.FF_B, demo.FF_P, { x: 15, y: 13 }); } })"
-      width="380" height="380"
-      style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
-    <div style="margin-top:10px;color:var(--muted);font-size:0.88em;line-height:1.5;">
-      Starting at base point <strong style="color:#22c55e;">G = (15, 13)</strong>, computing 1·G, 2·G, 3·G, … walks around the scatter chaotically. Numbered green dots are multiples of G in this curve's orbit. For real curves (secp256k1 has ~2²⁵⁶ points), brute-forcing k from Q = kG is computationally infeasible — that's the elliptic-curve discrete log problem (ECDLP), the bedrock of every EC primitive on this site.
+  <div style="margin-top:14px;padding:12px 16px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.9em;line-height:1.55;">
+    <div style="margin-bottom:8px;color:var(--muted);">The orbit of G = (15, 13) under repeated addition on <code>y² ≡ x³ + 7 (mod 17)</code>:</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(110px, 1fr));gap:6px 14px;">
+      <div>1·G = (15, 13)</div>
+      <div>2·G = (2, 10)</div>
+      <div>3·G = (8, 3)</div>
+      <div>4·G = (12, 1)</div>
+      <div>5·G = (6, 6)</div>
+      <div>6·G = (5, 8)</div>
+      <div>7·G = (10, 15)</div>
+      <div>8·G = (1, 12)</div>
+      <div>9·G = (3, 0)</div>
+      <div>10·G = (1, 5)</div>
+      <div>11·G = (10, 2)</div>
+      <div>12·G = (5, 9)</div>
+      <div>13·G = (6, 11)</div>
+      <div>14·G = (12, 16)</div>
+      <div>15·G = (8, 14)</div>
+      <div>16·G = (2, 7)</div>
+      <div>17·G = (15, 4)</div>
+      <div>18·G = ∞ (identity)</div>
     </div>
+    <div style="margin-top:12px;color:var(--muted);font-size:0.86em;">No pattern: 1·G → 2·G goes from (15,13) to (2,10), but 7·G → 8·G goes from (10,15) to (1,12). The hops look random. Given just (15,13) and, say, (8,3), <strong>which k did that?</strong> For our 18-point orbit, you can brute-force; for secp256k1's ~2²⁵⁶ points, brute force takes longer than the age of the universe. That asymmetry — fast forward, infeasible reverse — is ECDLP, the bedrock of every elliptic-curve crypto primitive on this site.</div>
   </div>
 </template>
