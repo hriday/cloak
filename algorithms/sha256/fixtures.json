@@ -1,0 +1,104 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 8,
+    "fields": {
+      "slug": "sha256",
+      "name": "SHA-256",
+      "family": "hash",
+      "status": "live",
+      "order": 8,
+      "intro_template": "## SHA-256\n\nThe workhorse cryptographic hash: any input, fixed 256-bit fingerprint. One-way, deterministic, avalanche. The primitive under TLS, Git, and HMAC."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 8,
+    "fields": {
+      "algorithm": 8,
+      "slug": "walk-the-hash",
+      "title": "SHA-256: walk the hash",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 81,
+    "fields": {
+      "lesson": 8, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## SHA-256 — a hash is not an encryption\n\nUp to now, every algorithm in this curriculum has been an **encryption** scheme — RSA, AES, Blowfish, hybrid envelopes. They all share one property: encryption is **reversible**. There's a decryption operation that recovers the original message, given the right key.\n\n**A hash function is the opposite.** It's a one-way street.\n\nSHA-256 takes any input — a single byte, a 4GB file, the entire works of Shakespeare — and produces exactly **256 bits (64 hex characters)** of output called a **digest**. There is no decryption operation. There is no key. The digest reveals essentially nothing about the input.\n\n### The five properties that make a hash cryptographic\n\n1. **Deterministic.** The same input always produces the same digest. Hash `\"hello\"` on any machine, in any year, in any language — you get the same 64 hex characters.\n2. **Fixed output size.** 256 bits, every time. A one-byte input and a one-gigabyte input both produce a 64-character hex string.\n3. **One-way (preimage-resistant).** Given a digest, you cannot feasibly find an input that hashes to it. The only known approach is to guess inputs and hash them — and the search space is 2²⁵⁶.\n4. **Collision-resistant.** You cannot feasibly find *any* two distinct inputs that produce the same digest. (The birthday bound makes this 2¹²⁸ work — still infeasible.)\n5. **Avalanche.** A 1-bit change in the input flips roughly **half** the bits in the output. The digest has no resemblance to small input perturbations.\n\n### Where SHA-256 shows up in production\n\n| Use case | What's hashed |\n|---|---|\n| TLS certificate fingerprints | The DER bytes of the certificate |\n| Bitcoin proof-of-work | Block headers (twice — SHA-256d) |\n| Git object addressing | Commits, trees, blobs (SHA-1 today, migrating) |\n| File integrity / package managers | The full file contents |\n| HMAC-SHA-256 (next lesson) | The message + a secret key |\n| Password hashing | The password — but via **PBKDF2**, **bcrypt**, **scrypt**, or **Argon2**, which iterate a hash many times to slow brute force. **Never** raw SHA-256 for passwords. |\n\n### A historical note\n\n- **SHA-1** (1995) is **deprecated** for cryptographic use — the SHAttered attack (2017) produced two real PDFs with the same SHA-1 digest. Still seen in Git object IDs and a few legacy protocols.\n- **SHA-2** (2001) is the family this lesson teaches. SHA-256 is the most common variant; SHA-384 and SHA-512 use 64-bit words and produce longer digests for the same construction.\n- **SHA-3** (2015) is a completely different construction (a sponge, not Merkle-Damgård). It's standardized but SHA-2 is still the workhorse in production.\n\nThis lesson walks the **structure** of SHA-256, then lets you compute real hashes in your browser via the Web Crypto API.",
+      "help_template": "**In plain English:** A hash is a fingerprint. You can compute the fingerprint of anything, the fingerprint is short and fixed-size, and you cannot reverse the fingerprint back into the original. Two different things have different fingerprints. That's it.",
+      "validator_key": "info", "codegen_key": "intro"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 82,
+    "fields": {
+      "lesson": 8, "order": 2, "slug": "preprocessing", "kind": "info",
+      "prompt_template": "### Preprocessing — pad the message to a multiple of 512 bits\n\nSHA-256 processes the input in **512-bit blocks**. Real inputs are almost never an exact multiple of 512 bits, so the first job is to pad the message into a clean block-aligned shape.\n\nThe padding rule has three parts:\n\n1. **Append a single `1` bit.**\n2. **Append `0` bits** until the total length (in bits) is congruent to **448 mod 512**.\n3. **Append the original message length** as a **64-bit big-endian integer**.\n\nThe result is exactly a multiple of 512 bits — usually one extra block, occasionally two when the message length is awkward.\n\n### Worked example: padding `\"abc\"`\n\nThe input is 3 bytes = 24 bits:\n\n```\n01100001 01100010 01100011\n```\n\nApply the rule:\n\n```\n01100001 01100010 01100011         <- the message (24 bits)\n1                                   <- the appended 1 bit\n0000000 ... 0000000                 <- 423 zero bits to reach 448\n00000000 00000000 00000000 00000000  <- 64-bit length field, big-endian:\n00000000 00000000 00000000 00011000     length = 24 = 0x0000000000000018\n```\n\nTotal: **exactly 512 bits, one block.** SHA-256 will compress this block and produce the final digest.\n\n### Why this specific shape?\n\n- The trailing length field makes the padding **unambiguous**. Without it, an attacker could produce two different messages that pad to the same block sequence — and then they'd hash identically.\n- The single `1` bit + zeros pattern guarantees that the padding boundary is recoverable from the padded block alone.\n- The 64-bit length field caps the maximum message at 2⁶⁴ - 1 bits (about 2 exabytes). Even a single-machine SHA-256 stream would take centuries to reach this limit.\n\nThe `\"abc\"` digest you'll see in production:\n\n```\nba7816bf 8f01cfea 414140de 5dae2223\nb0036136 a396177a 9cb410ff 61f20015\n          ... shown as 64 hex chars: ba7816bf...0015ad\n```\n\nThat's a single 512-bit block compressed to 256 bits. The next steps walk the compression itself.",
+      "help_template": "**In plain English:** The hash function only knows how to chew 512-bit chunks, so you have to round the message up to a clean chunk size. The `1` bit + zeros + length recipe makes the padding reversible (you can tell where the real message ended) and prevents two different messages from looking the same after padding.",
+      "validator_key": "info", "codegen_key": "preprocessing"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 83,
+    "fields": {
+      "lesson": 8, "order": 3, "slug": "init-state", "kind": "info",
+      "prompt_template": "### Initial state — \"nothing up my sleeve\" numbers\n\nSHA-256 maintains an internal state of **8 working hash values** `H0..H7`, each 32 bits. Before processing any blocks, these are initialized to fixed constants:\n\n```\nH0 = 0x6a09e667\nH1 = 0xbb67ae85\nH2 = 0x3c6ef372\nH3 = 0xa54ff53a\nH4 = 0x510e527f\nH5 = 0x9b05688c\nH6 = 0x1f83d9ab\nH7 = 0x5be0cd19\n```\n\nWhere do these come from? **They are the first 32 bits of the fractional parts of the square roots of the first 8 primes** (2, 3, 5, 7, 11, 13, 17, 19).\n\nFor example: √2 = 1.41421356237... The fractional part is 0.41421356237... In binary, that's `0.01101010 00001001 11100110 01100111...`, and the first 32 bits read as a hex word are `0x6a09e667`. **That's H0.**\n\nSimilarly, the compression function uses **64 round constants** `K0..K63`, each 32 bits. These are the first 32 bits of the fractional parts of the **cube roots** of the first 64 primes (2, 3, 5, 7, ..., 311).\n\nFirst few `K` values:\n\n```\nK0  = 0x428a2f98\nK1  = 0x71374491\nK2  = 0xb5c0fbcf\nK3  = 0xe9b5dba5\nK4  = 0x3956c25b\n...\n```\n\nLast few:\n\n```\nK60 = 0x90befffa\nK61 = 0xa4506ceb\nK62 = 0xbef9a3f7\nK63 = 0xc67178f2\n```\n\n### Why this matters: \"nothing up my sleeve\"\n\nThese constants could have been *anything*. A backdoored cipher might pick constants that the designer secretly knows how to invert. By tying the constants to a transparent, universally-computable recipe — *square roots and cube roots of small primes* — the designers gave the world a way to **verify there is no backdoor hidden in the constants themselves**.\n\nAnyone with a calculator can re-derive these numbers. There's no room for a hidden weakness.\n\n(Compare: the original DES S-boxes were designed by IBM and NSA in 1975 and the design rationale was kept classified for 20 years. The cryptographic community spent decades worrying whether they hid a backdoor. They didn't — but the *worry* was justified. SHA-2 made that worry impossible.)",
+      "help_template": "**In plain English:** The hash function needs 72 magic 32-bit numbers to work — 8 to start with, 64 used inside the rounds. The designers picked the most boring, transparent source they could think of: just take the square roots (then cube roots) of the small primes and read off the bits. Anyone can re-derive them. No room to hide a trapdoor.",
+      "validator_key": "info", "codegen_key": "init_state"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 84,
+    "fields": {
+      "lesson": 8, "order": 4, "slug": "compression", "kind": "info",
+      "prompt_template": "### The compression function — 64 rounds per block\n\nFor each 512-bit block, SHA-256 runs **64 rounds** that update **8 working variables** `(a, b, c, d, e, f, g, h)`. After all 64 rounds, the working variables are added back into `H0..H7` and the next block (if any) starts from the new state.\n\n### The round operations\n\nEach round uses six bit-mixing helpers. All values are 32-bit words; rotations are 32-bit rotates; addition is mod 2³².\n\n| Function | Formula |\n|---|---|\n| `Ch(e, f, g)` | `(e AND f) XOR ((NOT e) AND g)` — *choice*: bit `e` selects from `f` or `g` |\n| `Maj(a, b, c)` | `(a AND b) XOR (a AND c) XOR (b AND c)` — *majority* of the three |\n| `Σ0(a)` | `ROTR(a, 2) XOR ROTR(a, 13) XOR ROTR(a, 22)` |\n| `Σ1(e)` | `ROTR(e, 6) XOR ROTR(e, 11) XOR ROTR(e, 25)` |\n| `σ0(x)` | `ROTR(x, 7) XOR ROTR(x, 18) XOR SHR(x, 3)` — used by the message schedule |\n| `σ1(x)` | `ROTR(x, 17) XOR ROTR(x, 19) XOR SHR(x, 10)` — used by the message schedule |\n\nAt each round `t = 0..63`:\n\n```\nT1 = h + Σ1(e) + Ch(e, f, g) + K[t] + W[t]\nT2 = Σ0(a) + Maj(a, b, c)\n\nnew a = T1 + T2\nnew b = a\nnew c = b\nnew d = c\nnew e = d + T1\nnew f = e\nnew g = f\nnew h = g\n```\n\n(All additions mod 2³². The variables shift one slot to the right, and `a` and `e` get the freshly computed `T1`/`T2` values mixed in.)\n\n### The message schedule W[0..63]\n\nThe block (512 bits) becomes 16 words `W[0..15]` directly. The remaining 48 words are derived recursively:\n\n```\nW[t] = σ1(W[t-2]) + W[t-7] + σ0(W[t-15]) + W[t-16]    for t = 16..63\n```\n\nThis stretches the 512-bit input across all 64 rounds — every output bit ends up dependent on every input bit.\n\n### One round, concrete values\n\nWe won't trace 64 rounds (the σ-schedule alone is a page of arithmetic). But one round, with the initial working variables and a real `K`/`W`, looks like this:\n\n- Working variables before round 0: `(a..h) = (0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19)` (the initial `H0..H7`).\n- Round constant: `K[0] = 0x428a2f98`.\n- First message word: `W[0] = 0x61626380` (the first 32 bits of \"abc\" padded — 0x61, 0x62, 0x63 = 'a', 'b', 'c', followed by the 0x80 byte from the padding).\n\nApply:\n\n```\nΣ1(e)        = ROTR(0x510e527f, 6) XOR ROTR(0x510e527f, 11) XOR ROTR(0x510e527f, 25)\nCh(e, f, g)  = (0x510e527f AND 0x9b05688c) XOR (NOT 0x510e527f AND 0x1f83d9ab)\nT1           = h + Σ1(e) + Ch(e, f, g) + K[0] + W[0]\nΣ0(a)        = ROTR(0x6a09e667, 2) XOR ROTR(0x6a09e667, 13) XOR ROTR(0x6a09e667, 22)\nMaj(a, b, c) = (a AND b) XOR (a AND c) XOR (b AND c)\nT2           = Σ0(a) + Maj(a, b, c)\nnew a        = T1 + T2 = 0x5d6aebcd\n```\n\nWe **don't ask you to compute this by hand** — `Σ1` alone is three 32-bit rotates plus two XORs, and there are 64 rounds. But the *shape* is what matters: each round XORs and adds together pieces of every working variable, the round constant, and the schedule word. After 64 rounds, the state is thoroughly mixed.\n\n### Finalization\n\nAfter the last round, add the working variables back into the hash state:\n\n```\nH0 += a;  H1 += b;  H2 += c;  H3 += d\nH4 += e;  H5 += f;  H6 += g;  H7 += h\n```\n\nIf there are more blocks, the next block starts from these updated `H` values. After the **final** block, concatenate `H0 || H1 || ... || H7` — that's your 256-bit digest.",
+      "help_template": "**In plain English:** Take 8 working numbers. Run 64 rounds of \"add some XORs of rotated versions of yourself, mixed with a round constant and a piece of the message.\" Add the result back into the state. Repeat per block. The mix is fast on hardware (just rotates, XORs, and adds) but produces output that statistically looks random — any 1-bit change in the input changes ~half the output bits.",
+      "validator_key": "info", "codegen_key": "compression"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 85,
+    "fields": {
+      "lesson": 8, "order": 5, "slug": "walk-empty", "kind": "input-text",
+      "prompt_template": "### Compute SHA-256 of the empty string\n\nTime to run a real hash in your browser. Your first input: **the empty string** — zero bytes.\n\nWhy start here? Because SHA-256 of the empty string is a **canonical test vector**. Every correct SHA-256 implementation on Earth — from the silicon in your CPU's SHA-NI instructions, to OpenSSL, to Python's `hashlib`, to your browser's Web Crypto API — produces the **same 256-bit digest** for this input.\n\nPress the **Compute** button below. Your browser will call:\n\n```js\nconst digest = await crypto.subtle.digest(\"SHA-256\", new Uint8Array(0));\n```\n\nThat's a SHA-256 of zero input bytes. The result, rendered as 64 lowercase hex characters, will be pasted into the answer field. Submit it to confirm — the validator just checks that the value matches the canonical empty-string digest.\n\n(Anticipate `e3b0c442...b855`. You can also reproduce this from a terminal: `printf \"\" | shasum -a 256` on macOS, or `echo -n \"\" | sha256sum` on Linux.)",
+      "help_template": "**In plain English:** Hash zero bytes. The answer is a fixed, universal value — every SHA-256 implementation produces it for empty input. If your browser disagrees, your browser is broken.",
+      "validator_key": "walk_empty_hash", "codegen_key": "walk_empty"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 86,
+    "fields": {
+      "lesson": 8, "order": 6, "slug": "avalanche", "kind": "info",
+      "prompt_template": "### Avalanche — a 1-bit input change flips ~50% of output bits\n\nThe **avalanche property** is what separates a cryptographic hash from an ordinary checksum (CRC32, Adler32, etc.). An ordinary checksum *might* differ when you change one input bit — but in a predictable, localized way. A cryptographic hash should look like the input and output are statistically independent: change *anything*, and the output looks **completely different**.\n\nThe grid below shows SHA-256(`\"hello\"`) and SHA-256(`\"Hello\"`) side-by-side as 16×16 grids of bits. The only difference between the two inputs is a single bit (the case-bit of the first letter: `0x68` vs `0x48`). Bits that **differ** between the two digests are highlighted.\n\nCount them. You should see roughly **128** of 256 bits flipped — about 50%, with normal statistical wobble. That's avalanche.\n\n### Why this matters\n\n- **Tamper detection.** Change a single byte in a downloaded file and its SHA-256 changes completely. There's no \"close enough\" — the digest either matches exactly or it doesn't.\n- **Commitment schemes.** If you publish `H(secret)` in advance, you cannot later substitute a different secret that hashes to the same value (preimage resistance + avalanche together).\n- **Bitcoin mining.** Miners search for inputs whose digest starts with many leading zero bits. Avalanche guarantees that small input changes (incrementing a nonce) produce completely fresh outputs to search, so the work is essentially a brute force.\n\nThe digests for reference:\n\n```\nSHA-256(\"hello\") = 2cf24dba 5fb0a30e 26e83b2a c5b9e29e 1b161e5c 1fa7425e 73043362 938b9824\nSHA-256(\"Hello\") = 185f8db3 2271fe25 f561a6fc 938b2e26 4306ec30 4eda5180 07d1764826381969\n```\n\n(Your browser computes both via Web Crypto on this step's render — no server roundtrip.)",
+      "help_template": "**In plain English:** Change one tiny bit of the input, and roughly half the output bits flip. This is what makes a hash \"random-looking\" — there is no detectable relationship between input and output beyond \"identical inputs produce identical outputs.\"",
+      "validator_key": "info", "codegen_key": "avalanche"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 87,
+    "fields": {
+      "lesson": 8, "order": 7, "slug": "hash-a-sentence", "kind": "input-text",
+      "prompt_template": "### Hash a sentence — determinism in action\n\nType **any sentence** (printable ASCII, up to 500 characters). On Continue, your browser computes SHA-256 of the bytes via `crypto.subtle.digest`, and the result appears as both hex and binary.\n\n### What to try\n\n- **Submit the same sentence twice.** Same digest, every time — that's determinism.\n- **Change a single character.** The digest is unrecognizable from the original — avalanche again.\n- **Compare lengths.** A one-character sentence and a 500-character paragraph produce digests of the *same* size: 256 bits. The output is fixed-length regardless of input.\n\nThis is exactly the operation that:\n\n- **TLS** uses to fingerprint a certificate (the long hex string in your browser's certificate viewer).\n- **Git** uses to address an object (Git addresses by SHA-1 today, with SHA-256 migration underway).\n- **Package managers** (apt, dnf, brew, npm) use to verify downloaded packages.\n- **HMAC-SHA-256** uses internally, with a secret key mixed in (next lesson).",
+      "help_template": "**In plain English:** Type something. Your browser hashes it. You'll see the 256-bit fingerprint. Type the same thing again — you get the same fingerprint. That's the whole game.",
+      "validator_key": "pick_sha_sentence", "codegen_key": "hash_a_sentence"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 88,
+    "fields": {
+      "lesson": 8, "order": 8, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've walked the structure of SHA-256 and computed real digests in your browser via Web Crypto.\n\n### The five properties, observed in this lesson\n\n| Property | Where you saw it |\n|---|---|\n| **Deterministic** | Step 7 — re-submitting the same sentence produced the same digest |\n| **Fixed output size** | All digests in this lesson: 256 bits = 64 hex characters |\n| **One-way** | The whole lesson — there is no \"decrypt SHA-256\" operation, period |\n| **Collision-resistant** | Property of the construction; no two distinct inputs are known to collide |\n| **Avalanche** | Step 6 — \"hello\" vs \"Hello\" flipped ~128 of 256 bits |\n\n### What's next\n\nA hash alone tells you that data **hasn't been tampered with** *if* you trust the source of the digest. But a hash by itself **can't prove who sent a message** — anyone can re-hash a modified message and publish the new digest.\n\nThat's what the next lesson — **HMAC** — solves. HMAC mixes a secret key into the hash so that only someone holding the key can produce a digest the receiver accepts. Same SHA-256 primitive underneath, with a key sandwich on top.\n\nFurther down the road: **Ed25519** and **X25519** for asymmetric signatures and key exchange, both of which use SHA-512 internally. SHA-2 is everywhere.\n\nClick **Show full script** below for a runnable Python `hashlib.sha256` demo.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "done"
+    }
+  }
+]
