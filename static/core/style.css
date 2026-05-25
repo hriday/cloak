@@ -39,6 +39,32 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
 .help p:last-of-type { margin-bottom: 0; }
 .help code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; font-size: 0.95em; color: #e2e8f0; }
 
+/* ---- landing page (bundles + family groups) ---- */
+.landing-lede { color: var(--muted); font-size: 1.05em; margin-top: -4px; margin-bottom: 28px; max-width: 640px; }
+.landing-section { margin-bottom: 36px; }
+.landing-section > .section-header { margin-bottom: 14px; }
+.landing-section > .section-header h2 { margin: 0 0 4px 0; font-size: 1.15em; text-transform: uppercase; letter-spacing: 0.08em; color: #cbd5e1; }
+.landing-section > .section-header p { margin: 0; color: var(--muted); font-size: 0.92em; }
+
+.bundle-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.bundle-card { display: block; background: var(--panel); border-radius: 10px; padding: 18px 20px; border: 1px solid #334155; text-decoration: none; color: inherit; transition: border-color 0.15s, transform 0.15s; }
+.bundle-card:hover { border-color: var(--accent); transform: translateY(-1px); }
+.bundle-card h3 { margin: 0 0 6px 0; font-size: 1.1em; color: #f1f5f9; }
+.bundle-tagline { color: var(--muted); font-size: 0.92em; line-height: 1.5; margin: 0 0 12px 0; }
+.bundle-path { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-bottom: 12px; font-size: 0.82em; }
+.bundle-chip { background: var(--code-bg); border: 1px solid #475569; border-radius: 4px; padding: 2px 8px; color: #cbd5e1; font-family: ui-monospace, monospace; }
+.bundle-arrow { color: var(--muted); }
+.bundle-start { color: var(--accent); font-weight: 600; font-size: 0.9em; }
+
+.family-group { margin-bottom: 22px; }
+.family-label { margin: 0 0 2px 0; font-size: 0.95em; color: #f1f5f9; }
+.family-blurb { margin: 0 0 10px 0; color: var(--muted); font-size: 0.88em; }
+.algo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.algo-card { display: block; background: var(--panel); border-radius: 8px; padding: 14px 16px; text-decoration: none; color: inherit; border: 1px solid transparent; transition: border-color 0.15s; }
+.algo-card:hover { border-color: #475569; }
+.algo-card h4 { margin: 0 0 4px 0; font-size: 1em; color: #f1f5f9; }
+.algo-intro { margin: 0; color: var(--muted); font-size: 0.85em; line-height: 1.5; }
+
 /* ---- auth forms (signup, login, logged-out) ---- */
 .auth-card { max-width: 400px; margin: 40px auto; }
 .auth-card h1 { margin-top: 0; font-size: 1.5em; }

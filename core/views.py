@@ -1,11 +1,42 @@
+from collections import OrderedDict
+
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, get_object_or_404
+from .bundles import resolve_bundles
 from .models import Algorithm, Lesson, UserProgress
+
+
+# Display order + label for family sections on the landing. Hidden if empty.
+# Order matches a rough "easy → exotic" pedagogical progression.
+FAMILY_SECTIONS = [
+    ("asymmetric", "Asymmetric", "Public/private keypairs. Anyone can encrypt; only the holder can decrypt — or sign."),
+    ("symmetric", "Symmetric", "Shared-key ciphers. Both sides hold the same key; fast enough for bulk data."),
+    ("pq", "Post-quantum", "Algorithms designed to survive an adversary with a large quantum computer."),
+    ("hsm", "Key management & HSMs", "Patterns and devices for protecting the key material itself — vaults, not algorithms."),
+]
 
 
 def landing(request):
     algorithms = list(Algorithm.objects.filter(status="live"))
-    return render(request, "core/landing.html", {"algorithms": algorithms})
+    by_slug = {a.slug: a for a in algorithms}
+    bundles = resolve_bundles(by_slug)
+
+    # Group by family, preserving the FAMILY_SECTIONS order.
+    grouped = OrderedDict()
+    for family_key, family_label, family_blurb in FAMILY_SECTIONS:
+        members = [a for a in algorithms if a.family == family_key]
+        if not members:
+            continue
+        grouped[family_key] = {
+            "label": family_label,
+            "blurb": family_blurb,
+            "algorithms": members,
+        }
+
+    return render(request, "core/landing.html", {
+        "bundles": bundles,
+        "family_sections": grouped,
+    })
 
 
 def algorithm_intro(request, slug):

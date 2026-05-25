@@ -2,14 +2,51 @@
 {% block title %}cloak — learn cryptography by doing it{% endblock %}
 {% block content %}
 <h1>Learn cryptography by doing the math.</h1>
-<p>Pick an algorithm. Walk through it step by step. Get the Python code as you go.</p>
+<p class="landing-lede">Pick a journey, or browse the catalog. Each algorithm walks step by step from the basic math to a Python script you can run.</p>
 
-<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:24px;">
-  {% for algo in algorithms %}
-    <a class="card" href="{% url 'algorithm_intro' algo.slug %}" style="text-decoration:none;color:inherit;">
-      <h3>{{ algo.name }}</h3>
-      <p style="color:var(--muted)">{{ algo.get_family_display }}</p>
-    </a>
+{% if bundles %}
+<section class="landing-section">
+  <div class="section-header">
+    <h2>Start here</h2>
+    <p>Curated journeys — pick one to see how the pieces connect.</p>
+  </div>
+  <div class="bundle-grid">
+    {% for bundle in bundles %}
+      <a class="bundle-card" href="{% url 'algorithm_intro' bundle.first.slug %}">
+        <h3>{{ bundle.title }}</h3>
+        <p class="bundle-tagline">{{ bundle.tagline }}</p>
+        <div class="bundle-path">
+          {% for algo in bundle.algorithms %}
+            <span class="bundle-chip">{{ algo.name }}</span>{% if not forloop.last %}<span class="bundle-arrow">→</span>{% endif %}
+          {% endfor %}
+        </div>
+        <span class="bundle-start">Start with {{ bundle.first.name }} →</span>
+      </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="landing-section">
+  <div class="section-header">
+    <h2>All algorithms</h2>
+    <p>The full catalog, grouped by family.</p>
+  </div>
+  {% for family_key, section in family_sections.items %}
+    <div class="family-group">
+      <h3 class="family-label">{{ section.label }}</h3>
+      <p class="family-blurb">{{ section.blurb }}</p>
+      <div class="algo-grid">
+        {% for algo in section.algorithms %}
+          <a class="algo-card" href="{% url 'algorithm_intro' algo.slug %}">
+            <h4>{{ algo.name }}</h4>
+            {% if algo.intro_template %}
+              <p class="algo-intro">{{ algo.intro_template|truncatechars:140 }}</p>
+            {% endif %}
+          </a>
+        {% endfor %}
+      </div>
+    </div>
   {% endfor %}
-</div>
+</section>
 {% endblock %}

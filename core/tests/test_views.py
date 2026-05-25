@@ -12,6 +12,49 @@ def test_landing_lists_live_algorithm(client):
 
 
 @pytest.mark.django_db
+def test_landing_groups_by_family(client):
+    Algorithm.objects.create(slug="rsa", name="RSA", family="asymmetric", status="live", order=1)
+    Algorithm.objects.create(slug="aes", name="AES", family="symmetric", status="live", order=2)
+    resp = client.get(reverse("landing"))
+    assert resp.status_code == 200
+    # Both family section headers should appear
+    assert b"Asymmetric" in resp.content
+    assert b"Symmetric" in resp.content
+    # Empty families (post-quantum, hsm) should be hidden
+    assert b"Post-quantum" not in resp.content
+
+
+@pytest.mark.django_db
+def test_landing_shows_bundles_when_algorithms_live(client):
+    """Bundles surface on the landing once their first algorithm is live."""
+    Algorithm.objects.create(slug="rsa", name="RSA", family="asymmetric", status="live", order=1)
+    Algorithm.objects.create(slug="aes", name="AES", family="symmetric", status="live", order=2)
+    Algorithm.objects.create(slug="hybrid", name="Hybrid Encryption", family="asymmetric", status="live", order=3)
+    resp = client.get(reverse("landing"))
+    # All three "How HTTPS works" algorithms live → bundle appears
+    assert b"Start here" in resp.content
+    assert b"How HTTPS works" in resp.content
+
+
+def test_resolve_bundles_skips_missing_algorithms():
+    """Bundles with partial coverage are kept (and trimmed). Bundles with no
+    live algorithms are dropped."""
+    from core.bundles import resolve_bundles
+    class FakeAlgo:
+        def __init__(self, slug):
+            self.slug = slug
+    only_rsa = {"rsa": FakeAlgo("rsa")}
+    bundles = resolve_bundles(only_rsa)
+    # "how-https-works" starts with rsa → kept with one algorithm
+    https = next((b for b in bundles if b["slug"] == "how-https-works"), None)
+    assert https is not None
+    assert [a.slug for a in https["algorithms"]] == ["rsa"]
+    # "how-card-payments-work" starts with hsm (not live) → no live algos → dropped
+    payments = next((b for b in bundles if b["slug"] == "how-card-payments-work"), None)
+    assert payments is None
+
+
+@pytest.mark.django_db
 def test_algorithm_intro_renders(client):
     algo = Algorithm.objects.create(slug="rsa", name="RSA", family="asymmetric", status="live", order=1)
     from core.models import Lesson
