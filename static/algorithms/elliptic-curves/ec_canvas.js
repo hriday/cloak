@@ -75,8 +75,14 @@ export function easeInOut(t) {
 // dimension capture; the entry vanishes automatically when the node is GC'd.
 const _origDims = new WeakMap();
 
+let _setupCalls = 0;
 export function setupCanvas(canvas, viewport) {
   const dpr = window.devicePixelRatio || 1;
+  _setupCalls++;
+  if (_setupCalls <= 5 || _setupCalls % 50 === 0) {
+    const ref = canvas.getAttribute("x-ref") || "?";
+    console.log(`[ec setupCanvas #${_setupCalls}] ref=${ref} cur w=${canvas.width} h=${canvas.height} attrH=${canvas.getAttribute("height")} hasMapEntry=${_origDims.has(canvas)}`);
+  }
   // Capture original CSS-pixel dimensions on first call. We read them from
   // canvas.getAttribute('width'/'height') — those are the *HTML attribute*
   // values the template specified. Note: canvas.width and the HTML attribute
