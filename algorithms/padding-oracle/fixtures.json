@@ -1,0 +1,94 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 14,
+    "fields": {
+      "slug": "padding-oracle",
+      "name": "Padding Oracle Attack",
+      "family": "symmetric",
+      "status": "live",
+      "order": 14,
+      "intro_template": "## Padding oracle attack\n\nA server that distinguishes \"bad padding\" from other errors leaks one bit per query — enough to decrypt CBC ciphertext without the key."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 14,
+    "fields": {
+      "algorithm": 14,
+      "slug": "decrypt-without-the-key",
+      "title": "Padding oracle: decrypt without the key",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 141,
+    "fields": {
+      "lesson": 14, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## The setup\n\nImagine a server that receives **encrypted requests**: the client sends `iv || ciphertext`, the server decrypts under a shared AES-128 key in CBC mode, validates the PKCS7 padding, checks a MAC, and processes the request. Every step but the last is invisible to anyone outside the box. From the outside, you see one of three responses:\n\n- **`ok`** — everything passed; the request went through.\n- **`bad_padding`** — decryption produced bytes whose PKCS7 padding is malformed.\n- **`bad_mac`** — padding was fine, but the message authentication code didn't match.\n\nIt sounds harmless. The server is being polite — \"your request didn't make sense, here's why.\" In fact, the server has just handed you a **side channel**: you can distinguish \"the padding parsed\" from \"the padding didn't parse,\" and that single bit is enough to recover the full plaintext without ever knowing the key.\n\nThis is the **padding oracle attack**, introduced by Serge Vaudenay (Eurocrypt 2002). The same trick — distinguish padding errors from other errors — has powered:\n\n- **BEAST** (2011) on TLS 1.0 — exploited CBC's predictable IV alongside the padding oracle to decrypt session cookies.\n- **Lucky 13** (2013) on TLS 1.0/1.1 — the padding-vs-MAC distinguisher leaked through *timing* (the MAC check is faster when padding strips fewer bytes), recovered via a million-query statistical attack.\n- **POODLE** (2014) on SSLv3 — the death blow that finally killed SSLv3 in browsers.\n- Every **ASP.NET ViewState** breach pre-2010, every **JSF view-state** decryption, every **Padbuster** target.\n\nOver the next 6 steps you'll mount the attack yourself, end to end, against an in-page server. No network calls — the simulated server runs in JavaScript on this page and responds in microseconds.",
+      "help_template": "**In plain English:** Every prior lesson on this site taught a primitive — how to *do* crypto. This one teaches how to *break* it. The target is a server that's polite about its errors. Politeness, in cryptography, is a vulnerability.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 142,
+    "fields": {
+      "lesson": 14, "order": 2, "slug": "pkcs7-recap", "kind": "info",
+      "prompt_template": "### PKCS7 padding — quick recap\n\nAES is a 16-byte block cipher. To encrypt a message that isn't a multiple of 16 bytes, you have to pad it first. **PKCS7** (RFC 5652 §6.3) is the universal scheme:\n\n> To pad N bytes (1 ≤ N ≤ 16), append N copies of the byte `N`.\n\nExamples:\n\n```\nplaintext (14 bytes):  hi there world\npadded (16 bytes):     hi there world . . .    where . = 0x02 0x02 0x02\n                                                wait, 16 − 14 = 2 bytes of 0x02\n\nplaintext (3 bytes):   abc\npadded (16 bytes):     abc \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D \\x0D\n                          ← 16 − 3 = 13 bytes of 0x0D\n\nplaintext (16 bytes):  exactly-one-blk!\npadded (32 bytes):     exactly-one-blk! followed by 16 bytes of 0x10\n                       (a full-block pad when the input is already a multiple of 16 —\n                        otherwise there'd be no way to distinguish a padded message\n                        from an unpadded one.)\n```\n\n**Validation** is the inverse: read the last byte `N`, require `1 ≤ N ≤ 16`, require the last `N` bytes all equal `N`. If any check fails, the padding is malformed.\n\nThe validation rule is the entire attack surface. The naive implementation — \"check the last byte, then check N bytes match\" — is correct. It's not the validation that's broken. What's broken is **exposing the validation result** to the attacker as a distinguishable response.",
+      "help_template": "**In plain English:** Padding lets you encrypt messages that aren't a multiple of 16 bytes. PKCS7 encodes the pad length into the pad bytes themselves so decryption can find and strip them. Everyone uses it. It is not, by itself, broken.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 143,
+    "fields": {
+      "lesson": 14, "order": 3, "slug": "bit-flipping", "kind": "info",
+      "prompt_template": "### The CBC bit-flipping property\n\nCBC decryption, for two adjacent ciphertext blocks `C_{n-1}` and `C_n`:\n\n```\nP_n = D_K(C_n)  XOR  C_{n-1}\n```\n\nwhere `D_K` is the AES decryption under the secret key `K`. The structural fact that powers the attack:\n\n- **`D_K(C_n)` is fixed.** The attacker doesn't know it, but they don't need to. It's a constant determined by the secret key and the ciphertext block — which the attacker can't change without knowing the key.\n- **`C_{n-1}` is attacker-controlled.** It's just bytes on the wire. The attacker can rewrite it freely.\n\nFlipping bit X of `C_{n-1}` flips bit X of `P_n` — exactly, predictably. The attacker can't *see* `P_n`, but they can shape it.\n\n**The key insight:** if the attacker can choose `C_{n-1}` such that the resulting plaintext `P_n` ends in valid PKCS7 padding — say, the last byte is `0x01` — the server returns `ok` (or at worst, advances past the padding check). Otherwise it returns `bad_padding`.\n\nThat's the bit of information that leaks. \"Did my forged plaintext end in valid padding?\" Yes/no, 256 times — one per candidate last-byte value — until one combination yields `ok`. That one combination tells the attacker exactly what `D_K(C_n)`'s last byte is, which (XOR'd with the real `C_{n-1}`'s last byte) gives the real plaintext's last byte.\n\nThe attack is just sweeping candidate IV bytes against the oracle until one stops saying `bad_padding`.",
+      "help_template": "**In plain English:** In CBC, the previous ciphertext block is XOR'd into the decrypted current block to produce the plaintext. If you control the previous block, you control the plaintext bit-for-bit — even though you don't know the key. The oracle then tells you which choices produced valid padding. That's all you need.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 144,
+    "fields": {
+      "lesson": 14, "order": 4, "slug": "attack-one-byte", "kind": "input-text",
+      "prompt_template": "### Recover the last byte\n\nThe page has spun up a simulated server. It holds:\n\n- A **random AES-128 key** (regenerated every time you reload).\n- A **random 16-byte plaintext** (one of a small bank — you'll see which when you finish the attack).\n- The corresponding **ciphertext** `iv || C_1`, displayed below.\n\nYour goal: recover **just the last byte** of the plaintext, using only `oracle.query(iv_hex, ct_hex)` → `\"ok\" | \"bad_padding\" | \"internal_error\"`.\n\n**The procedure** the page will run on \"Run attack\":\n\n1. Build a forged IV — same as the real IV except the last byte is `candidate`.\n2. Send `oracle.query(forged_iv, C_1)`.\n3. If response is `bad_padding`, increment `candidate` and try again. If response is anything else, you've found a hit.\n4. On hit, derive `plaintext[15] = candidate XOR 0x01 XOR real_iv[15]`.\n\nAverage: ~128 queries. Worst case: 256.\n\n**The 0x02 0x02 wrinkle:** sometimes a candidate produces a plaintext ending in `…0x02 0x02` (the second-to-last byte already happened to decrypt to `0x02`, and our forged last byte produces another `0x02`). That's also valid PKCS7, so the oracle says `ok` — but the byte we'd derive would be wrong. The attack disambiguates by also perturbing the second-to-last forged-IV byte: if the response stays non-`bad_padding`, the suffix was truly `0x01` and we keep the candidate. If it becomes `bad_padding`, it was `0x02 0x02` and we keep sweeping. Two queries per hit, worst case — folded into the counter below.\n\nClick **Run attack** when ready.",
+      "help_template": "**In plain English:** You're going to brute-force 256 values of the IV's last byte until the server stops saying \"bad padding.\" The hit tells you what value the secret key decrypts the ciphertext's last byte to — which is exactly the information you need to recover the corresponding plaintext byte. The key never leaves the server. You never compute AES yourself. You just send bytes and watch responses.",
+      "validator_key": "recover_byte", "codegen_key": "attack_one_byte"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 145,
+    "fields": {
+      "lesson": 14, "order": 5, "slug": "attack-full-block", "kind": "input-text",
+      "prompt_template": "### Recover the whole block\n\nOne byte was nice. Now the whole thing.\n\nThe induction:\n\n- Once you have the **last byte**, you can force the plaintext's last byte to any value you want by XOR-ing the forged IV byte appropriately. Force it to `0x02`.\n- Now sweep the **second-to-last byte** of the forged IV's 256 candidates, looking for valid `0x02 0x02` padding. When one hits, you've learned the second-to-last plaintext byte.\n- Force the last two plaintext bytes to `0x03 0x03`. Sweep the third-to-last byte's 256 candidates. Continue.\n- Force `0x04 0x04 0x04 0x04`. Sweep. Force `0x05 0x05 0x05 0x05 0x05`. Sweep. Repeat 16 times.\n\nEach byte: ~128 oracle queries on average. Total: ~2048 queries to decrypt one block. **No key, no problem.**\n\nClick **Run attack** to watch it happen byte by byte. The plaintext skeleton (`????????????????`) fills in right-to-left as each byte gets recovered. Final state: the original plaintext, in cleartext, displayed below — and a counter telling you exactly how many oracle queries it cost.\n\nReal Vaudenay-style attacks against TLS or ASP.NET ViewState made *millions* of HTTP requests over hours. Yours runs in milliseconds because the \"server\" is a function in your browser. The structural attack is identical.",
+      "help_template": "**In plain English:** Decrypting one byte was a trick. Decrypting all 16 is the same trick, 16 times. Each new byte uses the already-recovered bytes to set up the padding the next one is searching for. By byte 16 you have the whole plaintext, and you've never seen the key.",
+      "validator_key": "recover_block", "codegen_key": "attack_full_block"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 146,
+    "fields": {
+      "lesson": 14, "order": 6, "slug": "defenses", "kind": "info",
+      "prompt_template": "### How the industry recovered\n\nThe padding oracle attack is structural — it exploits the *combination* of (a) unauthenticated encryption, (b) a padding check that runs before the integrity check, and (c) distinguishable error responses. Fix any one of those and the attack falls apart. The industry has fixed all three.\n\n**1. Encrypt-then-MAC, not MAC-then-encrypt.**\n\nTLS 1.0/1.1 did the wrong order: on receive, decrypt → unpad → check MAC. The padding check ran before (and revealed errors before) the MAC check fired. The fix: **encrypt-then-MAC** (RFC 7366) — the MAC is computed over the *ciphertext*, so on receive you verify the MAC first; only if it passes do you decrypt. A forged ciphertext fails the MAC check and never reaches the padding check, so no padding-validity bit ever escapes.\n\n**2. AEAD modes — the modern default.**\n\nThe more durable fix: don't use CBC at all. **AEAD** (Authenticated Encryption with Associated Data) modes combine encryption and authentication into one primitive, so a forged ciphertext is rejected before any decryption work happens — no padding to oracle.\n\n- **AES-GCM** (NIST SP 800-38D) — every modern TLS 1.3 stack supports it; hardware-accelerated on every CPU with AES-NI.\n- **ChaCha20-Poly1305** (RFC 8439) — Dan Bernstein's design; faster than AES-GCM on phones and CPUs without AES-NI; mandatory in TLS 1.3, default in WireGuard and OpenSSH.\n\nWith AEAD, the very concept of a \"padding oracle\" doesn't exist — there's no padding, and any tampering is caught before the cipher's internals run.\n\n**3. Constant-time validation as a stopgap.**\n\nLucky 13 leaked padding info through *timing*: the MAC check is faster when padding strips more bytes. The mitigation in TLS 1.0/1.1 was to make the MAC check run in constant time regardless of padding length. It worked, sort of — but the cleaner fix was just to ship TLS 1.2 with AEAD ciphers and deprecate CBC.\n\n**TLS 1.3** (2018) settled the question for the web: **AEAD only.** No more CBC, no more padding oracles in HTTPS.",
+      "help_template": "**In plain English:** The attack works because the server says \"this passed the padding check, this didn't.\" The fix is to never make that distinction visible — either by checking integrity before padding (encrypt-then-MAC) or by using a primitive that has no padding at all (AEAD). TLS 1.3 chose option two and never looked back.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 147,
+    "fields": {
+      "lesson": 14, "order": 7, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've mounted a full Vaudenay padding-oracle attack:\n\n- The **setup** — a server that distinguishes `bad_padding` from other errors is the entire vulnerability.\n- **PKCS7 padding** rules and the validation that becomes the attack surface.\n- The **CBC bit-flipping property** — `P_n = D_K(C_n) XOR C_{n-1}`, with `C_{n-1}` attacker-controlled.\n- A **single-byte recovery** in ~128 queries, including the `0x02 0x02` false-positive handling.\n- A **full-block recovery** in ~2048 queries — the entire plaintext, no key.\n- **Defenses**: encrypt-then-MAC, AEAD modes (GCM, ChaCha20-Poly1305), constant-time validation as a stopgap, and TLS 1.3's resolution of the question by abandoning CBC entirely.\n\nWhat the codegen below shows: the **same attack in Python**, run against a mock server defined in the same file. Drop it in a venv with `pip install cryptography`, run it, watch ~2048 oracle queries decrypt a block. Then look at the `decrypt_or_error` function — the entire vulnerability is *that one function returning different strings for different failure modes*. Delete the distinction, the oracle disappears.\n\nForward links:\n\n- **AES-GCM** (in the AES lesson) — the AEAD that supplanted CBC in TLS 1.2+.\n- **ChaCha20-Poly1305** — the modern AEAD alternative; the algorithm that powers TLS 1.3 on mobile.\n- **Bleichenbacher's attack** (deferred to its own lesson) — the same flavor of oracle attack against RSA PKCS#1 v1.5. Different primitive, same shape.\n- **Lucky 13** and **BEAST** as the most consequential real-world incarnations — exploited timing and predictable-IV variants of the same structural bug.\n\nGo back to the [home page](/) to revisit any algorithm.",
+      "help_template": "**The takeaway:** Authenticated encryption isn't a nice-to-have — it's the entire reason TLS 1.3 doesn't have padding oracle attacks. Every place you've seen people argue \"just use a MAC\" — this attack is why.",
+      "validator_key": "info", "codegen_key": "full_script"
+    }
+  }
+]
