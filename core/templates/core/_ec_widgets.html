@@ -1,45 +1,48 @@
-{% comment %} Elliptic-curves widgets. Simplified static visualizations; the
-   widgets read precomputed data from the wizard component (this.ecCurvePath,
-   this.ecFfGridHtml, this.ecFfPointsHtml, this.ecDlpOrbitHtml, etc.) rather
-   than carrying their own x-data scopes. This sidesteps known Alpine + SVG
-   bugs around <template x-for> inside <svg> and x-data JS-parsing inside
-   HTML attributes. The animations from the original plan are dropped here;
-   the pedagogical static visuals remain.
+{% comment %} Elliptic-curves widgets — canvas + requestAnimationFrame.
+
+   Each animated step:
+     1. A bare <canvas> element with x-ref so the click handler can grab it.
+     2. A button whose @click handler calls demo.runAddAnimation(...) /
+        demo.runDoubleAnimation(...) / etc. — those names are exported by
+        static/algorithms/elliptic-curves/ec_canvas.js and re-exported by
+        ec_demo.js, so they resolve through the wizard's `demo` slot.
+
+   We deliberately do NOT introduce any new Alpine x-data scopes inside these
+   templates: the prior SVG approach hit two parsing bugs (x-data inside <svg>
+   doesn't propagate loop scope; multi-line Django {# … #} comments inside
+   x-data attributes corrupt the JS). Canvas sidesteps both — every dynamic
+   pixel comes from imperative drawing inside a rAF loop.
 {% endcomment %}
 
-{# Step 2: the curve plot (static) #}
+{# Step 2: the curve plot (static, painted on mount) #}
 <template x-if="step.slug === 'the-curve'">
   <div style="margin-top:14px;">
-    <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
-      <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      <text x="540" y="220" fill="#888" font-size="11" font-family="ui-monospace, monospace">x</text>
-      <text x="305" y="40" fill="#888" font-size="11" font-family="ui-monospace, monospace">y</text>
-      <path :d="ecCurvePath" fill="none" stroke="#5eead4" stroke-width="2" />
-    </svg>
+    <canvas
+      x-ref="ecCanvasCurve"
+      x-effect="demo && $nextTick(() => demo.drawStatic($refs.ecCanvasCurve, demo.DEFAULT_A, demo.DEFAULT_B, { xMin: -3.2, xMax: 3.2, yMin: -3.2, yMax: 3.2 }))"
+      width="600" height="400"
+      style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
     <div style="margin-top:8px;color:var(--muted);font-size:0.88em;line-height:1.5;">
       Showing <code>y² = x³ − 3x + 5</code> over [−3.2, 3.2]. The curve is symmetric about the x-axis because <em>y</em> is squared. Discriminant <code>4a³ + 27b² ≠ 0</code> guarantees the curve is non-singular — no cusps or self-intersections — so the group operations are well-defined.
     </div>
   </div>
 </template>
 
-{# Step 3: point addition #}
+{# Step 3: point addition — chord + reflect animation #}
 <template x-if="step.slug === 'point-addition'">
   <div style="margin-top:14px;">
-    <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
-      <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      <path :d="ecCurvePath" fill="none" stroke="#5eead4" stroke-width="2" />
-      <circle :cx="ecToPx(0)" :cy="ecToPy(Math.sqrt(5))" r="5" fill="#ef4444" />
-      <text :x="ecToPx(0) + 8" :y="ecToPy(Math.sqrt(5)) - 6" fill="#ef4444" font-size="13" font-family="ui-monospace, monospace">P</text>
-      <circle :cx="ecToPx(2)" :cy="ecToPy(Math.sqrt(7))" r="5" fill="#60a5fa" />
-      <text :x="ecToPx(2) + 8" :y="ecToPy(Math.sqrt(7)) - 6" fill="#60a5fa" font-size="13" font-family="ui-monospace, monospace">Q</text>
-      <line x-show="state.ec_p_plus_q" :x1="ecToPx(0)" :y1="ecToPy(Math.sqrt(5))" :x2="ecToPx(2)" :y2="ecToPy(Math.sqrt(7))" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4 3" />
-      <circle x-show="state.ec_p_plus_q" :cx="ecToPx((state.ec_p_plus_q || {x:0}).x)" :cy="ecToPy((state.ec_p_plus_q || {y:0}).y)" r="5" fill="#22c55e" />
-      <text x-show="state.ec_p_plus_q" :x="ecToPx((state.ec_p_plus_q || {x:0}).x) + 8" :y="ecToPy((state.ec_p_plus_q || {y:0}).y) - 6" fill="#22c55e" font-size="13" font-family="ui-monospace, monospace">P+Q</text>
-    </svg>
+    <canvas
+      x-ref="ecCanvasAdd"
+      x-effect="demo && $nextTick(() => demo.drawStatic($refs.ecCanvasAdd, demo.DEFAULT_A, demo.DEFAULT_B, { xMin: -3.2, xMax: 3.2, yMin: -3.2, yMax: 3.2 }))"
+      width="600" height="400"
+      style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button class="btn" @click="check()">Compute P + Q</button>
+      <button class="btn" @click="(async () => {
+        const P = { x: 0, y: Math.sqrt(5) };
+        const Q = { x: 2, y: Math.sqrt(7) };
+        await demo.runAddAnimation($refs.ecCanvasAdd, demo.DEFAULT_A, demo.DEFAULT_B, P, Q, { xMin: -3.2, xMax: 3.2, yMin: -3.2, yMax: 3.2 });
+        await check();
+      })()">Animate P + Q</button>
       <button class="btn secondary" x-show="state.ec_p_plus_q" @click="advance()">Continue →</button>
     </div>
     <template x-if="state.ec_p_plus_q">
@@ -53,25 +56,25 @@
   </div>
 </template>
 
-{# Step 4: point doubling #}
+{# Step 4: point doubling — tangent + reflect animation #}
 <template x-if="step.slug === 'point-doubling'">
   <div style="margin-top:14px;">
-    <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
-      <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      <path :d="ecCurvePath" fill="none" stroke="#5eead4" stroke-width="2" />
-      <circle :cx="ecToPx(1)" :cy="ecToPy(Math.sqrt(3))" r="5" fill="#ef4444" />
-      <text :x="ecToPx(1) + 8" :y="ecToPy(Math.sqrt(3)) - 6" fill="#ef4444" font-size="13" font-family="ui-monospace, monospace">P</text>
-      <circle x-show="state.ec_2p" :cx="ecToPx((state.ec_2p || {x:0}).x)" :cy="ecToPy((state.ec_2p || {y:0}).y)" r="5" fill="#22c55e" />
-      <text x-show="state.ec_2p" :x="ecToPx((state.ec_2p || {x:0}).x) + 8" :y="ecToPy((state.ec_2p || {y:0}).y) - 6" fill="#22c55e" font-size="13" font-family="ui-monospace, monospace">2P</text>
-    </svg>
+    <canvas
+      x-ref="ecCanvasDouble"
+      x-effect="demo && $nextTick(() => demo.drawStatic($refs.ecCanvasDouble, demo.DEFAULT_A, demo.DEFAULT_B, { xMin: -3.2, xMax: 3.2, yMin: -3.2, yMax: 3.2 }))"
+      width="600" height="400"
+      style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
     <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button class="btn" @click="check()">Compute 2P (= P + P)</button>
+      <button class="btn" @click="(async () => {
+        const P = { x: 2, y: Math.sqrt(7) };
+        await demo.runDoubleAnimation($refs.ecCanvasDouble, demo.DEFAULT_A, demo.DEFAULT_B, P, { xMin: -3.2, xMax: 3.2, yMin: -3.2, yMax: 3.2 });
+        await check();
+      })()">Animate 2P</button>
       <button class="btn secondary" x-show="state.ec_2p" @click="advance()">Continue →</button>
     </div>
     <template x-if="state.ec_2p">
       <div style="margin-top:12px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
-        <div>P = (1, √3) ≈ (1, <span x-text="Math.sqrt(3).toFixed(3)"></span>)</div>
+        <div>P = (2, √7) ≈ (2, <span x-text="Math.sqrt(7).toFixed(3)"></span>)</div>
         <div style="color:var(--ok, #22c55e);"><strong>2P</strong> = (<span x-text="state.ec_2p.x.toFixed(3)"></span>, <span x-text="state.ec_2p.y.toFixed(3)"></span>)</div>
         <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">When P = Q, the "line through them" is the <em>tangent</em> at P. Same recipe: find where it hits the curve a second time, reflect.</div>
       </div>
@@ -79,38 +82,59 @@
   </div>
 </template>
 
-{# Step 5: scalar multiplication — default input-numeric UI handles the input. Just show a result panel. #}
-<template x-if="step.slug === 'scalar-multiplication' && state.ec_scalar_kp">
-  <div style="margin-top:14px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
-    <div><strong>k</strong> = <span x-text="state.ec_scalar_k"></span></div>
-    <div style="color:var(--ok, #22c55e);"><strong>k·P</strong> = (<span x-text="state.ec_scalar_kp.x.toFixed(3)"></span>, <span x-text="state.ec_scalar_kp.y.toFixed(3)"></span>)</div>
-    <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">Computed via double-and-add: write k in binary, walk left-to-right, double at each step, add P when the current bit is 1.</div>
+{% comment %} Step 5: scalar multiplication — double-and-add ladder animation.
+   The default input-numeric UI handles the k input + Submit. After check()
+   writes ec_scalar_k / ec_scalar_kp, the canvas + Replay button below
+   appears so the user can re-watch the ladder. {% endcomment %}
+<template x-if="step.slug === 'scalar-multiplication'">
+  <div style="margin-top:14px;">
+    <canvas
+      x-ref="ecCanvasScalar"
+      x-effect="demo && $nextTick(() => demo.drawStatic($refs.ecCanvasScalar, demo.DEFAULT_A, demo.DEFAULT_B, { xMin: -6, xMax: 6, yMin: -6, yMax: 6 }))"
+      width="600" height="400"
+      style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
+    <template x-if="state.ec_scalar_k">
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="btn" @click="(() => {
+          const P = { x: 2, y: Math.sqrt(7) };
+          demo.runScalarMultAnimation($refs.ecCanvasScalar, demo.DEFAULT_A, demo.DEFAULT_B, state.ec_scalar_k, P, { xMin: -6, xMax: 6, yMin: -6, yMax: 6 });
+        })()">▶ Replay k·P</button>
+      </div>
+    </template>
+    <template x-if="state.ec_scalar_kp">
+      <div style="margin-top:12px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
+        <div><strong>k</strong> = <span x-text="state.ec_scalar_k"></span></div>
+        <div style="color:var(--ok, #22c55e);"><strong>k·P</strong> = (<span x-text="state.ec_scalar_kp.x.toFixed(3)"></span>, <span x-text="state.ec_scalar_kp.y.toFixed(3)"></span>)</div>
+        <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">Computed via double-and-add: write k in binary, walk LSB→MSB, double at each step, add P when the current bit is 1.</div>
+      </div>
+    </template>
   </div>
 </template>
 
-{# Step 6: finite-field scatter (static SVG built from precomputed strings) #}
+{# Step 6: finite-field scatter (static canvas, no animation) #}
 <template x-if="step.slug === 'finite-field-curve'">
   <div style="margin-top:14px;">
-    <svg viewBox="0 0 380 380" style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      <g x-html="ecFfGridHtml"></g>
-      <g x-html="ecFfPointsHtml"></g>
-    </svg>
+    <canvas
+      x-ref="ecCanvasFf"
+      x-effect="demo && $nextTick(() => demo.drawFiniteField($refs.ecCanvasFf, demo.FF_A, demo.FF_B, demo.FF_P))"
+      width="380" height="380"
+      style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
     <div style="margin-top:10px;color:var(--muted);font-size:0.88em;line-height:1.5;">
-      All points (x, y) ∈ [0, 17)² satisfying <code>y² ≡ x³ + 7 (mod 17)</code>. <span x-text="`${ecFfPointCount} affine points`"></span> + the "point at infinity" (the group identity). Same point-addition rules as over the reals — just modular arithmetic. No smooth curve, but the group structure is identical.
+      All points (x, y) ∈ [0, 17)² satisfying <code>y² ≡ x³ + 7 (mod 17)</code>. 17 affine points + the "point at infinity" (the group identity). Same point-addition rules as over the reals — just modular arithmetic. No smooth curve, but the group structure is identical.
     </div>
   </div>
 </template>
 
-{# Step 7: discrete-log orbit (same scatter + highlighted k·G points) #}
+{# Step 7: discrete-log orbit — auto-loops 1G, 2G, … pulsing in sequence #}
 <template x-if="step.slug === 'discrete-log-problem'">
   <div style="margin-top:14px;">
-    <svg viewBox="0 0 380 380" style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      <g x-html="ecFfGridHtml"></g>
-      <g x-html="ecFfPointsHtml"></g>
-      <g x-html="ecDlpOrbitHtml"></g>
-    </svg>
+    <canvas
+      x-ref="ecCanvasDlp"
+      x-effect="demo && $nextTick(() => { if (!$refs.ecCanvasDlp._orbitStarted) { $refs.ecCanvasDlp._orbitStarted = true; demo.runDlpOrbitAnimation($refs.ecCanvasDlp, demo.FF_A, demo.FF_B, demo.FF_P, { x: 15, y: 13 }); } })"
+      width="380" height="380"
+      style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
     <div style="margin-top:10px;color:var(--muted);font-size:0.88em;line-height:1.5;">
-      Starting at base point <strong style="color:#22c55e;">G</strong>, computing 1·G, 2·G, 3·G, … walks around the scatter chaotically. Numbered green dots are multiples of G in this curve's orbit. For real curves (secp256k1 has ~2²⁵⁶ points), brute-forcing k from Q = kG is computationally infeasible — that's the elliptic-curve discrete log problem (ECDLP), the bedrock of every EC primitive on this site.
+      Starting at base point <strong style="color:#22c55e;">G = (15, 13)</strong>, computing 1·G, 2·G, 3·G, … walks around the scatter chaotically. Numbered green dots are multiples of G in this curve's orbit. For real curves (secp256k1 has ~2²⁵⁶ points), brute-forcing k from Q = kG is computationally infeasible — that's the elliptic-curve discrete log problem (ECDLP), the bedrock of every EC primitive on this site.
     </div>
   </div>
 </template>

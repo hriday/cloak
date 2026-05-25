@@ -1,6 +1,12 @@
 // Curve math + plot-data helpers + animation orchestrator for the
 // "Elliptic curves, visually" lesson.
 //
+// Canvas drawing primitives + RAF-based animations live in ./ec_canvas.js;
+// we re-export them here so the wizard's single-module `demo` slot exposes
+// both the math and the canvas helpers (`demo.runAddAnimation`, etc.).
+// The two files are split for editing sanity, not for any runtime reason.
+export * from "./ec_canvas.js";
+//
 // Two arithmetic regimes share one set of formulas:
 //   - Over the reals (mod=null): operations use Number arithmetic; the
 //     results are floating-point and intended for a smooth SVG plot.
