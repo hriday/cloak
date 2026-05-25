@@ -177,6 +177,35 @@ test("finiteFieldPoints on the ECDSA toy curve has 12 affine points (group order
   assert.equal(pts.length, 12);
 });
 
+// Exact count for the discrete-log step's curve. The brief asks for
+// "at least 10 visible points" — we confirm the precise count here so a
+// future change to the prime / coefficients can't silently shrink the
+// visualization.
+test("finiteFieldPoints on y² = x³ + 7 mod 17 has exactly 17 affine points (Hasse bound: 17 = p + 1 - t, total #E = 18 incl. ∞)", () => {
+  const pts = finiteFieldPoints(FF_A, FF_B, FF_P);
+  assert.equal(pts.length, 17, `expected 17 affine points, got ${pts.length}: ${JSON.stringify(pts)}`);
+});
+
+// The discrete-log widget seeds G = (15, 13) on the F_17 curve.
+test("G = (15, 13) sits on y² ≡ x³ + 7 (mod 17) — used as the base point in the ECDLP widget", () => {
+  const x = 15, y = 13;
+  const lhs = (y * y) % 17;
+  const rhs = ((x * x * x) % 17 + 7) % 17;
+  assert.equal(lhs, rhs);
+});
+
+test("orbit of G=(15,13) on F_17 cycles through ≥ 6 points before hitting ∞ (enough to look chaotic)", () => {
+  const G = { x: 15, y: 13 };
+  let p = null;
+  const seen = [];
+  for (let k = 1; k <= 30; k++) {
+    p = pointAdd(p, G, FF_A, FF_P);
+    if (p === null) break;
+    seen.push({ k, ...p });
+  }
+  assert.ok(seen.length >= 6, `orbit too small: only ${seen.length} steps`);
+});
+
 // ----------------------------------------------------------------------
 // findThirdIntersection — the geometry helper used by the animator.
 
