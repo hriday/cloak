@@ -115,14 +115,24 @@ def test_hsm_fixture_loads(db):
     assert lesson.algorithm_id == 5
     assert lesson.slug == "key-vaults"
     steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
-    assert len(steps) == 8
+    assert len(steps) == 10
     assert [s.slug for s in steps] == [
         "intro", "the-vault-analogy", "operations-api", "simulated-hsm",
-        "kek-hierarchy", "real-world-kms", "where-required", "done",
+        "kek-hierarchy", "real-world-kms",
+        "payment-hsms", "pin-translation",
+        "where-required", "done",
     ]
     by_slug = {s.slug: s for s in steps}
     assert by_slug["simulated-hsm"].kind == "input-text"
     assert by_slug["simulated-hsm"].validator_key == "hsm_operation"
+    assert by_slug["payment-hsms"].kind == "info"
+    assert by_slug["pin-translation"].kind == "input-numeric"
+    assert by_slug["pin-translation"].validator_key == "pin_translation"
+    # Step 7 must include the Thales payShield 10K table for the banking treatment
+    assert "payShield 10K" in by_slug["payment-hsms"].prompt_template
+    assert "PIN_Translate" in by_slug["payment-hsms"].prompt_template
+    # Step 8 must show the ISO 9564 Format 0 PIN block diagram
+    assert "ISO 9564" in by_slug["pin-translation"].prompt_template
 
 
 @pytest.mark.django_db
