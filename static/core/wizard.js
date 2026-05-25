@@ -16,6 +16,7 @@ const DEMO_FILENAMES = {
   "password-hashing": "pw_demo.js",
   "ecdsa": "ecdsa_toy.js",
   "kyber": "kyber_demo.js",
+  "elliptic-curves": "ec_demo.js",
 };
 
 async function loadAlgorithmModules(slug) {
@@ -60,6 +61,13 @@ function wizardComponent(initial) {
     shaAvalanche: null,        // SHA-256: precomputed bit-diff of "hello"/"Hello"
     modePenguin: null,         // cipher-modes: {plaintext: Uint8Array(1024), ecb: Uint8Array(1024)}
     pwInstantHash: null,       // password-hashing: SHA-256("password123") hex, for the naive demo
+    ecCurvePath: "",           // elliptic-curves: SVG path d="..." for y² = x³ - 3x + 5
+    ecFfGridHtml: "",          // elliptic-curves: finite-field grid SVG fragment
+    ecFfPointsHtml: "",        // elliptic-curves: scatter dots SVG fragment
+    ecFfPointCount: 0,         // elliptic-curves: number of affine FF points
+    ecDlpOrbitHtml: "",        // elliptic-curves: numbered orbit dots for DLP step
+    ecToPx(x) { return 300 + (x / 3.2) * 270; },
+    ecToPy(y) { return 200 - (y / 3.2) * 170; },
     coprimeOptions: [],
     inlineCode: "",
     stuckLevel: 0,
@@ -108,6 +116,51 @@ function wizardComponent(initial) {
           this.pwInstantHash = Array.from(new Uint8Array(buf))
             .map((b) => b.toString(16).padStart(2, "0")).join("");
         } catch (_e) {}
+      }
+      // Elliptic-curves: precompute SVG fragments used by static widgets so
+      // templates don't carry their own x-data scopes (which fail in SVG).
+      if (this.algorithmSlug === "elliptic-curves" && mods.demo) {
+        try {
+          // Curve path: y² = x³ - 3x + 5 over [-3.2, 3.2], transformed to pixel coords.
+          const raw = mods.demo.plotCurvePath(-3, 5, -3.2, 3.2, 320);
+          this.ecCurvePath = raw.replace(/([ML]) ([-\d.]+) ([-\d.]+)/g, (_, op, x, y) =>
+            `${op} ${this.ecToPx(parseFloat(x)).toFixed(1)} ${this.ecToPy(parseFloat(y)).toFixed(1)}`);
+          // Finite-field y² = x³ + 7 mod 17. Plot area: 380x380, p=17, cell=20px.
+          const ffPoints = mods.demo.finiteFieldPoints(0, 7, 17);
+          this.ecFfPointCount = ffPoints.length;
+          const cellPx = (n) => 20 + n * 20;
+          // Grid + axis labels
+          const grid = [];
+          for (let i = 0; i < 17; i++) {
+            grid.push(`<line x1="${cellPx(i)}" y1="20" x2="${cellPx(i)}" y2="360" stroke="#1e293b" stroke-width="0.5" />`);
+            grid.push(`<line x1="20" y1="${cellPx(i)}" x2="360" y2="${cellPx(i)}" stroke="#1e293b" stroke-width="0.5" />`);
+          }
+          // x-axis labels (a few)
+          for (const i of [0, 4, 8, 12, 16]) {
+            grid.push(`<text x="${cellPx(i)}" y="378" fill="#666" font-size="10" font-family="ui-monospace, monospace" text-anchor="middle">${i}</text>`);
+            grid.push(`<text x="10" y="${cellPx(16-i)+4}" fill="#666" font-size="10" font-family="ui-monospace, monospace" text-anchor="middle">${i}</text>`);
+          }
+          this.ecFfGridHtml = grid.join("");
+          // Points (note: y axis flipped — y=0 at top, so plot at cellPx(16-y))
+          this.ecFfPointsHtml = ffPoints.map((pt) =>
+            `<circle cx="${cellPx(pt.x)}" cy="${cellPx(16 - pt.y)}" r="3.5" fill="#5eead4" />`
+          ).join("");
+          // Discrete-log orbit: compute 1G, 2G, ... up to ~16 multiples (skip the point at infinity)
+          // Pick base point from the FF point list — use first non-zero-y point as G.
+          const G = ffPoints.find(p => p.y !== 0) || ffPoints[0];
+          const orbit = [];
+          let acc = { x: G.x, y: G.y };
+          for (let k = 1; k <= 16; k++) {
+            if (!acc || (acc.infinity)) break;
+            orbit.push({ k, x: acc.x, y: acc.y });
+            const next = mods.demo.pointAdd(acc, G, 0, 17n);
+            if (!next || next.infinity) break;
+            acc = next;
+          }
+          this.ecDlpOrbitHtml = orbit.map((p) =>
+            `<g><circle cx="${cellPx(p.x)}" cy="${cellPx(16 - p.y)}" r="6" fill="#22c55e" opacity="0.85" /><text x="${cellPx(p.x) + 9}" y="${cellPx(16 - p.y) - 4}" fill="#22c55e" font-size="10" font-family="ui-monospace, monospace">${p.k}G</text></g>`
+          ).join("");
+        } catch (e) { console.warn("EC widget precompute failed:", e); }
       }
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
@@ -320,6 +373,7 @@ function wizardComponent(initial) {
         "run-the-attack",                     // length-extension
         "vigenere-break",                     // classical-ciphers
         "schnorr-sign-and-verify",            // Schnorr
+        "point-addition", "point-doubling",   // elliptic-curves
       ]);
       if (SLUGS.has(step.slug)) return true;
       // ChaCha20's encrypt-a-message has a custom branch; AES's same-slug
@@ -361,6 +415,8 @@ function wizardComponent(initial) {
         "run-the-attack",             // length-extension: button-driven
         "vigenere-break",             // classical-ciphers: button-driven (validator ignores input)
         "schnorr-sign-and-verify",    // schnorr: {op, message, signature?}
+        "point-addition",             // elliptic-curves: button-driven animation
+        "point-doubling",             // elliptic-curves: button-driven animation
       ]);
       if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
         input = { ...this.multiInput };
@@ -384,6 +440,7 @@ function wizardComponent(initial) {
         "cbc-walk", "attack-one-byte", "attack-full-block",
         "pbkdf2", "compare-hashes",
         "derive-keys", "run-the-attack", "schnorr-sign-and-verify",
+        "point-addition", "point-doubling",
       ]);
       if (EXPLORATORY_SLUGS.has(step.slug)) {
         this.persistLocal();

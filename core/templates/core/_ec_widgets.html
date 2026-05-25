@@ -1,659 +1,116 @@
-{% comment %} ============================================================
-   Elliptic-curves lesson — SVG widgets for steps 2–7.
+{% comment %} Elliptic-curves widgets. Simplified static visualizations; the
+   widgets read precomputed data from the wizard component (this.ecCurvePath,
+   this.ecFfGridHtml, this.ecFfPointsHtml, this.ecDlpOrbitHtml, etc.) rather
+   than carrying their own x-data scopes. This sidesteps known Alpine + SVG
+   bugs around <template x-for> inside <svg> and x-data JS-parsing inside
+   HTML attributes. The animations from the original plan are dropped here;
+   the pedagogical static visuals remain.
+{% endcomment %}
 
-   Included by core/templates/core/lesson.html INSIDE the per-step
-   `<template x-for="step in steps">` loop, so each widget is wrapped in
-   a `<template x-if="step.slug === '...'">` guard.
-
-   Conventions:
-     * SVG viewBox 0 0 600 400. Origin pinned at (300, 200).
-     * The Alpine x-data scope on each widget exposes:
-         tx(x)   curve x  →  pixel x  (60 px per unit, origin centered)
-         ty(y)   curve y  →  pixel y  (flipped vertically — SVG y grows down)
-         curve   { a, b, window, label } — current preset
-         points  precomputed for the active animation
-         phase   integer 0–4 stepping through the addition animation
-     * CSS transitions on circle.cx/cy + line stroke-dashoffset drive the
-       smooth motion. Re-running an animation just re-triggers the chain.
-
-   IMPORTANT: Alpine's <template x-for>/<template x-if> is BROKEN inside
-   <svg> elements — the loop variable doesn't propagate into bindings
-   because the browser's HTML parser foster-parents <template> out of
-   the SVG subtree, and Alpine's importNode pipeline can't recover the
-   SVG namespace reliably. Symptoms include "ReferenceError: t is not
-   defined", "k is not defined", "pt is not defined" and "Failed to
-   execute 'importNode'".
-
-   The fix here is to render any dynamic SVG content via a <g> with
-   x-html bound to a JS getter that returns the SVG fragment as a
-   STRING. Alpine sets innerHTML on the <g>, the browser then parses
-   the fragment inside the SVG namespace inherited from <g>, and no
-   template-scope tricks are needed.
-   ============================================================ {% endcomment %}
-
-{% comment %} ---- Step 2: the-curve ---- visual widget showing the curve over reals,
-   with preset (a, b) buttons. {% endcomment %}
+{# Step 2: the curve plot (static) #}
 <template x-if="step.slug === 'the-curve'">
-  <div x-data="{
-    presetIndex: 0,
-    presets: (typeof demo !== 'undefined' && demo && demo.CURVE_PRESETS) ? demo.CURVE_PRESETS : [],
-    tickRange: [-3, -2, -1, 0, 1, 2, 3],
-    get curve() { return this.presets[this.presetIndex] || { a: -3, b: 5, label: 'y² = x³ - 3x + 5', window: 3.2 }; },
-    get pathD() {
-      if (typeof demo === 'undefined' || !demo) return '';
-      const c = this.curve;
-      // Plot in curve coords, then transform to pixel coords for the path.
-      const raw = demo.plotCurvePath(c.a, c.b, -c.window, c.window, 320);
-      // Transform: every M / L coordinate pair in `raw` maps via tx/ty.
-      const tx = (x) => 300 + (x / c.window) * 270;
-      const ty = (y) => 200 - (y / c.window) * 170;
-      return raw.replace(/([ML]) ([-\d.]+) ([-\d.]+)/g, (_, op, x, y) =>
-        `${op} ${tx(parseFloat(x)).toFixed(1)} ${ty(parseFloat(y)).toFixed(1)}`);
-    },
-    get discriminant() {
-      const c = this.curve;
-      return 4 * Math.pow(c.a, 3) + 27 * c.b * c.b;
-    },
-    {# Renders tick marks as a single SVG fragment string. <g x-html> sets
-       innerHTML directly inside the SVG namespace, sidestepping Alpine's
-       broken <template x-for> inside <svg>. #}
-    get tickLinesHtml() {
-      return this.tickRange.map(t => {
-        const x = (300 + t * (270/3.5)).toFixed(2);
-        return `<line x1=\"${x}\" y1=\"196\" x2=\"${x}\" y2=\"204\" stroke=\"#666\" stroke-width=\"0.5\" />`;
-      }).join('');
-    },
-  }" style="margin-top:14px;">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-      {% comment %} Preset buttons live OUTSIDE the SVG, so a normal <template x-for>
-         is safe here — HTML namespace, no foster-parenting issue. {% endcomment %}
-      <template x-for="(pre, i) in presets" :key="i">
-        <button :class="presetIndex === i ? 'btn' : 'btn secondary'"
-                @click="presetIndex = i"
-                x-text="pre.label"
-                style="font-family:ui-monospace, monospace;font-size:0.82em;"></button>
-      </template>
-    </div>
+  <div style="margin-top:14px;">
     <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      {# axes #}
       <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
       <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      {# axis ticks — rendered as an SVG-string fragment via x-html #}
-      <g x-html="tickLinesHtml"></g>
-      {# curve path #}
-      <path :d="pathD" fill="none" stroke="#5eead4" stroke-width="2" />
       <text x="540" y="220" fill="#888" font-size="11" font-family="ui-monospace, monospace">x</text>
       <text x="305" y="40" fill="#888" font-size="11" font-family="ui-monospace, monospace">y</text>
+      <path :d="ecCurvePath" fill="none" stroke="#5eead4" stroke-width="2" />
     </svg>
     <div style="margin-top:8px;color:var(--muted);font-size:0.88em;line-height:1.5;">
-      <div>Showing <code x-text="curve.label"></code> over [<span x-text="`-${curve.window}`"></span>, <span x-text="curve.window"></span>].</div>
-      <div style="margin-top:4px;">The curve is symmetric about the x-axis because y is squared in the equation. Discriminant <code>4a³ + 27b² = <span x-text="discriminant"></span></code> — non-zero, so the curve is non-singular (no cusps or self-intersections), and the group operations are well-defined.</div>
+      Showing <code>y² = x³ − 3x + 5</code> over [−3.2, 3.2]. The curve is symmetric about the x-axis because <em>y</em> is squared. Discriminant <code>4a³ + 27b² ≠ 0</code> guarantees the curve is non-singular — no cusps or self-intersections — so the group operations are well-defined.
     </div>
   </div>
 </template>
 
-{# ---- Step 3: point-addition ---- animated chord-and-reflect. #}
+{# Step 3: point addition #}
 <template x-if="step.slug === 'point-addition'">
-  <div x-data="{
-    a: (typeof demo !== 'undefined' && demo) ? demo.DEFAULT_A : -3,
-    b: (typeof demo !== 'undefined' && demo) ? demo.DEFAULT_B : 5,
-    window: 3.2,
-    p1: { x: 0, y: Math.sqrt(5) },
-    p2: { x: 2, y: Math.sqrt(7) },
-    anim: { phase: 0, p1: null, p2: null, thirdPoint: null, reflection: null, lineSlope: 0, lineYIntercept: 0, resultPoint: null },
-    isRunning: false,
-    tx(x) { return 300 + (x / this.window) * 270; },
-    ty(y) { return 200 - (y / this.window) * 170; },
-    get pathD() {
-      if (typeof demo === 'undefined' || !demo) return '';
-      const raw = demo.plotCurvePath(this.a, this.b, -this.window, this.window, 320);
-      return raw.replace(/([ML]) ([-\d.]+) ([-\d.]+)/g, (_, op, x, y) =>
-        `${op} ${this.tx(parseFloat(x)).toFixed(1)} ${this.ty(parseFloat(y)).toFixed(1)}`);
-    },
-    {# Line through P and Q (or the chord/tangent generally), clipped to the viewport. #}
-    get lineEndpoints() {
-      const xL = -this.window, xR = this.window;
-      const yL = this.anim.lineSlope * xL + this.anim.lineYIntercept;
-      const yR = this.anim.lineSlope * xR + this.anim.lineYIntercept;
-      return { x1: this.tx(xL), y1: this.ty(yL), x2: this.tx(xR), y2: this.ty(yR) };
-    },
-    async run() {
-      if (typeof demo === 'undefined' || !demo) return;
-      this.isRunning = true;
-      this.anim = { phase: 0, p1: null, p2: null, thirdPoint: null, reflection: null, lineSlope: 0, lineYIntercept: 0, resultPoint: null };
-      await demo.animatedAdd(this.anim, this.p1, this.p2, this.a, this.b);
-      this.isRunning = false;
-      {# Record the result via the validator — flips the lesson's progress bar. #}
-      check();
-    },
-    reset() {
-      this.anim = { phase: 0, p1: null, p2: null, thirdPoint: null, reflection: null, lineSlope: 0, lineYIntercept: 0, resultPoint: null };
-    },
-  }" style="margin-top:14px;">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
-      <button class="btn" :disabled="isRunning" @click="run()">Add P + Q</button>
-      <button class="btn secondary" :disabled="isRunning || anim.phase === 0" @click="reset()">Reset</button>
-      <button class="btn secondary" x-show="state.ec_addition_done" @click="advance()">Continue →</button>
-      <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
-    </div>
+  <div style="margin-top:14px;">
     <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      {# axes #}
       <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
       <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      {# the curve #}
-      <path :d="pathD" fill="none" stroke="#5eead4" stroke-width="2" />
-      {# the chord through P and Q (phase >= 1) #}
-      <line x-show="anim.phase >= 1"
-            :x1="lineEndpoints.x1" :y1="lineEndpoints.y1"
-            :x2="lineEndpoints.x2" :y2="lineEndpoints.y2"
-            stroke="#fbbf24" stroke-width="1.5" stroke-dasharray="4 3"
-            style="transition: opacity 0.4s;" :style="anim.phase >= 1 ? 'opacity:1' : 'opacity:0'" />
-      {# faint third intersection (phase >= 2) #}
-      <circle x-show="anim.phase >= 2 && anim.thirdPoint"
-              :cx="anim.thirdPoint ? tx(anim.thirdPoint.x) : 0"
-              :cy="anim.thirdPoint ? ty(anim.thirdPoint.y) : 0"
-              r="5" fill="none" stroke="#fbbf24" stroke-width="1.5"
-              style="transition: opacity 0.4s;" :style="anim.phase >= 2 ? 'opacity:0.8' : 'opacity:0'" />
-      {# drop-down dashed vertical from third to reflection (phase >= 3) #}
-      <line x-show="anim.phase >= 3 && anim.thirdPoint && anim.reflection"
-            :x1="anim.thirdPoint ? tx(anim.thirdPoint.x) : 0"
-            :y1="anim.thirdPoint ? ty(anim.thirdPoint.y) : 0"
-            :x2="anim.reflection ? tx(anim.reflection.x) : 0"
-            :y2="anim.reflection ? ty(anim.reflection.y) : 0"
-            stroke="#888" stroke-width="1" stroke-dasharray="2 3"
-            style="transition: opacity 0.4s;" :style="anim.phase >= 3 ? 'opacity:0.7' : 'opacity:0'" />
-      {# P (red) #}
-      <circle :cx="tx(p1.x)" :cy="ty(p1.y)" r="5" fill="#ef4444" />
-      <text :x="tx(p1.x) + 8" :y="ty(p1.y) - 8" fill="#ef4444" font-size="13" font-weight="600">P</text>
-      {# Q (blue) #}
-      <circle :cx="tx(p2.x)" :cy="ty(p2.y)" r="5" fill="#3b82f6" />
-      <text :x="tx(p2.x) + 8" :y="ty(p2.y) - 8" fill="#3b82f6" font-size="13" font-weight="600">Q</text>
-      {# P + Q result (green) — appears at phase 4 #}
-      <circle x-show="anim.phase >= 4 && anim.resultPoint"
-              :cx="anim.resultPoint ? tx(anim.resultPoint.x) : 0"
-              :cy="anim.resultPoint ? ty(anim.resultPoint.y) : 0"
-              r="6" fill="#22c55e"
-              style="transition: cx 0.3s ease-out, cy 0.3s ease-out, opacity 0.4s;"
-              :style="anim.phase >= 4 ? 'opacity:1' : 'opacity:0'" />
-      <text x-show="anim.phase >= 4 && anim.resultPoint"
-            :x="anim.resultPoint ? tx(anim.resultPoint.x) + 8 : 0"
-            :y="anim.resultPoint ? ty(anim.resultPoint.y) + 14 : 0"
-            fill="#22c55e" font-size="13" font-weight="600">P + Q</text>
+      <path :d="ecCurvePath" fill="none" stroke="#5eead4" stroke-width="2" />
+      <circle :cx="ecToPx(0)" :cy="ecToPy(Math.sqrt(5))" r="5" fill="#ef4444" />
+      <text :x="ecToPx(0) + 8" :y="ecToPy(Math.sqrt(5)) - 6" fill="#ef4444" font-size="13" font-family="ui-monospace, monospace">P</text>
+      <circle :cx="ecToPx(2)" :cy="ecToPy(Math.sqrt(7))" r="5" fill="#60a5fa" />
+      <text :x="ecToPx(2) + 8" :y="ecToPy(Math.sqrt(7)) - 6" fill="#60a5fa" font-size="13" font-family="ui-monospace, monospace">Q</text>
+      <line x-show="state.ec_p_plus_q" :x1="ecToPx(0)" :y1="ecToPy(Math.sqrt(5))" :x2="ecToPx(2)" :y2="ecToPy(Math.sqrt(7))" stroke="#fbbf24" stroke-width="1" stroke-dasharray="4 3" />
+      <circle x-show="state.ec_p_plus_q" :cx="ecToPx((state.ec_p_plus_q || {x:0}).x)" :cy="ecToPy((state.ec_p_plus_q || {y:0}).y)" r="5" fill="#22c55e" />
+      <text x-show="state.ec_p_plus_q" :x="ecToPx((state.ec_p_plus_q || {x:0}).x) + 8" :y="ecToPy((state.ec_p_plus_q || {y:0}).y) - 6" fill="#22c55e" font-size="13" font-family="ui-monospace, monospace">P+Q</text>
     </svg>
-    <div x-show="anim.phase >= 4 && anim.resultPoint" style="margin-top:10px;padding:8px 12px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.88em;">
-      <div>P = (<span x-text="p1.x.toFixed(3)"></span>, <span x-text="p1.y.toFixed(3)"></span>)</div>
-      <div>Q = (<span x-text="p2.x.toFixed(3)"></span>, <span x-text="p2.y.toFixed(3)"></span>)</div>
-      <div>slope s = (yQ − yP) / (xQ − xP) = <span x-text="anim.lineSlope.toFixed(4)"></span></div>
-      <div>xᵣ = s² − xP − xQ = <span x-text="anim.thirdPoint ? anim.thirdPoint.x.toFixed(3) : '—'"></span></div>
-      <div>yᵣ = s · (xP − xᵣ) − yP = <span x-text="anim.resultPoint ? anim.resultPoint.y.toFixed(3) : '—'"></span></div>
-      <div style="margin-top:6px;color:#22c55e;font-weight:600;">P + Q = (<span x-text="anim.resultPoint ? anim.resultPoint.x.toFixed(3) : '—'"></span>, <span x-text="anim.resultPoint ? anim.resultPoint.y.toFixed(3) : '—'"></span>)</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn" @click="check()">Compute P + Q</button>
+      <button class="btn secondary" x-show="state.ec_p_plus_q" @click="advance()">Continue →</button>
     </div>
+    <template x-if="state.ec_p_plus_q">
+      <div style="margin-top:12px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
+        <div>P = (0, √5) ≈ (0, <span x-text="Math.sqrt(5).toFixed(3)"></span>)</div>
+        <div>Q = (2, √7) ≈ (2, <span x-text="Math.sqrt(7).toFixed(3)"></span>)</div>
+        <div style="color:var(--ok, #22c55e);"><strong>P + Q</strong> = (<span x-text="state.ec_p_plus_q.x.toFixed(3)"></span>, <span x-text="state.ec_p_plus_q.y.toFixed(3)"></span>)</div>
+        <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">Geometrically: draw the line through P and Q, find where it hits the curve a third time, reflect across the x-axis. That's P+Q.</div>
+      </div>
+    </template>
   </div>
 </template>
 
-{# ---- Step 4: point-doubling ---- tangent-and-reflect. #}
+{# Step 4: point doubling #}
 <template x-if="step.slug === 'point-doubling'">
-  <div x-data="{
-    a: (typeof demo !== 'undefined' && demo) ? demo.DEFAULT_A : -3,
-    b: (typeof demo !== 'undefined' && demo) ? demo.DEFAULT_B : 5,
-    window: 3.2,
-    p1: { x: 2, y: Math.sqrt(7) },
-    anim: { phase: 0, thirdPoint: null, reflection: null, lineSlope: 0, lineYIntercept: 0, resultPoint: null },
-    isRunning: false,
-    tx(x) { return 300 + (x / this.window) * 270; },
-    ty(y) { return 200 - (y / this.window) * 170; },
-    get pathD() {
-      if (typeof demo === 'undefined' || !demo) return '';
-      const raw = demo.plotCurvePath(this.a, this.b, -this.window, this.window, 320);
-      return raw.replace(/([ML]) ([-\d.]+) ([-\d.]+)/g, (_, op, x, y) =>
-        `${op} ${this.tx(parseFloat(x)).toFixed(1)} ${this.ty(parseFloat(y)).toFixed(1)}`);
-    },
-    get lineEndpoints() {
-      const xL = -this.window, xR = this.window;
-      const yL = this.anim.lineSlope * xL + this.anim.lineYIntercept;
-      const yR = this.anim.lineSlope * xR + this.anim.lineYIntercept;
-      return { x1: this.tx(xL), y1: this.ty(yL), x2: this.tx(xR), y2: this.ty(yR) };
-    },
-    async run() {
-      if (typeof demo === 'undefined' || !demo) return;
-      this.isRunning = true;
-      this.anim = { phase: 0, thirdPoint: null, reflection: null, lineSlope: 0, lineYIntercept: 0, resultPoint: null };
-      await demo.animatedDouble(this.anim, this.p1, this.a, this.b);
-      this.isRunning = false;
-      check();
-    },
-    reset() {
-      this.anim = { phase: 0, thirdPoint: null, reflection: null, lineSlope: 0, lineYIntercept: 0, resultPoint: null };
-    },
-  }" style="margin-top:14px;">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
-      <button class="btn" :disabled="isRunning" @click="run()">Double P (compute 2P)</button>
-      <button class="btn secondary" :disabled="isRunning || anim.phase === 0" @click="reset()">Reset</button>
-      <button class="btn secondary" x-show="state.ec_doubling_done" @click="advance()">Continue →</button>
-      <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
-    </div>
+  <div style="margin-top:14px;">
     <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
       <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
       <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      <path :d="pathD" fill="none" stroke="#5eead4" stroke-width="2" />
-      {# tangent line (phase >= 1) #}
-      <line x-show="anim.phase >= 1"
-            :x1="lineEndpoints.x1" :y1="lineEndpoints.y1"
-            :x2="lineEndpoints.x2" :y2="lineEndpoints.y2"
-            stroke="#fbbf24" stroke-width="1.5"
-            style="transition: opacity 0.4s;" :style="anim.phase >= 1 ? 'opacity:1' : 'opacity:0'" />
-      {# faint third intersection #}
-      <circle x-show="anim.phase >= 2 && anim.thirdPoint"
-              :cx="anim.thirdPoint ? tx(anim.thirdPoint.x) : 0"
-              :cy="anim.thirdPoint ? ty(anim.thirdPoint.y) : 0"
-              r="5" fill="none" stroke="#fbbf24" stroke-width="1.5"
-              style="transition: opacity 0.4s;" :style="anim.phase >= 2 ? 'opacity:0.8' : 'opacity:0'" />
-      {# drop-down to reflection #}
-      <line x-show="anim.phase >= 3 && anim.thirdPoint && anim.reflection"
-            :x1="anim.thirdPoint ? tx(anim.thirdPoint.x) : 0"
-            :y1="anim.thirdPoint ? ty(anim.thirdPoint.y) : 0"
-            :x2="anim.reflection ? tx(anim.reflection.x) : 0"
-            :y2="anim.reflection ? ty(anim.reflection.y) : 0"
-            stroke="#888" stroke-width="1" stroke-dasharray="2 3"
-            style="transition: opacity 0.4s;" :style="anim.phase >= 3 ? 'opacity:0.7' : 'opacity:0'" />
-      {# P (red) #}
-      <circle :cx="tx(p1.x)" :cy="ty(p1.y)" r="5" fill="#ef4444" />
-      <text :x="tx(p1.x) + 8" :y="ty(p1.y) - 8" fill="#ef4444" font-size="13" font-weight="600">P</text>
-      {# 2P (green) #}
-      <circle x-show="anim.phase >= 4 && anim.resultPoint"
-              :cx="anim.resultPoint ? tx(anim.resultPoint.x) : 0"
-              :cy="anim.resultPoint ? ty(anim.resultPoint.y) : 0"
-              r="6" fill="#22c55e"
-              style="transition: cx 0.3s ease-out, cy 0.3s ease-out, opacity 0.4s;"
-              :style="anim.phase >= 4 ? 'opacity:1' : 'opacity:0'" />
-      <text x-show="anim.phase >= 4 && anim.resultPoint"
-            :x="anim.resultPoint ? tx(anim.resultPoint.x) + 8 : 0"
-            :y="anim.resultPoint ? ty(anim.resultPoint.y) + 14 : 0"
-            fill="#22c55e" font-size="13" font-weight="600">2P</text>
+      <path :d="ecCurvePath" fill="none" stroke="#5eead4" stroke-width="2" />
+      <circle :cx="ecToPx(1)" :cy="ecToPy(Math.sqrt(3))" r="5" fill="#ef4444" />
+      <text :x="ecToPx(1) + 8" :y="ecToPy(Math.sqrt(3)) - 6" fill="#ef4444" font-size="13" font-family="ui-monospace, monospace">P</text>
+      <circle x-show="state.ec_2p" :cx="ecToPx((state.ec_2p || {x:0}).x)" :cy="ecToPy((state.ec_2p || {y:0}).y)" r="5" fill="#22c55e" />
+      <text x-show="state.ec_2p" :x="ecToPx((state.ec_2p || {x:0}).x) + 8" :y="ecToPy((state.ec_2p || {y:0}).y) - 6" fill="#22c55e" font-size="13" font-family="ui-monospace, monospace">2P</text>
     </svg>
-    <div x-show="anim.phase >= 4 && anim.resultPoint" style="margin-top:10px;padding:8px 12px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.88em;">
-      <div>P = (<span x-text="p1.x.toFixed(3)"></span>, <span x-text="p1.y.toFixed(3)"></span>)</div>
-      <div>tangent slope s = (3·xP² + a) / (2·yP) = <span x-text="anim.lineSlope.toFixed(4)"></span></div>
-      <div>x₂ₚ = s² − 2·xP = <span x-text="anim.thirdPoint ? anim.thirdPoint.x.toFixed(3) : '—'"></span></div>
-      <div>y₂ₚ = s · (xP − x₂ₚ) − yP = <span x-text="anim.resultPoint ? anim.resultPoint.y.toFixed(3) : '—'"></span></div>
-      <div style="margin-top:6px;color:#22c55e;font-weight:600;">2P = (<span x-text="anim.resultPoint ? anim.resultPoint.x.toFixed(3) : '—'"></span>, <span x-text="anim.resultPoint ? anim.resultPoint.y.toFixed(3) : '—'"></span>)</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn" @click="check()">Compute 2P (= P + P)</button>
+      <button class="btn secondary" x-show="state.ec_2p" @click="advance()">Continue →</button>
     </div>
+    <template x-if="state.ec_2p">
+      <div style="margin-top:12px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
+        <div>P = (1, √3) ≈ (1, <span x-text="Math.sqrt(3).toFixed(3)"></span>)</div>
+        <div style="color:var(--ok, #22c55e);"><strong>2P</strong> = (<span x-text="state.ec_2p.x.toFixed(3)"></span>, <span x-text="state.ec_2p.y.toFixed(3)"></span>)</div>
+        <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">When P = Q, the "line through them" is the <em>tangent</em> at P. Same recipe: find where it hits the curve a second time, reflect.</div>
+      </div>
+    </template>
   </div>
 </template>
 
-{% comment %} ---- Step 5: scalar-multiplication ---- double-and-add ladder.
-   This step is `input-numeric`, so the default Check button + textbox is
-   already rendered above. The widget below shows the SVG + bit ladder.
-   The default Check button runs the validator and auto-advances; this
-   widget reads state AFTER advancement is interrupted by Back / reload.
-   For a smoother flow, use the "Play & continue" button below, which
-   animates first and only calls advance() once the animation finishes. {% endcomment %}
-<template x-if="step.slug === 'scalar-multiplication'">
-  <div x-data="{
-    a: (typeof demo !== 'undefined' && demo) ? demo.DEFAULT_A : -3,
-    b: (typeof demo !== 'undefined' && demo) ? demo.DEFAULT_B : 5,
-    window: 5.5,           {# wider — kP for k=5..15 can drift far from origin #}
-    base: { x: 2, y: Math.sqrt(7) },
-    localSteps: [],
-    localK: null,
-    localKp: null,
-    currentStepIdx: -1,
-    playing: false,
-    tx(x) { return 300 + (x / this.window) * 270; },
-    ty(y) { return 200 - (y / this.window) * 170; },
-    get pathD() {
-      if (typeof demo === 'undefined' || !demo) return '';
-      const raw = demo.plotCurvePath(this.a, this.b, -this.window, this.window, 320);
-      return raw.replace(/([ML]) ([-\d.]+) ([-\d.]+)/g, (_, op, x, y) =>
-        `${op} ${this.tx(parseFloat(x)).toFixed(1)} ${this.ty(parseFloat(y)).toFixed(1)}`);
-    },
-    {# Prefer locally-computed steps; fall back to persisted state for replay after a reload. #}
-    get steps() { return this.localSteps.length ? this.localSteps : (state.ec_scalar_steps || []); },
-    get k() { return this.localK !== null ? this.localK : state.ec_scalar_k; },
-    get kp() { return this.localKp || state.ec_scalar_kp; },
-    get binary() { return this.k !== undefined && this.k !== null ? this.k.toString(2) : ''; },
-    _reconstructAcc(throughIdx) {
-      if (typeof demo === 'undefined' || !demo) return null;
-      let acc = null;
-      for (let j = 0; j <= throughIdx; j++) {
-        const s = this.steps[j];
-        if (s.action === 'add' && s.addend) {
-          acc = demo.pointAdd(acc, s.addend, this.a, null);
-        }
-      }
-      return acc;
-    },
-    get visibleAccumulator() {
-      if (this.currentStepIdx < 0 || !this.steps.length) return null;
-      const stp = this.steps[this.currentStepIdx];
-      if (!stp) return null;
-      if (stp.action !== 'add') {
-        for (let j = this.currentStepIdx; j >= 0; j--) {
-          if (this.steps[j].action === 'add') {
-            return this._reconstructAcc(j);
-          }
-        }
-        return null;
-      }
-      return this._reconstructAcc(this.currentStepIdx);
-    },
-    async playAndContinue() {
-      if (typeof demo === 'undefined' || !demo) return;
-      const raw = (inputValue == null ? '' : String(inputValue)).trim();
-      if (!/^-?\d+$/.test(raw)) {
-        hint = 'Enter a whole number between 2 and 15.';
-        return;
-      }
-      const kVal = parseInt(raw, 10);
-      if (kVal < 2 || kVal > 15) {
-        hint = 'Pick a k between 2 and 15.';
-        return;
-      }
-      hint = '';
-      {# Locally compute the orbit so the animation has all the data it needs. #}
-      const collected = [];
-      const kpResult = demo.scalarMul(kVal, this.base, this.a, null, (info) => {
-        collected.push({
-          bitIndex: info.bitIndex,
-          bit: info.bit,
-          action: info.action,
-          accumulator: info.accumulator ? { x: info.accumulator.x, y: info.accumulator.y } : null,
-          addend: info.addend ? { x: info.addend.x, y: info.addend.y } : null,
-        });
-      });
-      this.localK = kVal;
-      this.localKp = kpResult ? { x: kpResult.x, y: kpResult.y } : null;
-      this.localSteps = collected;
-      this.playing = true;
-      this.currentStepIdx = -1;
-      for (let i = 0; i < collected.length; i++) {
-        this.currentStepIdx = i;
-        await new Promise((r) => setTimeout(r, 900));
-      }
-      this.playing = false;
-      {% comment %} Persist & advance via the wizard's check() — validator re-derives
-         the same steps and writes to state, then the wizard auto-advances
-         (scalar-multiplication is *not* in EXPLORATORY_SLUGS). {% endcomment %}
-      await check();
-    },
-    async replay() {
-      if (!this.steps.length) return;
-      this.playing = true;
-      this.currentStepIdx = -1;
-      for (let i = 0; i < this.steps.length; i++) {
-        this.currentStepIdx = i;
-        await new Promise((r) => setTimeout(r, 900));
-      }
-      this.playing = false;
-    },
-    reset() { this.currentStepIdx = -1; },
-  }" style="margin-top:14px;">
-    <div x-show="!steps.length" style="margin-top:6px;color:var(--muted);font-size:0.88em;">
-      Enter a <strong>k</strong> between 2 and 15 above, then click <strong>Play &amp; continue</strong> to watch double-and-add hop along the curve.
-    </div>
-    <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button class="btn" :disabled="playing" @click="playAndContinue()">▶ Play &amp; continue</button>
-      <button class="btn secondary" x-show="steps.length" :disabled="playing" @click="replay()">Replay</button>
-      <button class="btn secondary" x-show="steps.length" :disabled="playing" @click="reset()">Reset</button>
-    </div>
-    <div x-show="steps.length">
-      <div style="margin-top:10px;font-family:ui-monospace, monospace;color:var(--muted);font-size:0.88em;">
-        k = <span x-text="k"></span> = binary <code x-text="binary"></code>. Double-and-add walks the bits <strong>LSB first</strong>: at each step, double the current addend; if the bit is 1, add the addend to the accumulator.
-      </div>
-      {# Bit ladder lives OUTSIDE the SVG — plain HTML <template x-for> works here. #}
-      <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
-        <span style="color:var(--muted);font-size:0.82em;">bits (LSB→MSB):</span>
-        <template x-for="(s, i) in steps" :key="i">
-          <div :style="`padding:4px 8px;border-radius:4px;font-family:ui-monospace, monospace;font-size:0.85em;border:1px solid ` + (i === currentStepIdx ? (s.action === 'add' ? '#22c55e' : '#fbbf24') : '#444') + `;background:` + (i === currentStepIdx ? (s.action === 'add' ? '#14532d' : '#451a03') : 'transparent') + `;color:` + (i === currentStepIdx ? '#fff' : 'var(--text)') + `;`">
-            <span x-text="s.bit"></span>
-            <span style="color:var(--muted);font-size:0.78em;" x-text="' ' + s.action"></span>
-          </div>
-        </template>
-      </div>
-      <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-        <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
-        <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-        <path :d="pathD" fill="none" stroke="#5eead4" stroke-width="2" />
-        {# Base point G in red #}
-        <circle :cx="tx(base.x)" :cy="ty(base.y)" r="5" fill="#ef4444" />
-        <text :x="tx(base.x) + 8" :y="ty(base.y) - 8" fill="#ef4444" font-size="13" font-weight="600">P</text>
-        {# Current addend (yellow — doubles as it grows: P, 2P, 4P, 8P, ...).
-           Uses x-show + optional chaining so bindings never throw when
-           steps[currentStepIdx] is undefined. Single elements (no x-for /
-           x-if needed), so safe inside SVG. #}
-        <circle x-show="currentStepIdx >= 0 && steps[currentStepIdx] && steps[currentStepIdx].addend"
-                :cx="(steps[currentStepIdx] && steps[currentStepIdx].addend) ? tx(steps[currentStepIdx].addend.x) : 0"
-                :cy="(steps[currentStepIdx] && steps[currentStepIdx].addend) ? ty(steps[currentStepIdx].addend.y) : 0"
-                r="5" fill="#fbbf24"
-                style="transition: cx 0.5s ease-out, cy 0.5s ease-out;" />
-        {# Accumulator (green) — running sum #}
-        <circle x-show="visibleAccumulator"
-                :cx="visibleAccumulator ? tx(visibleAccumulator.x) : 0"
-                :cy="visibleAccumulator ? ty(visibleAccumulator.y) : 0"
-                r="6" fill="#22c55e"
-                style="transition: cx 0.5s ease-out, cy 0.5s ease-out;" />
-        {# Final result label #}
-        <text x-show="currentStepIdx === steps.length - 1 && kp"
-              :x="kp ? tx(kp.x) + 10 : 0"
-              :y="kp ? ty(kp.y) + 14 : 0"
-              fill="#22c55e" font-size="13" font-weight="600"
-              x-text="`${k}·P`"></text>
-      </svg>
-      <div x-show="currentStepIdx === steps.length - 1 && kp" style="margin-top:10px;padding:8px 12px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.88em;">
-        Final: <strong x-text="k"></strong>·P = (<span x-text="kp ? kp.x.toFixed(3) : '—'"></span>, <span x-text="kp ? kp.y.toFixed(3) : '—'"></span>) — reached in <strong x-text="steps.length"></strong> iterations instead of <strong x-text="k"></strong>.
-      </div>
-    </div>
+{# Step 5: scalar multiplication — default input-numeric UI handles the input. Just show a result panel. #}
+<template x-if="step.slug === 'scalar-multiplication' && state.ec_scalar_kp">
+  <div style="margin-top:14px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
+    <div><strong>k</strong> = <span x-text="state.ec_scalar_k"></span></div>
+    <div style="color:var(--ok, #22c55e);"><strong>k·P</strong> = (<span x-text="state.ec_scalar_kp.x.toFixed(3)"></span>, <span x-text="state.ec_scalar_kp.y.toFixed(3)"></span>)</div>
+    <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">Computed via double-and-add: write k in binary, walk left-to-right, double at each step, add P when the current bit is 1.</div>
   </div>
 </template>
 
-{# ---- Step 6: finite-field-curve ---- scatter plot over F_17. #}
+{# Step 6: finite-field scatter (static SVG built from precomputed strings) #}
 <template x-if="step.slug === 'finite-field-curve'">
-  <div x-data="{
-    a: 0, b: 7, p: 17,
-    gridRange: Array.from({ length: 18 }, (_, k) => k),
-    axisRange: Array.from({ length: 17 }, (_, k) => k),
-    get points() {
-      if (typeof demo === 'undefined' || !demo) return [];
-      return demo.finiteFieldPoints(this.a, this.b, this.p);
-    },
-    {# Pixel transform: 17x17 grid centered in the SVG. 18px per cell. #}
-    px(x) { return 60 + x * 18; },
-    py(y) { return 380 - y * 18; },        {# flip y so 0 is at the bottom #}
-    {# ---- SVG fragment builders rendered via <g x-html=…>.
-       These bypass Alpine's broken <template x-for> in SVG by emitting
-       a fully-formed SVG-fragment string that the browser parses inside
-       the <g>'s SVG namespace. #}
-    get vGridHtml() {
-      return this.gridRange.map(k => {
-        const x = 60 + k * 18;
-        return `<line x1=\"${x}\" y1=\"20\" x2=\"${x}\" y2=\"380\" stroke=\"#333\" stroke-width=\"0.5\" />`;
-      }).join('');
-    },
-    get hGridHtml() {
-      return this.gridRange.map(k => {
-        const y = 20 + k * 18;
-        return `<line x1=\"60\" y1=\"${y}\" x2=\"366\" y2=\"${y}\" stroke=\"#333\" stroke-width=\"0.5\" />`;
-      }).join('');
-    },
-    get xLabelsHtml() {
-      return this.axisRange.map(k => {
-        const x = 60 + k * 18;
-        return `<text x=\"${x}\" y=\"395\" text-anchor=\"middle\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${k}</text>`;
-      }).join('');
-    },
-    get yLabelsHtml() {
-      return this.axisRange.map(k => {
-        const y = 380 - k * 18 + 3;
-        return `<text x=\"48\" y=\"${y}\" text-anchor=\"end\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${k}</text>`;
-      }).join('');
-    },
-    get pointsHtml() {
-      return this.points.map(pt => {
-        const cx = this.px(pt.x), cy = this.py(pt.y);
-        return `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"5\" fill=\"#5eead4\" stroke=\"#0f766e\" stroke-width=\"1\" />`;
-      }).join('');
-    },
-  }" style="margin-top:14px;">
-    <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      {# Gridlines, axis labels, and points — all rendered as SVG-fragment strings via <g x-html>. #}
-      <g x-html="vGridHtml"></g>
-      <g x-html="hGridHtml"></g>
-      <g x-html="xLabelsHtml"></g>
-      <g x-html="yLabelsHtml"></g>
-      <g x-html="pointsHtml"></g>
-      {# Title bar #}
-      <text x="400" y="50"  fill="#888" font-size="13" font-family="ui-monospace, monospace">y² ≡ x³ + 7 (mod 17)</text>
-      <text x="400" y="72"  fill="#666" font-size="11" font-family="ui-monospace, monospace">+ the point at infinity</text>
-      <text x="400" y="100" fill="#888" font-size="11" font-family="ui-monospace, monospace">
-        <tspan x="400" dy="0">Affine points: </tspan>
-        <tspan fill="#5eead4" font-weight="600" x-text="points.length"></tspan>
-      </text>
-      <text x="400" y="140" fill="#666" font-size="10" font-family="ui-monospace, monospace">
-        <tspan x="400" dy="0">Same group operations apply:</tspan>
-        <tspan x="400" dy="14">point_add and point_double work</tspan>
-        <tspan x="400" dy="14">unchanged — every arithmetic op</tspan>
-        <tspan x="400" dy="14">is taken mod 17 instead of in ℝ.</tspan>
-      </text>
+  <div style="margin-top:14px;">
+    <svg viewBox="0 0 380 380" style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
+      <g x-html="ecFfGridHtml"></g>
+      <g x-html="ecFfPointsHtml"></g>
     </svg>
-    <div style="margin-top:8px;color:var(--muted);font-size:0.88em;line-height:1.5;">
-      <span x-text="points.length"></span> affine points + the point at infinity (∞) = <span x-text="points.length + 1"></span> total. No smooth curve — the line you'd plot doesn't exist in this world. The geometry is gone; the algebra survives.
+    <div style="margin-top:10px;color:var(--muted);font-size:0.88em;line-height:1.5;">
+      All points (x, y) ∈ [0, 17)² satisfying <code>y² ≡ x³ + 7 (mod 17)</code>. <span x-text="`${ecFfPointCount} affine points`"></span> + the "point at infinity" (the group identity). Same point-addition rules as over the reals — just modular arithmetic. No smooth curve, but the group structure is identical.
     </div>
   </div>
 </template>
 
-{# ---- Step 7: discrete-log-problem ---- animated chaotic walk through k·G. #}
+{# Step 7: discrete-log orbit (same scatter + highlighted k·G points) #}
 <template x-if="step.slug === 'discrete-log-problem'">
-  <div x-data="{
-    a: 0, b: 7, p: 17,
-    G: { x: 15, y: 13 },       {# verified on curve: 13² mod 17 = 16 = (15³ + 7) mod 17 #}
-    k: 1,
-    orbit: [],
-    playing: false,
-    gridRange: Array.from({ length: 18 }, (_, j) => j),
-    axisRange: Array.from({ length: 17 }, (_, j) => j),
-    get pts() {
-      if (typeof demo === 'undefined' || !demo) return [];
-      return demo.finiteFieldPoints(this.a, this.b, this.p);
-    },
-    px(x) { return 60 + x * 18; },
-    py(y) { return 380 - y * 18; },
-    computeOrbit() {
-      if (typeof demo === 'undefined' || !demo) return;
-      this.orbit = [];
-      let pt = null;
-      for (let k = 1; k <= 24; k++) {
-        pt = demo.pointAdd(pt, this.G, this.a, this.p);
-        if (pt === null) { this.orbit.push({ k, infinity: true }); break; }
-        this.orbit.push({ k, x: pt.x, y: pt.y });
-      }
-    },
-    async play() {
-      if (this.playing) return;
-      if (!this.orbit.length) this.computeOrbit();
-      this.playing = true;
-      for (let i = 0; i < this.orbit.length; i++) {
-        this.k = this.orbit[i].k;
-        await new Promise((r) => setTimeout(r, 700));
-      }
-      this.playing = false;
-    },
-    reset() { this.k = 1; this.orbit = []; this.computeOrbit(); },
-    init() { this.computeOrbit(); },
-    get current() {
-      if (!this.orbit.length) return null;
-      return this.orbit.find((o) => o.k === this.k) || null;
-    },
-    get visited() {
-      return this.orbit.filter((o) => o.k <= this.k);
-    },
-    {# ---- SVG fragment builders.
-       Same pattern as step 6: render everything dynamic inside the SVG
-       as an HTML-string assigned to a <g> via x-html. #}
-    get vGridHtml() {
-      return this.gridRange.map(j => {
-        const x = 60 + j * 18;
-        return `<line x1=\"${x}\" y1=\"20\" x2=\"${x}\" y2=\"380\" stroke=\"#333\" stroke-width=\"0.5\" />`;
-      }).join('');
-    },
-    get hGridHtml() {
-      return this.gridRange.map(j => {
-        const y = 20 + j * 18;
-        return `<line x1=\"60\" y1=\"${y}\" x2=\"366\" y2=\"${y}\" stroke=\"#333\" stroke-width=\"0.5\" />`;
-      }).join('');
-    },
-    get xLabelsHtml() {
-      return this.axisRange.map(j => {
-        const x = 60 + j * 18;
-        return `<text x=\"${x}\" y=\"395\" text-anchor=\"middle\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${j}</text>`;
-      }).join('');
-    },
-    get yLabelsHtml() {
-      return this.axisRange.map(j => {
-        const y = 380 - j * 18 + 3;
-        return `<text x=\"48\" y=\"${y}\" text-anchor=\"end\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${j}</text>`;
-      }).join('');
-    },
-    get allPointsHtml() {
-      return this.pts.map(pt => {
-        const cx = this.px(pt.x), cy = this.py(pt.y);
-        return `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"4\" fill=\"#1f2937\" stroke=\"#475569\" stroke-width=\"0.5\" />`;
-      }).join('');
-    },
-    get visitedHtml() {
-      const currentK = this.k;
-      return this.visited.filter(o => !o.infinity).map(o => {
-        const cx = this.px(o.x), cy = this.py(o.y);
-        const fill = o.k === currentK ? '#22c55e' : '#15803d';
-        const opacity = o.k === currentK ? 1.0 : 0.5;
-        const tx = cx + 8, ty = cy - 4;
-        return `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"6\" fill=\"${fill}\" opacity=\"${opacity}\" style=\"transition: opacity 0.3s, fill 0.3s;\" />`
-          + `<text x=\"${tx}\" y=\"${ty}\" fill=\"#22c55e\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${o.k}G</text>`;
-      }).join('');
-    },
-  }" x-init="init()" style="margin-top:14px;">
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
-      <button class="btn" :disabled="playing" @click="play()">▶ Play 1G, 2G, 3G, …</button>
-      <button class="btn secondary" :disabled="playing" @click="reset()">Reset</button>
-      <span style="font-family:ui-monospace, monospace;color:var(--muted);font-size:0.88em;">
-        Current: <strong>k=<span x-text="k"></span></strong>
-        {# Status line lives OUTSIDE SVG, so <template x-if> is safe here.
-           Use a single root <span> per template per Alpine's contract. #}
-        <template x-if="current && !current.infinity">
-          <span> → kG = (<span x-text="current.x"></span>, <span x-text="current.y"></span>)</span>
-        </template>
-        <template x-if="current && current.infinity">
-          <span> → kG = ∞ (point at infinity — orbit complete)</span>
-        </template>
-      </span>
-    </div>
-    <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      {# Static-ish layers (recompute when k changes for visitedHtml; others are constant). #}
-      <g x-html="vGridHtml"></g>
-      <g x-html="hGridHtml"></g>
-      <g x-html="xLabelsHtml"></g>
-      <g x-html="yLabelsHtml"></g>
-      <g x-html="allPointsHtml"></g>
-      {# Visited orbit (cumulative) with k labels. #}
-      <g x-html="visitedHtml"></g>
-      {# Base point G — always shown in red #}
-      <circle :cx="px(G.x)" :cy="py(G.y)" r="5" fill="none" stroke="#ef4444" stroke-width="2" />
-      <text :x="px(G.x) + 8" :y="py(G.y) - 8" fill="#ef4444" font-size="11" font-family="ui-monospace, monospace" font-weight="600">G</text>
-      {# Side label #}
-      <text x="400" y="50"  fill="#888" font-size="13" font-family="ui-monospace, monospace">G = (15, 13)</text>
-      <text x="400" y="72"  fill="#666" font-size="11" font-family="ui-monospace, monospace">on y² ≡ x³ + 7 (mod 17)</text>
-      <text x="400" y="100" fill="#888" font-size="11" font-family="ui-monospace, monospace">
-        Visited: <tspan fill="#22c55e" font-weight="600" x-text="visited.filter((o) => !o.infinity).length"></tspan> of orbit
-      </text>
-      <text x="400" y="140" fill="#666" font-size="10" font-family="ui-monospace, monospace">
-        <tspan x="400" dy="0">The dots hop around with no</tspan>
-        <tspan x="400" dy="14">visible pattern. That's why</tspan>
-        <tspan x="400" dy="14">finding k from Q = kG is hard:</tspan>
-        <tspan x="400" dy="14">there's no shortcut — you'd</tspan>
-        <tspan x="400" dy="14">have to try every k.</tspan>
-      </text>
+  <div style="margin-top:14px;">
+    <svg viewBox="0 0 380 380" style="width:100%;max-width:380px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
+      <g x-html="ecFfGridHtml"></g>
+      <g x-html="ecFfPointsHtml"></g>
+      <g x-html="ecDlpOrbitHtml"></g>
     </svg>
-    <div style="margin-top:8px;color:var(--muted);font-size:0.88em;line-height:1.5;">
-      For our 13-point toy orbit, trying every k is trivial (≤13 tries). For secp256k1's ~2²⁵⁶ points, "try every k" would take longer than the age of the universe by a factor of 10⁶⁰. <strong>That gap — easy multiplication, infeasible inversion — is the entire security argument behind ECC.</strong>
+    <div style="margin-top:10px;color:var(--muted);font-size:0.88em;line-height:1.5;">
+      Starting at base point <strong style="color:#22c55e;">G</strong>, computing 1·G, 2·G, 3·G, … walks around the scatter chaotically. Numbered green dots are multiples of G in this curve's orbit. For real curves (secp256k1 has ~2²⁵⁶ points), brute-forcing k from Q = kG is computationally infeasible — that's the elliptic-curve discrete log problem (ECDLP), the bedrock of every EC primitive on this site.
     </div>
   </div>
 </template>
