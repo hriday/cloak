@@ -515,3 +515,24 @@ def test_schnorr_fixture_loads(db):
     by_slug = {s.slug: s for s in steps}
     assert "schnorr-sign-and-verify" in by_slug  # renamed to avoid Ed25519 collision
     assert by_slug["schnorr-sign-and-verify"].validator_key == "schnorr_operation"
+
+
+@pytest.mark.django_db
+def test_elliptic_curves_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/elliptic-curves/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=24)
+    assert algo.slug == "elliptic-curves"
+    assert algo.family == "asymmetric"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=24)
+    assert lesson.slug == "curves-visually"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    expected = [
+        "intro", "the-curve", "point-addition", "point-doubling",
+        "scalar-multiplication", "finite-field-curve",
+        "discrete-log-problem", "done",
+    ]
+    assert [s.slug for s in steps] == expected

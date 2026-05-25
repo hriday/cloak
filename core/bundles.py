@@ -140,6 +140,12 @@ BUNDLES = [
         "algorithms": ["diffie-hellman", "x25519", "kyber"],
     },
     {
+        "slug": "elliptic-curve-deep-dive",
+        "title": "Elliptic curves end to end",
+        "tagline": "Start with what an elliptic curve actually IS — points, addition, scalar multiplication. Then watch the same operations power X25519 key exchange, Ed25519 signatures, and ECDSA's PS3 disaster.",
+        "algorithms": ["elliptic-curves", "x25519", "ed25519", "ecdsa", "schnorr"],
+    },
+    {
         "slug": "how-card-payments-work",
         "title": "How card payments work",
         "tagline": "Your PIN travels through three banks. It's never decrypted along the way — only re-encrypted under fresh keys, inside tamper-evident HSMs.",
