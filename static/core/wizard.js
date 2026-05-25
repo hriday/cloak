@@ -255,19 +255,25 @@ function wizardComponent(initial) {
       if (!step) return;
       let input;
       // simulated-hsm has kind='input-text' but the UI is multi-field (op + message + signature),
-      // so route it through multiInput like the input-multi kinds.
-      if (step.kind === "input-multi" || step.slug === "simulated-hsm") input = { ...this.multiInput };
-      else if (step.kind === "input-text") input = this.sentenceInput;
-      else input = this.inputValue;
+      // so route it through multiInput like the input-multi kinds. pin-translation has
+      // kind='input-numeric' but the UI takes two inputs (PIN + PAN), so it also routes
+      // through multiInput — the validator accepts {pin, pan} and defaults PAN when blank.
+      if (step.kind === "input-multi" || step.slug === "simulated-hsm" || step.slug === "pin-translation") {
+        input = { ...this.multiInput };
+      } else if (step.kind === "input-text") {
+        input = this.sentenceInput;
+      } else {
+        input = this.inputValue;
+      }
       const fn = this.validators[step.validator_key];
       const result = await fn(input, this.state);
       if (!result.ok) { this.hint = result.hint; return; }
       this.hint = "";
       this.state = { ...this.state, ...result.value };
       this.refreshInlineCode();
-      // simulated-hsm is exploratory — let the user run sign/verify multiple times
-      // before manually advancing via the Continue button.
-      if (step.slug === "simulated-hsm") {
+      // simulated-hsm and pin-translation are exploratory — let the user re-run the
+      // operation multiple times before manually advancing via the Continue button.
+      if (step.slug === "simulated-hsm" || step.slug === "pin-translation") {
         this.persistLocal();
         this.syncServer();
         return;
