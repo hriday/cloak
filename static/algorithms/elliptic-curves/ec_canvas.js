@@ -607,15 +607,16 @@ export function runScalarMultAnimation(canvas, a, b, k, P, viewport, opts = {}) 
   });
 }
 
-// ---- discrete-log orbit animation -------------------------------------
+// ---- discrete-log orbit (static) --------------------------------------
 //
-// For the ECDLP step: draw the static F_17 scatter, then pulse 1G, 2G, 3G,
-// … in sequence so the learner sees the chaotic walk around the grid.
+// Draw the F_17 scatter + ALL orbit points 1G..nG at once with numeric
+// labels. Static: no rAF loop, no per-frame redraws — those caused
+// canvas dimensions to drift catastrophically under various Alpine/
+// browser-cache edge cases. The pedagogical point (chaotic walk through
+// the scatter) lands fine in a single still image.
 
-export function runDlpOrbitAnimation(canvas, a, b, p, G, opts = {}) {
-  const perStepMs = (opts.duration && opts.duration.perStep) ?? 1500;
-
-  // Compute the full orbit once.
+export function runDlpOrbitAnimation(canvas, a, b, p, G, _opts = {}) {
+  // Compute the full orbit.
   const orbit = [];
   let acc = G;
   for (let k = 1; k <= 32; k++) {
@@ -623,60 +624,25 @@ export function runDlpOrbitAnimation(canvas, a, b, p, G, opts = {}) {
     orbit.push({ k, x: acc.x, y: acc.y });
     acc = pointAdd(acc, G, a, p);
   }
-
-  // Initial frame: scatter + grid only.
-  const { points, ctxBox } = drawFiniteField(canvas, a, b, p);
+  // Draw the scatter (one-shot, no rAF).
+  const { ctxBox } = drawFiniteField(canvas, a, b, p);
   const { ctx, toPx, toPy } = ctxBox;
-
-  // Stop signal — the wizard sets canvas._stopOrbit = true when navigating
-  // away. We poll it each frame.
-  canvas._stopOrbit = false;
-  let idx = 0;
-  let startedAt = 0;
-  let stopped = false;
-
-  function frame(timestamp) {
-    if (canvas._stopOrbit || stopped) return;
-    if (!startedAt) startedAt = timestamp;
-    const t = timestamp - startedAt;
-    // Repaint scatter every frame to clear previous highlight
-    drawFiniteField(canvas, a, b, p);
-    // Draw all previously-visited orbit points faintly
-    ctx.save();
-    for (let i = 0; i < idx; i++) {
-      const pt = orbit[i];
-      ctx.fillStyle = COLORS.result;
-      ctx.globalAlpha = 0.35;
-      ctx.beginPath();
-      ctx.arc(toPx(pt.x), toPy(pt.y), 5, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.restore();
-    // Pulse the current point
-    if (idx < orbit.length) {
-      const pt = orbit[idx];
-      const phase = Math.min(1, t / perStepMs);
-      const pulse = 0.5 + 0.5 * Math.sin(phase * Math.PI);
-      ctx.save();
-      ctx.fillStyle = COLORS.result;
-      ctx.globalAlpha = 0.85;
-      ctx.beginPath();
-      ctx.arc(toPx(pt.x), toPy(pt.y), 6 + pulse * 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = COLORS.textBold;
-      ctx.font = "bold 12px ui-monospace, monospace";
-      ctx.fillText(`${pt.k}·G`, toPx(pt.x) + 10, toPy(pt.y) - 6);
-      ctx.restore();
-    }
-    if (t >= perStepMs) {
-      idx = (idx + 1) % orbit.length;
-      startedAt = timestamp;
-    }
-    requestAnimationFrame(frame);
+  // Overlay all orbit points with k·G labels.
+  ctx.save();
+  for (const pt of orbit) {
+    ctx.fillStyle = COLORS.result;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(toPx(pt.x), toPy(pt.y), 6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = COLORS.textBold;
+    ctx.font = "bold 10px ui-monospace, monospace";
+    ctx.fillText(`${pt.k}G`, toPx(pt.x) + 9, toPy(pt.y) - 4);
   }
-  requestAnimationFrame(frame);
-
-  return { stop: () => { stopped = true; canvas._stopOrbit = true; } };
+  ctx.restore();
+  // Return a no-op stop handle so existing callers don't break.
+  return { stop: () => {} };
 }
 
 // Re-export math + presets so callers (templates) get a one-module surface
