@@ -214,6 +214,9 @@
         </div>
       </template>
 
+      {# Elliptic curves: SVG-animated widgets for steps 2-7 of the curves-visually lesson #}
+      {% include "core/_ec_widgets.html" %}
+
       <!-- cipher-modes step 4: cbc-walk — button drives the three-block demo -->
       <template x-if="step.slug === 'cbc-walk'">
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
