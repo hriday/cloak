@@ -11,6 +11,7 @@ from .models import Algorithm, Lesson, UserProgress
 FAMILY_SECTIONS = [
     ("asymmetric", "Asymmetric", "Public/private keypairs. Anyone can encrypt; only the holder can decrypt — or sign."),
     ("symmetric", "Symmetric", "Shared-key ciphers. Both sides hold the same key; fast enough for bulk data."),
+    ("hash", "Hash & MAC", "One-way functions that fingerprint data and authenticate messages — the building blocks under almost every protocol."),
     ("pq", "Post-quantum", "Algorithms designed to survive an adversary with a large quantum computer."),
     ("hsm", "Key management & HSMs", "Patterns and devices for protecting the key material itself — vaults, not algorithms."),
 ]

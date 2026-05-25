@@ -6,6 +6,7 @@ class Algorithm(models.Model):
     FAMILY_CHOICES = [
         ("asymmetric", "Asymmetric"),
         ("symmetric", "Symmetric"),
+        ("hash", "Hash & MAC"),
         ("pq", "Post-Quantum"),
         ("hsm", "HSM"),
     ]
