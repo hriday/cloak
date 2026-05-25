@@ -15,6 +15,20 @@
          phase   integer 0–4 stepping through the addition animation
      * CSS transitions on circle.cx/cy + line stroke-dashoffset drive the
        smooth motion. Re-running an animation just re-triggers the chain.
+
+   IMPORTANT: Alpine's <template x-for>/<template x-if> is BROKEN inside
+   <svg> elements — the loop variable doesn't propagate into bindings
+   because the browser's HTML parser foster-parents <template> out of
+   the SVG subtree, and Alpine's importNode pipeline can't recover the
+   SVG namespace reliably. Symptoms include "ReferenceError: t is not
+   defined", "k is not defined", "pt is not defined" and "Failed to
+   execute 'importNode'".
+
+   The fix here is to render any dynamic SVG content via a <g> with
+   x-html bound to a JS getter that returns the SVG fragment as a
+   STRING. Alpine sets innerHTML on the <g>, the browser then parses
+   the fragment inside the SVG namespace inherited from <g>, and no
+   template-scope tricks are needed.
    ============================================================ {% endcomment %}
 
 {% comment %} ---- Step 2: the-curve ---- visual widget showing the curve over reals,
@@ -40,8 +54,19 @@
       const c = this.curve;
       return 4 * Math.pow(c.a, 3) + 27 * c.b * c.b;
     },
+    {# Renders tick marks as a single SVG fragment string. <g x-html> sets
+       innerHTML directly inside the SVG namespace, sidestepping Alpine's
+       broken <template x-for> inside <svg>. #}
+    get tickLinesHtml() {
+      return this.tickRange.map(t => {
+        const x = (300 + t * (270/3.5)).toFixed(2);
+        return `<line x1=\"${x}\" y1=\"196\" x2=\"${x}\" y2=\"204\" stroke=\"#666\" stroke-width=\"0.5\" />`;
+      }).join('');
+    },
   }" style="margin-top:14px;">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+      {% comment %} Preset buttons live OUTSIDE the SVG, so a normal <template x-for>
+         is safe here — HTML namespace, no foster-parenting issue. {% endcomment %}
       <template x-for="(pre, i) in presets" :key="i">
         <button :class="presetIndex === i ? 'btn' : 'btn secondary'"
                 @click="presetIndex = i"
@@ -53,13 +78,8 @@
       {# axes #}
       <line x1="30" y1="200" x2="570" y2="200" stroke="#666" stroke-width="0.5" />
       <line x1="300" y1="30"  x2="300" y2="370" stroke="#666" stroke-width="0.5" />
-      {% comment %} axis ticks: every unit between -window and +window.
-         Wrapped in <g> so the <template x-for> sits inside SVG context safely. {% endcomment %}
-      <g>
-        <template x-for="t in tickRange" :key="'tx'+t">
-          <line :x1="300 + t * (270/3.5)" y1="196" :x2="300 + t * (270/3.5)" y2="204" stroke="#666" stroke-width="0.5" />
-        </template>
-      </g>
+      {# axis ticks — rendered as an SVG-string fragment via x-html #}
+      <g x-html="tickLinesHtml"></g>
       {# curve path #}
       <path :d="pathD" fill="none" stroke="#5eead4" stroke-width="2" />
       <text x="540" y="220" fill="#888" font-size="11" font-family="ui-monospace, monospace">x</text>
@@ -380,7 +400,7 @@
       <div style="margin-top:10px;font-family:ui-monospace, monospace;color:var(--muted);font-size:0.88em;">
         k = <span x-text="k"></span> = binary <code x-text="binary"></code>. Double-and-add walks the bits <strong>LSB first</strong>: at each step, double the current addend; if the bit is 1, add the addend to the accumulator.
       </div>
-      {# Bit ladder #}
+      {# Bit ladder lives OUTSIDE the SVG — plain HTML <template x-for> works here. #}
       <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center;">
         <span style="color:var(--muted);font-size:0.82em;">bits (LSB→MSB):</span>
         <template x-for="(s, i) in steps" :key="i">
@@ -397,10 +417,10 @@
         {# Base point G in red #}
         <circle :cx="tx(base.x)" :cy="ty(base.y)" r="5" fill="#ef4444" />
         <text :x="tx(base.x) + 8" :y="ty(base.y) - 8" fill="#ef4444" font-size="13" font-weight="600">P</text>
-        {% comment %} Current addend (yellow — doubles as it grows: P, 2P, 4P, 8P, ...).
-           Use x-show + optional chaining so the bindings never throw when
-           steps[currentStepIdx] is undefined; x-if's <template> inside SVG
-           is fragile in some browsers (namespace foster-parenting). {% endcomment %}
+        {# Current addend (yellow — doubles as it grows: P, 2P, 4P, 8P, ...).
+           Uses x-show + optional chaining so bindings never throw when
+           steps[currentStepIdx] is undefined. Single elements (no x-for /
+           x-if needed), so safe inside SVG. #}
         <circle x-show="currentStepIdx >= 0 && steps[currentStepIdx] && steps[currentStepIdx].addend"
                 :cx="(steps[currentStepIdx] && steps[currentStepIdx].addend) ? tx(steps[currentStepIdx].addend.x) : 0"
                 :cy="(steps[currentStepIdx] && steps[currentStepIdx].addend) ? ty(steps[currentStepIdx].addend.y) : 0"
@@ -430,10 +450,6 @@
 <template x-if="step.slug === 'finite-field-curve'">
   <div x-data="{
     a: 0, b: 7, p: 17,
-    {% comment %} Precomputed integer arrays for SVG grid iteration. We use these
-       instead of `x-for=&quot;i in 18&quot;` because numeric-range x-for
-       inside <svg> proved fragile in Alpine 3.14 (loop variable
-       intermittently undefined). Concrete arrays + <g> wrappers are reliable. {% endcomment %}
     gridRange: Array.from({ length: 18 }, (_, k) => k),
     axisRange: Array.from({ length: 17 }, (_, k) => k),
     get points() {
@@ -443,39 +459,48 @@
     {# Pixel transform: 17x17 grid centered in the SVG. 18px per cell. #}
     px(x) { return 60 + x * 18; },
     py(y) { return 380 - y * 18; },        {# flip y so 0 is at the bottom #}
+    {# ---- SVG fragment builders rendered via <g x-html=…>.
+       These bypass Alpine's broken <template x-for> in SVG by emitting
+       a fully-formed SVG-fragment string that the browser parses inside
+       the <g>'s SVG namespace. #}
+    get vGridHtml() {
+      return this.gridRange.map(k => {
+        const x = 60 + k * 18;
+        return `<line x1=\"${x}\" y1=\"20\" x2=\"${x}\" y2=\"380\" stroke=\"#333\" stroke-width=\"0.5\" />`;
+      }).join('');
+    },
+    get hGridHtml() {
+      return this.gridRange.map(k => {
+        const y = 20 + k * 18;
+        return `<line x1=\"60\" y1=\"${y}\" x2=\"366\" y2=\"${y}\" stroke=\"#333\" stroke-width=\"0.5\" />`;
+      }).join('');
+    },
+    get xLabelsHtml() {
+      return this.axisRange.map(k => {
+        const x = 60 + k * 18;
+        return `<text x=\"${x}\" y=\"395\" text-anchor=\"middle\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${k}</text>`;
+      }).join('');
+    },
+    get yLabelsHtml() {
+      return this.axisRange.map(k => {
+        const y = 380 - k * 18 + 3;
+        return `<text x=\"48\" y=\"${y}\" text-anchor=\"end\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${k}</text>`;
+      }).join('');
+    },
+    get pointsHtml() {
+      return this.points.map(pt => {
+        const cx = this.px(pt.x), cy = this.py(pt.y);
+        return `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"5\" fill=\"#5eead4\" stroke=\"#0f766e\" stroke-width=\"1\" />`;
+      }).join('');
+    },
   }" style="margin-top:14px;">
     <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      {% comment %} Gridlines — wrap each <template x-for> in <g> so the SVG namespace
-         is preserved through Alpine's clone+importNode pipeline. Also use
-         precomputed arrays from x-data so the loop variable is a primitive
-         that survives Alpine scope walking. {% endcomment %}
-      <g>
-        <template x-for="k in gridRange" :key="'gx'+k">
-          <line :x1="60 + k*18" y1="20" :x2="60 + k*18" y2="380" stroke="#333" stroke-width="0.5" />
-        </template>
-      </g>
-      <g>
-        <template x-for="k in gridRange" :key="'gy'+k">
-          <line x1="60" :y1="20 + k*18" x2="366" :y2="20 + k*18" stroke="#333" stroke-width="0.5" />
-        </template>
-      </g>
-      {# Axis labels #}
-      <g>
-        <template x-for="k in axisRange" :key="'lx'+k">
-          <text :x="60 + k*18" y="395" text-anchor="middle" fill="#666" font-size="9" font-family="ui-monospace, monospace" x-text="k.toString()"></text>
-        </template>
-      </g>
-      <g>
-        <template x-for="k in axisRange" :key="'ly'+k">
-          <text x="48" :y="380 - k*18 + 3" text-anchor="end" fill="#666" font-size="9" font-family="ui-monospace, monospace" x-text="k.toString()"></text>
-        </template>
-      </g>
-      {# Points #}
-      <g>
-        <template x-for="(pt, idx) in points" :key="idx">
-          <circle :cx="px(pt.x)" :cy="py(pt.y)" r="5" fill="#5eead4" stroke="#0f766e" stroke-width="1" />
-        </template>
-      </g>
+      {# Gridlines, axis labels, and points — all rendered as SVG-fragment strings via <g x-html>. #}
+      <g x-html="vGridHtml"></g>
+      <g x-html="hGridHtml"></g>
+      <g x-html="xLabelsHtml"></g>
+      <g x-html="yLabelsHtml"></g>
+      <g x-html="pointsHtml"></g>
       {# Title bar #}
       <text x="400" y="50"  fill="#888" font-size="13" font-family="ui-monospace, monospace">y² ≡ x³ + 7 (mod 17)</text>
       <text x="400" y="72"  fill="#666" font-size="11" font-family="ui-monospace, monospace">+ the point at infinity</text>
@@ -541,12 +566,58 @@
     get visited() {
       return this.orbit.filter((o) => o.k <= this.k);
     },
+    {# ---- SVG fragment builders.
+       Same pattern as step 6: render everything dynamic inside the SVG
+       as an HTML-string assigned to a <g> via x-html. #}
+    get vGridHtml() {
+      return this.gridRange.map(j => {
+        const x = 60 + j * 18;
+        return `<line x1=\"${x}\" y1=\"20\" x2=\"${x}\" y2=\"380\" stroke=\"#333\" stroke-width=\"0.5\" />`;
+      }).join('');
+    },
+    get hGridHtml() {
+      return this.gridRange.map(j => {
+        const y = 20 + j * 18;
+        return `<line x1=\"60\" y1=\"${y}\" x2=\"366\" y2=\"${y}\" stroke=\"#333\" stroke-width=\"0.5\" />`;
+      }).join('');
+    },
+    get xLabelsHtml() {
+      return this.axisRange.map(j => {
+        const x = 60 + j * 18;
+        return `<text x=\"${x}\" y=\"395\" text-anchor=\"middle\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${j}</text>`;
+      }).join('');
+    },
+    get yLabelsHtml() {
+      return this.axisRange.map(j => {
+        const y = 380 - j * 18 + 3;
+        return `<text x=\"48\" y=\"${y}\" text-anchor=\"end\" fill=\"#666\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${j}</text>`;
+      }).join('');
+    },
+    get allPointsHtml() {
+      return this.pts.map(pt => {
+        const cx = this.px(pt.x), cy = this.py(pt.y);
+        return `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"4\" fill=\"#1f2937\" stroke=\"#475569\" stroke-width=\"0.5\" />`;
+      }).join('');
+    },
+    get visitedHtml() {
+      const currentK = this.k;
+      return this.visited.filter(o => !o.infinity).map(o => {
+        const cx = this.px(o.x), cy = this.py(o.y);
+        const fill = o.k === currentK ? '#22c55e' : '#15803d';
+        const opacity = o.k === currentK ? 1.0 : 0.5;
+        const tx = cx + 8, ty = cy - 4;
+        return `<circle cx=\"${cx}\" cy=\"${cy}\" r=\"6\" fill=\"${fill}\" opacity=\"${opacity}\" style=\"transition: opacity 0.3s, fill 0.3s;\" />`
+          + `<text x=\"${tx}\" y=\"${ty}\" fill=\"#22c55e\" font-size=\"9\" font-family=\"ui-monospace, monospace\">${o.k}G</text>`;
+      }).join('');
+    },
   }" x-init="init()" style="margin-top:14px;">
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
       <button class="btn" :disabled="playing" @click="play()">▶ Play 1G, 2G, 3G, …</button>
       <button class="btn secondary" :disabled="playing" @click="reset()">Reset</button>
       <span style="font-family:ui-monospace, monospace;color:var(--muted);font-size:0.88em;">
         Current: <strong>k=<span x-text="k"></span></strong>
+        {# Status line lives OUTSIDE SVG, so <template x-if> is safe here.
+           Use a single root <span> per template per Alpine's contract. #}
         <template x-if="current && !current.infinity">
           <span> → kG = (<span x-text="current.x"></span>, <span x-text="current.y"></span>)</span>
         </template>
@@ -556,50 +627,14 @@
       </span>
     </div>
     <svg viewBox="0 0 600 400" style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);">
-      {% comment %} Each <template x-for> sits inside its own <g> wrapper to preserve
-         SVG namespace through Alpine's clone-and-import pipeline. {% endcomment %}
-      <g>
-        <template x-for="j in gridRange" :key="'gx'+j">
-          <line :x1="60 + j*18" y1="20" :x2="60 + j*18" y2="380" stroke="#333" stroke-width="0.5" />
-        </template>
-      </g>
-      <g>
-        <template x-for="j in gridRange" :key="'gy'+j">
-          <line x1="60" :y1="20 + j*18" x2="366" :y2="20 + j*18" stroke="#333" stroke-width="0.5" />
-        </template>
-      </g>
-      <g>
-        <template x-for="j in axisRange" :key="'lx'+j">
-          <text :x="60 + j*18" y="395" text-anchor="middle" fill="#666" font-size="9" font-family="ui-monospace, monospace" x-text="j.toString()"></text>
-        </template>
-      </g>
-      <g>
-        <template x-for="j in axisRange" :key="'ly'+j">
-          <text x="48" :y="380 - j*18 + 3" text-anchor="end" fill="#666" font-size="9" font-family="ui-monospace, monospace" x-text="j.toString()"></text>
-        </template>
-      </g>
-      {# All curve points in faint #}
-      <g>
-        <template x-for="(pt, idx) in pts" :key="idx">
-          <circle :cx="px(pt.x)" :cy="py(pt.y)" r="4" fill="#1f2937" stroke="#475569" stroke-width="0.5" />
-        </template>
-      </g>
-      {% comment %} Visited orbit (cumulative) — faint green with k label.
-         The <template x-for> child must be a SINGLE element; the inner <g>
-         wraps the circle + label so they share the same loop iteration. {% endcomment %}
-      <g>
-        <template x-for="(o, idx) in visited" :key="idx">
-          <g x-show="!o.infinity">
-            <circle :cx="px(o.x)" :cy="py(o.y)" r="6"
-                    :fill="o.k === k ? '#22c55e' : '#15803d'"
-                    :opacity="o.k === k ? 1.0 : 0.5"
-                    style="transition: opacity 0.3s, fill 0.3s;" />
-            <text :x="px(o.x) + 8" :y="py(o.y) - 4"
-                  fill="#22c55e" font-size="9" font-family="ui-monospace, monospace"
-                  x-text="`${o.k}G`"></text>
-          </g>
-        </template>
-      </g>
+      {# Static-ish layers (recompute when k changes for visitedHtml; others are constant). #}
+      <g x-html="vGridHtml"></g>
+      <g x-html="hGridHtml"></g>
+      <g x-html="xLabelsHtml"></g>
+      <g x-html="yLabelsHtml"></g>
+      <g x-html="allPointsHtml"></g>
+      {# Visited orbit (cumulative) with k labels. #}
+      <g x-html="visitedHtml"></g>
       {# Base point G — always shown in red #}
       <circle :cx="px(G.x)" :cy="py(G.y)" r="5" fill="none" stroke="#ef4444" stroke-width="2" />
       <text :x="px(G.x) + 8" :y="py(G.y) - 8" fill="#ef4444" font-size="11" font-family="ui-monospace, monospace" font-weight="600">G</text>
