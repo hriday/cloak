@@ -4,6 +4,7 @@
 // without redoing the dynamic import on every click.
 const DEMO_FILENAMES = {
   "sha256": "sha_demo.js",
+  "sha3": "sha3_demo.js",
   "hmac": "hmac_demo.js",
   "x25519": "x25_demo.js",
   "ed25519": "ed25_simulator.js",
