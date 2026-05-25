@@ -1,0 +1,114 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 22,
+    "fields": {
+      "slug": "classical-ciphers",
+      "name": "Classical ciphers",
+      "family": "historical",
+      "status": "live",
+      "order": 22,
+      "intro_template": "Caesar, Vigenère, frequency analysis, and the one-time pad. Where cryptography started — and why everything modern looks the way it does."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 22,
+    "fields": {
+      "algorithm": 22,
+      "slug": "before-modern",
+      "title": "Before modern: Caesar to one-time pad",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 221,
+    "fields": {
+      "lesson": 22, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Before modern crypto\n\nLong before AES, RSA, or any of the algorithms in the rest of this site, people were already encrypting messages. Julius Caesar shifted letters around 50 BCE. The Vigenère cipher (1553) was considered unbreakable for over 250 years. WWII Enigma was the most sophisticated mechanical cipher ever built.\n\nThey all share two features:\n\n1. **Secrecy through obscurity of the algorithm**, or\n2. **A short symmetric key shared between sender and receiver.**\n\nAnd they all share one fatal flaw: **a patient analyst with paper and a pencil can break them.** You're about to do it yourself.\n\nThis lesson walks four ideas:\n\n| Idea | Year | Status |\n|---|---|---|\n| Caesar cipher | ~50 BCE | Broken by brute force (key space = 26). |\n| Vigenère cipher | 1553 | Broken by Friedrich Kasiski, 1863. |\n| Frequency analysis | ~800 CE (Al-Kindi) | The technique that breaks both above. |\n| One-time pad | 1882 / 1949 | **Mathematically unbreakable** — but impractical. |\n\nBy the end you'll have broken a Caesar cipher by hand, broken a Vigenère cipher by frequency analysis, seen Shannon's proof that the one-time pad has *perfect secrecy*, and understood why modern cryptography exists in opposition to all of this.",
+      "help_template": "**In plain English:** this is the warm-up. Everything you'll see later — AES, RSA, Diffie-Hellman, post-quantum — is a response to how thoroughly classical ciphers break. Modern crypto trades the unreachable ideal of *perfect secrecy* (the one-time pad) for the achievable ideal of *computational secrecy*: secure against attackers with finite computers and finite time. You can't appreciate the trade without first seeing what was being traded away.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 222,
+    "fields": {
+      "lesson": 22, "order": 2, "slug": "caesar", "kind": "info",
+      "prompt_template": "### The Caesar cipher\n\nShift every letter by **k**. For k = 3: A→D, B→E, C→F, ... X→A, Y→B, Z→C.\n\n```\nplain:  A B C D E F G H I J K L M N O P Q R S T U V W X Y Z\nshift3: D E F G H I J K L M N O P Q R S T U V W X Y Z A B C\n```\n\nFamous example:\n\n```\nHELLO  →  KHOOR\n```\n\n**Encrypt:** `c[i] = (p[i] + k) mod 26`\n**Decrypt:** `p[i] = (c[i] − k) mod 26` (equivalently, shift by 26 − k).\n\nThe key is the integer k. **Key space: 26** (including k = 0, which is the identity). With only 26 possible keys, this is broken the instant someone bothers to look. That's the next step.",
+      "help_template": "**In plain English:** Take the alphabet. Pick a number from 1 to 25. Slide every letter that many places to the right (wrapping around). Done — that's Caesar. The Romans used k = 3. The cipher's *security* hinges entirely on the attacker not realizing they should just try all 26 shifts. It's not really a cipher; it's a code wheel.",
+      "validator_key": "info", "codegen_key": "caesar"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 223,
+    "fields": {
+      "lesson": 22, "order": 3, "slug": "break-caesar", "kind": "input-text",
+      "prompt_template": "### Break a Caesar cipher\n\nWe encrypted an English sentence with some shift k. Here's the ciphertext:\n\n```\nWKLV LV D VHFUHW PHVVDJH\n```\n\n**Your turn.** Recover the plaintext. Either:\n\n- Type the **plaintext** (the original English sentence), or\n- Type the **shift** k (a number from 1 to 25).\n\nThere are only 26 keys. You can try them all in under a minute. That's brute force — when the key space is small enough, you don't need to be clever.",
+      "help_template": "**In plain English:** Take the first ciphertext word, `WKLV`. Try shifting each letter back by 1: `VJKU` — gibberish. Back by 2: `UIJT` — still gibberish. Back by 3: `THIS` — English! You found the shift. Apply it to the rest of the ciphertext. The whole point of this step is to feel how tiny 26 is. A modern key is 2²⁵⁶ possible values; even at a trillion guesses per second, the universe burns out before you finish.",
+      "validator_key": "caesar_decrypt", "codegen_key": "caesar_decrypt_step"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 224,
+    "fields": {
+      "lesson": 22, "order": 4, "slug": "vigenere", "kind": "info",
+      "prompt_template": "### The Vigenère cipher\n\nThe natural fix for Caesar: instead of one shift, use *many*. Pick a keyword. Repeat it across the plaintext. Each plaintext letter gets a Caesar shift by the matching keyword letter (A = 0, B = 1, ..., Z = 25).\n\n**Example.** Key = `LEMON`, plaintext = `ATTACKATDAWN`:\n\n```\nplaintext:   A T T A C K A T D A W N\nkey stream:  L E M O N L E M O N L E\nshift:       11 4 12 14 13 11 4 12 14 13 11 4\nciphertext:  L X F O P V E F R N H R\n```\n\nNotice: the two `T`s in `ATTACK` encrypt to different letters (`X` and `F`), because the key letter changed. That's *polyalphabetic*. Letter frequencies in the ciphertext look flatter than English. For ~250 years (1553–1863) Vigenère was called **\"le chiffre indéchiffrable\"** — the indecipherable cipher.\n\nIt isn't.",
+      "help_template": "**In plain English:** Caesar uses one fixed shift for the whole message. Vigenère uses a *cycle* of shifts driven by a keyword. If the key is N letters long, the cipher is really N independent Caesar ciphers woven together — letter 1, N+1, 2N+1 all get the same shift. That structure is exactly the weakness that breaks it: once you know the key length, you can split the ciphertext into N streams and attack each as a Caesar cipher with just frequency analysis.",
+      "validator_key": "info", "codegen_key": "vigenere"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 225,
+    "fields": {
+      "lesson": 22, "order": 5, "slug": "frequency-analysis", "kind": "info",
+      "prompt_template": "### Frequency analysis\n\nEnglish is not flat. Some letters appear far more often than others:\n\n| Letter | Frequency | Letter | Frequency |\n|---|---|---|---|\n| **E** | 12.7% | H | 6.1% |\n| **T** | 9.1% | R | 6.0% |\n| **A** | 8.2% | D | 4.3% |\n| O | 7.5% | L | 4.0% |\n| **I** | 7.0% | U | 2.8% |\n| **N** | 6.7% | ... | ... |\n| S | 6.3% | Z | 0.07% |\n\nThis was first written down by **Al-Kindi** around 800 CE in Baghdad — the first major cryptanalytic technique in history.\n\n**Caesar.** A Caesar cipher shifts the *entire* distribution. If the ciphertext's most common letter is `H`, you can guess the shift is 3 (since E + 3 = H). Try every shift; the one whose decrypted distribution best matches English wins.\n\n**Vigenère.** Frequency analysis on the *whole* ciphertext doesn't work — the distribution is flattened by the multiple shifts. But:\n\n1. **Guess the key length N.** (Kasiski examination: repeated substrings in the ciphertext hint at the period of the key. The Friedman index of coincidence is the other classic technique.)\n2. **Split** the ciphertext into N streams: stream i contains letters at positions i, i+N, i+2N, .... Each stream was encrypted with a single Caesar shift.\n3. **Break each stream** by frequency analysis as a Caesar cipher.\n4. **Reassemble** the shifts into the key. Decrypt.\n\nThat's the whole attack. The next step runs it on a real ciphertext.",
+      "help_template": "**In plain English:** English has a fingerprint. E is by far the most common letter (about 1 in 8); Z, Q, J, X almost never appear. Encrypt with a Caesar cipher and the fingerprint shifts but its shape stays the same: just look for the bump and you've found E. Vigenère hides the fingerprint by stacking multiple Caesars on top of each other — but if you can guess the key length, you can un-stack them and recover the fingerprint, one position at a time.",
+      "validator_key": "info", "codegen_key": "frequency_analysis"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 226,
+    "fields": {
+      "lesson": 22, "order": 6, "slug": "break-vigenere", "kind": "input-text",
+      "prompt_template": "### Break a Vigenère cipher\n\nHere's a Vigenère ciphertext. We'll tell you the **key length is 5** — pretend you got there via Kasiski.\n\n```\nQsgf fnsds nyh esipr ksncw mub zyd tnelqff mvaitsx rceel ab\ngsme qbyxubryx m brh rmhvzr ocaniujro mz zvmidhl lrp\nrromoogph fc gsi bfbasewgtsz hulx mzy xiz oep gdsneip sdfex.\nBbh aq oep izunrip wa l kdsne gujvw amf gpwfwar atsgsid hulx\nzogtsz ce lrk bnemab fz gabppmhsq lrp gb oipwplxqr plr xcar\nizrhci.\n```\n\n**Your turn.** Type **GO** (or anything non-empty) into the box and hit Continue. The page will:\n\n1. Split the ciphertext into 5 streams (letters at positions 0, 5, 10, ...; 1, 6, 11, ...; etc.).\n2. For each stream, try all 26 Caesar shifts and pick the one whose letter distribution best matches English (lowest chi-squared distance to the table from step 5).\n3. Concatenate the 5 best shifts → the recovered key.\n4. Decrypt the original ciphertext with the recovered key.\n\nWatch the recovered key and plaintext fall out below.",
+      "help_template": "**In plain English:** The whole break is just frequency analysis applied 5 times. We're not guessing or being clever — we're trying every shift on each stream and picking the one that produces a stream whose letters look English-ish. The chi-squared score is a one-liner that measures how far the observed frequencies are from English. The right shift wins by a wide margin once each stream has ~50+ letters, which is why our ciphertext is deliberately long.",
+      "validator_key": "vigenere_break", "codegen_key": "vigenere_break_step"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 227,
+    "fields": {
+      "lesson": 22, "order": 7, "slug": "one-time-pad", "kind": "info",
+      "prompt_template": "### The one-time pad\n\nVigenère's weakness was that the key repeated. What if it didn't?\n\nThe **one-time pad** is Vigenère taken to the limit:\n\n- The key is **truly random**.\n- The key is **as long as the message**.\n- The key is used **exactly once**.\n\nEncryption (binary form): `c[i] = p[i] XOR k[i]`\nEncryption (alphabetic form): `c[i] = (p[i] + k[i]) mod 26`\n\nDecryption is the same operation in reverse (XOR is self-inverse; modular subtraction inverts modular addition).\n\nIn 1949, **Claude Shannon proved** the one-time pad has **perfect secrecy**: given the ciphertext, the attacker learns *literally nothing* about the plaintext — not even partial information, not even with infinite computing power. We sketch the proof on the next step.\n\n**The catch.** You need to:\n\n1. Generate a **truly random** pad as long as the message.\n2. Get the pad to the receiver, in advance, over a **secure channel**.\n3. **Never reuse** any byte of the pad. (Two messages encrypted with the same pad XOR together to remove the pad: `c1 XOR c2 = p1 XOR p2`. That's the [Venona break](https://en.wikipedia.org/wiki/Venona_project).)\n\nIf you had a secure channel to ship the pad, you could just use it to ship the message. That's why the OTP is mostly a theoretical landmark, not a practical tool — except for embassy hotlines and the occasional spy.",
+      "help_template": "**In plain English:** The OTP is the only cipher that's been mathematically proven unbreakable. The price is that the key has to be huge, random, and used once. Modern crypto gives up perfect secrecy and settles for *computational* secrecy — secure against attackers with realistic computers and realistic time budgets. A 256-bit AES key is 1.16 × 10⁷⁷ possible values; brute force would take longer than the age of the universe. Not unbreakable, but enough.",
+      "validator_key": "info", "codegen_key": "one_time_pad"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 228,
+    "fields": {
+      "lesson": 22, "order": 8, "slug": "perfect-secrecy-proof", "kind": "info",
+      "prompt_template": "### Why the one-time pad has perfect secrecy\n\n**Claim (Shannon, 1949):** For an OTP with a uniformly random key, observing the ciphertext gives **zero information** about the plaintext.\n\n**Setup.** Let p be any candidate plaintext and c be a fixed observed ciphertext, both n characters. The key k must satisfy `k[i] = (c[i] − p[i]) mod 26` for every i. That equation has **exactly one** solution for k.\n\n**The argument.** Since the key was drawn uniformly at random from all 26ⁿ possible keys, every individual key has probability 26⁻ⁿ. So for any candidate plaintext p we have\n\n```\nP(ciphertext = c | plaintext = p) = P(key = c − p) = 26⁻ⁿ.\n```\n\nNotice: that probability is **the same** for every possible plaintext p. By Bayes' rule,\n\n```\nP(p | c) = P(c | p) · P(p) / P(c)\n         = 26⁻ⁿ · P(p) / P(c)\n         = P(p)         (since the constants cancel).\n```\n\nThe posterior equals the prior. The ciphertext doesn't move your belief about the plaintext **at all**.\n\n**What this means.** Given the ciphertext `XKQTL`, every 5-letter sequence — `HELLO`, `WORLD`, `ATACK`, `LATER`, `MEETZ`, `00000` — is **equally likely** to be the original plaintext. For each candidate, exactly one key produces that ciphertext. The attacker can't choose between them.\n\n**Modern crypto's compromise.** Perfect secrecy requires the key to be at least as long as the message (Shannon also proved this). That's impossibly expensive in practice. So modern ciphers (AES, ChaCha20) give up perfect secrecy and aim for **computational secrecy**: the attacker *could* break it in principle, but doing so would take longer than the age of the universe with any computer that fits in our universe.",
+      "help_template": "**In plain English:** Encryption normally leaks *some* information. (You can tell a Caesar ciphertext is English because the letter frequencies still bump in the same shape, just shifted.) The OTP leaks none. Every plaintext is equally consistent with the ciphertext you see, because for any plaintext you can imagine, there exists exactly one key that would have produced exactly that ciphertext from it — and you have no way to know which key was used. The randomness of the key launders the structure of the plaintext completely.",
+      "validator_key": "info", "codegen_key": "perfect_secrecy"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 229,
+    "fields": {
+      "lesson": 22, "order": 9, "slug": "done", "kind": "info",
+      "prompt_template": "## Done\n\nYou've walked the entire pre-modern crypto era in nine steps:\n\n- **Caesar** — broken by brute force.\n- **Vigenère** — broken by frequency analysis once you split it into streams.\n- **One-time pad** — unbreakable, but the key is as big as the message and can't be reused.\n\nThat's the historical setup. Now the modern catalog makes sense.\n\n### Where to go next\n\n| If you want... | Read | Why |\n|---|---|---|\n| The modern symmetric cipher | **AES** | The block cipher used by HTTPS, disk encryption, every messaging app. |\n| A modern stream cipher | **ChaCha20-Poly1305** | Faster on phones than AES; the cipher behind TLS 1.3 in mobile profiles. |\n| Public-key crypto | **RSA** | How two strangers agree on a key without ever meeting. The math is hundreds of years old; the cryptography is from 1977. |\n| Modern key exchange | **Diffie–Hellman** / **X25519** | The trick that makes RSA optional. |\n| Hashing & integrity | **SHA-256**, **HMAC** | Not encryption — but every modern protocol uses both. |\n| Post-quantum | **Kyber** | What replaces RSA / X25519 when quantum computers exist. |\n\nThe full Python script for everything in this lesson — Caesar, Vigenère, frequency analysis, OTP — is below. Read it, run it, modify it. It's labeled EDUCATIONAL ONLY for a reason: none of these belong in production. But they earned you the modern lessons.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]
