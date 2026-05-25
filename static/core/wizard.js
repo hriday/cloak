@@ -309,13 +309,17 @@ function wizardComponent(initial) {
     hasCustomInputBranch(step) {
       const SLUGS = new Set([
         "simulated-hsm",
-        "walk-empty", "hash-a-sentence",     // SHA-256
+        "walk-empty", "hash-a-sentence",     // SHA-256 (and reused by SHA-3)
         "compute-hmac", "verify-and-tamper", // HMAC
         "exchange-keys",                      // X25519
         "sign-and-verify",                    // Ed25519
         "cbc-walk",                           // cipher-modes
         "attack-one-byte", "attack-full-block", // padding-oracle
         "pbkdf2", "compare-hashes",           // password-hashing
+        "derive-keys",                        // HKDF
+        "run-the-attack",                     // length-extension
+        "vigenere-break",                     // classical-ciphers
+        "schnorr-sign-and-verify",            // Schnorr
       ]);
       if (SLUGS.has(step.slug)) return true;
       // ChaCha20's encrypt-a-message has a custom branch; AES's same-slug
@@ -353,6 +357,10 @@ function wizardComponent(initial) {
         "attack-one-byte", "attack-full-block",  // padding-oracle: button-driven
         "pbkdf2",                     // password-hashing: {password, iterations}
         "compare-hashes",             // password-hashing: {password}
+        "derive-keys",                // HKDF: button-driven
+        "run-the-attack",             // length-extension: button-driven
+        "vigenere-break",             // classical-ciphers: button-driven (validator ignores input)
+        "schnorr-sign-and-verify",    // schnorr: {op, message, signature?}
       ]);
       if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
         input = { ...this.multiInput };
@@ -375,6 +383,7 @@ function wizardComponent(initial) {
         "verify-and-tamper", "sign-and-verify", "encrypt-a-message",
         "cbc-walk", "attack-one-byte", "attack-full-block",
         "pbkdf2", "compare-hashes",
+        "derive-keys", "run-the-attack", "schnorr-sign-and-verify",
       ]);
       if (EXPLORATORY_SLUGS.has(step.slug)) {
         this.persistLocal();

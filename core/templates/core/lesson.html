@@ -117,10 +117,10 @@
         </div>
       </template>
 
-      <!-- SHA-256 step 5: compute SHA-256("") via Web Crypto, write to sentenceInput, advance -->
+      <!-- SHA-256 / SHA-3 step "walk-empty": compute hash of empty string via the algorithm's demo module. Generic label so it reads correctly on either lesson. -->
       <template x-if="step.slug === 'walk-empty'">
         <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn" @click="async () => { sentenceInput = await demo.hashEmpty(); check(); }">Compute SHA-256(&quot;&quot;)</button>
+          <button class="btn" @click="async () => { sentenceInput = await demo.hashEmpty(); check(); }" x-text="algorithmSlug === 'sha3' ? 'Compute SHA-3(&quot;&quot;)' : 'Compute SHA-256(&quot;&quot;)'"></button>
           <input type="text" x-model="sentenceInput" readonly placeholder="hex appears here" style="min-width:480px;font-family:ui-monospace, monospace;font-size:0.82em;">
           <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
         </div>
@@ -304,6 +304,50 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="btn" :disabled="!multiInput.password" @click="check()">Compare all hashers</button>
             <button class="btn secondary" x-show="state.pw_compare_results" @click="advance()">Continue →</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- HKDF step 4: derive four TLS-style keys from a fixed PRK -->
+      <template x-if="step.slug === 'derive-keys'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" @click="check()">Derive TLS-style keys</button>
+          <button class="btn secondary" x-show="state.hkdf_client_key" @click="advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- length-extension step 4: run the attack against the simulated server -->
+      <template x-if="step.slug === 'run-the-attack'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" @click="check()">Forge a signature</button>
+          <button class="btn secondary" x-show="state.lenext_forged_signature" @click="advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- classical-ciphers step 6: vigenère break (button-driven; user types anything) -->
+      <template x-if="step.slug === 'vigenere-break'">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input type="text" x-model="sentenceInput" placeholder="type anything (or just 'go') and click Run" style="min-width:280px;padding:6px 8px;">
+          <button class="btn" :disabled="!sentenceInput" @click="check()">Run frequency analysis</button>
+          <button class="btn secondary" x-show="state.cc_vigenere_recovered_key" @click="advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- Schnorr step 5: sign/verify on the toy mod-p group (sibling of Ed25519's sign-and-verify) -->
+      <template x-if="step.slug === 'schnorr-sign-and-verify'">
+        <div style="margin-top:12px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+            <button :class="multiInput.op === 'sign' ? 'btn' : 'btn secondary'" @click="multiInput.op = 'sign'; check()">Sign</button>
+            <button :class="multiInput.op === 'verify' ? 'btn' : 'btn secondary'" @click="multiInput.op = 'verify'; check()">Verify</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+          </div>
+          <textarea x-model="multiInput.message" placeholder="Message to sign or verify" maxlength="500" rows="2" style="width:100%;font-family:inherit;padding:8px;"></textarea>
+          <div x-show="multiInput.op === 'verify'" style="margin-top:8px;">
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:4px;">Signature (format: R,s — two decimal integers):</label>
+            <input type="text" x-model="multiInput.signature" placeholder="e.g., 42,17" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div x-show="state.schnorr_last_op" style="margin-top:10px;">
+            <button class="btn" @click="advance()">Continue →</button>
           </div>
         </div>
       </template>
@@ -625,11 +669,11 @@
         </div>
       </template>
 
-      <!-- SHA-256 step 7: show the hash after the user clicks Hash -->
+      <!-- SHA-256 / SHA-3 step "hash-a-sentence": show the hash after the user clicks Hash. Both lessons share state keys; the label below is generic. -->
       <template x-if="step.slug === 'hash-a-sentence' && state.sha_message_hex">
         <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
           <div><strong>Input:</strong> <span x-text="state.sha_message"></span></div>
-          <div style="margin-top:6px;word-break:break-all;"><strong>SHA-256:</strong> <span x-text="state.sha_message_hex"></span></div>
+          <div style="margin-top:6px;word-break:break-all;"><strong x-text="algorithmSlug === 'sha3' ? 'SHA-3:' : 'SHA-256:'"></strong> <span x-text="state.sha_message_hex"></span></div>
         </div>
       </template>
 
@@ -800,6 +844,72 @@
             </template>
           </div>
           <div style="margin-top:10px;color:var(--muted);font-size:0.85em;">Log scale. SHA-256 is microseconds; password hashes are hundreds of milliseconds. That ≈100,000× gap is the whole point.</div>
+        </div>
+      </template>
+
+      <!-- HKDF step 4: derived keys result -->
+      <template x-if="step.slug === 'derive-keys' && state.hkdf_client_key">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.9em;line-height:1.7;font-family:ui-monospace, monospace;">
+          <div style="word-break:break-all;color:var(--muted);font-size:0.85em;"><strong>PRK:</strong> <span x-text="state.hkdf_prk"></span></div>
+          <div style="margin-top:8px;word-break:break-all;"><strong>client write key:</strong> <span x-text="state.hkdf_client_key"></span></div>
+          <div style="word-break:break-all;"><strong>server write key:</strong> <span x-text="state.hkdf_server_key"></span></div>
+          <div style="word-break:break-all;"><strong>client IV:</strong> <span x-text="state.hkdf_client_iv"></span></div>
+          <div style="word-break:break-all;"><strong>server IV:</strong> <span x-text="state.hkdf_server_iv"></span></div>
+          <div style="margin-top:10px;color:var(--muted);font-size:0.85em;">All four came from the SAME PRK + different info strings. That's how one ECDH shared secret turns into a whole tree of working keys.</div>
+        </div>
+      </template>
+
+      <!-- length-extension step 4: forged signature accepted by the server -->
+      <template x-if="step.slug === 'run-the-attack' && state.lenext_forged_signature">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.9em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Original request:</strong> <span x-text="state.lenext_original"></span></div>
+          <div style="word-break:break-all;"><strong>Observed signature:</strong> <span x-text="state.lenext_signature"></span></div>
+          <div style="margin-top:6px;color:var(--muted);font-size:0.85em;">— attacker now uses signature as resumption point, hashes only the extension —</div>
+          <div style="margin-top:6px;word-break:break-all;"><strong>Glue padding (hex):</strong> <span x-text="state.lenext_glue_padding_hex"></span></div>
+          <div style="word-break:break-all;"><strong>Forged request:</strong> <span x-text="state.lenext_forged_request"></span></div>
+          <div style="word-break:break-all;"><strong>Forged signature:</strong> <span x-text="state.lenext_forged_signature"></span></div>
+          <div style="margin-top:8px;">
+            <strong>Server response:</strong>
+            <span x-show="state.lenext_server_accepts === true" style="color:var(--ok, #2a8a3e);font-weight:600;">✓ ACCEPTED — extension is now signed</span>
+            <span x-show="state.lenext_server_accepts === false" style="color:var(--bad, #c0392b);font-weight:600;">✗ rejected</span>
+          </div>
+          <div style="margin-top:6px;color:var(--muted);font-size:0.85em;">Attacker never learned the secret. They forged a valid signature anyway. That's why every modern protocol uses HMAC instead of <code>H(secret || msg)</code>.</div>
+        </div>
+      </template>
+
+      <!-- classical-ciphers step 6: vigenère break result -->
+      <template x-if="step.slug === 'vigenere-break' && state.cc_vigenere_recovered_key">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;">
+          <div style="font-family:ui-monospace, monospace;"><strong>Ciphertext (Vigenère, key length 5):</strong></div>
+          <div style="margin-top:4px;font-family:ui-monospace, monospace;font-size:0.85em;word-break:break-word;color:var(--muted);" x-text="state.cc_vigenere_ciphertext"></div>
+          <div style="margin-top:10px;"><strong>Recovered key:</strong> <code x-text="state.cc_vigenere_recovered_key"></code></div>
+          <div style="margin-top:4px;"><strong>Recovered plaintext:</strong></div>
+          <div style="margin-top:4px;font-style:italic;color:var(--ok, #2a8a3e);" x-text="state.cc_vigenere_plaintext"></div>
+          <div style="margin-top:8px;color:var(--muted);font-size:0.85em;">Frequency analysis split the ciphertext into 5 streams (one per key-letter position), brute-forced each as a Caesar cipher against English letter frequencies, and reassembled.</div>
+        </div>
+      </template>
+
+      <!-- Schnorr step 5: sign/verify result panel -->
+      <template x-if="step.slug === 'schnorr-sign-and-verify' && state.schnorr_last_op">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Keypair (this session):</strong> x = <span x-text="state.schnorr_keypair_x"></span>, X = <span x-text="state.schnorr_keypair_X"></span></div>
+          <div style="margin-top:6px;"><strong>Last operation:</strong> <span x-text="state.schnorr_last_op"></span></div>
+          <div><strong>Input:</strong> <span x-text="state.schnorr_last_input"></span></div>
+          <template x-if="state.schnorr_last_op === 'sign' && state.schnorr_last_R">
+            <div style="margin-top:4px;"><strong>Signature (R, s):</strong> (<span x-text="state.schnorr_last_R"></span>, <span x-text="state.schnorr_last_s"></span>)</div>
+          </template>
+          <template x-if="state.schnorr_last_op === 'verify'">
+            <div style="margin-top:4px;">
+              <div><strong>Check g<sup>s</sup> mod p == R · X<sup>e</sup> mod p:</strong></div>
+              <div style="margin-left:8px;">lhs = <span x-text="state.schnorr_eq_lhs"></span></div>
+              <div style="margin-left:8px;">rhs = <span x-text="state.schnorr_eq_rhs"></span></div>
+              <div style="margin-top:4px;">
+                <span x-show="state.schnorr_verify_result === true" style="color:var(--ok, #2a8a3e);">✓ Signature valid</span>
+                <span x-show="state.schnorr_verify_result === false" style="color:var(--bad, #c0392b);">✗ Signature invalid (tampered or wrong message)</span>
+              </div>
+            </div>
+          </template>
+          <div x-show="state.schnorr_op_error" style="color:var(--bad, #c0392b);margin-top:6px;">⚠ <span x-text="state.schnorr_op_error"></span></div>
         </div>
       </template>
 
