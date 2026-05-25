@@ -125,7 +125,7 @@
   </div>
 </template>
 
-{# Step 7: discrete-log problem — text-only orbit listing.
+{% comment %} Step 7: discrete-log problem — text-only orbit listing.
 
    We deliberately do NOT render a canvas here. Earlier versions tried both
    an animated rAF loop and a static one-shot redraw; both somehow ended
@@ -134,7 +134,7 @@
    (an unpredictable hop through the finite-field scatter that brute force
    would have to enumerate) lands fine in a plain numeric table — what k=1,
    2, 3, … evaluate to, side by side. The scatter visual itself is already
-   on step 6 (finite-field-curve). #}
+   on step 6 (finite-field-curve). {% endcomment %}
 <template x-if="step.slug === 'discrete-log-problem'">
   <div style="margin-top:14px;padding:12px 16px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.9em;line-height:1.55;">
     <div style="margin-bottom:8px;color:var(--muted);">The orbit of G = (15, 13) under repeated addition on <code>y² ≡ x³ + 7 (mod 17)</code>:</div>
