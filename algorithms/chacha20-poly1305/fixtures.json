@@ -1,0 +1,94 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 12,
+    "fields": {
+      "slug": "chacha20-poly1305",
+      "name": "ChaCha20-Poly1305",
+      "family": "symmetric",
+      "status": "live",
+      "order": 12,
+      "intro_template": "## ChaCha20-Poly1305\n\nA modern AEAD: ChaCha20 stream cipher + Poly1305 one-time MAC. ARX-only design, used by TLS 1.3 and WireGuard."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 12,
+    "fields": {
+      "algorithm": 12,
+      "slug": "arx-aead",
+      "title": "ChaCha20-Poly1305: ARX + AEAD",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 121,
+    "fields": {
+      "lesson": 12, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## ChaCha20-Poly1305 — a modern AEAD\n\nAES is fast on Intel/AMD chips with **AES-NI** instructions, but on phones, IoT devices, and older CPUs without hardware AES, it's slow *and* timing-vulnerable (the S-box table lookups leak via the cache).\n\nDan Bernstein designed **ChaCha20** in 2008 to fix both problems: pure software speed, constant-time on any CPU, no lookup tables. **RFC 8439** pairs it with the **Poly1305** one-time MAC to form an **AEAD** (Authenticated Encryption with Associated Data) — encrypt and authenticate in one pass.\n\nYou'll see ChaCha20-Poly1305 in:\n\n- **TLS 1.3** — one of two mandatory AEADs (the other is AES-GCM).\n- **WireGuard** — the only AEAD it uses.\n- **OpenSSH** — `chacha20-poly1305@openssh.com` is the default.\n- **`age`**, **Signal**, modern QUIC stacks.\n\n**AES-GCM vs ChaCha20-Poly1305:** same role, opposite trade-offs. AES-GCM wins on hardware with AES-NI. ChaCha20-Poly1305 wins on mobile, embedded, and anywhere constant-time matters.",
+      "help_template": "**In plain English:** Same job as AES-GCM — encrypt your bytes and authenticate them so nobody can tamper undetected. The internals are dramatically simpler than AES (you'll see), which makes ChaCha20 the better choice when you don't have AES hardware acceleration.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 122,
+    "fields": {
+      "lesson": 12, "order": 2, "slug": "arx-design", "kind": "info",
+      "prompt_template": "### ARX — Add, Rotate, XOR\n\nChaCha20 uses **three** primitive ops on 32-bit unsigned words:\n\n1. **Add** mod 2³² — the only nonlinear operation (carries propagate across bits).\n2. **Rotate** — left-rotate by a fixed amount (16, 12, 8, or 7 in ChaCha20).\n3. **XOR** — bit-wise exclusive-OR.\n\nNo S-boxes. No MixColumns. No finite-field math. Just 3 operations every CPU implements in 1 cycle each.\n\n**The state** is a 4×4 grid of 32-bit words — 16 words = 512 bits = 64 bytes — initialized like this:\n\n| Cell | Source |\n|---|---|\n| 0–3   | 4 fixed constants: \"expa\", \"nd 3\", \"2-by\", \"te k\" (= \"expand 32-byte k\") |\n| 4–11  | 8 words of the 256-bit key |\n| 12    | 32-bit block counter |\n| 13–15 | 3 words of the 96-bit nonce |\n\nThe ARX ops shuffle these 16 words for 20 rounds, then we add the original state back to produce 64 bytes of keystream. XOR with plaintext = ciphertext. Stream cipher.",
+      "help_template": "**Why ARX?** Three simple ops means: easy to verify constant-time (no data-dependent branches, no table lookups → no cache-timing side channels), small code size, fast in software. The price: ARX ciphers need *more rounds* than S-box ciphers to achieve the same security margin (ChaCha20 uses 20, AES-128 uses 10), but each round is so much cheaper that ChaCha20 still wins on most hardware.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 123,
+    "fields": {
+      "lesson": 12, "order": 3, "slug": "quarter-round", "kind": "input-numeric",
+      "prompt_template": "### The quarter-round — ChaCha20's only mixing primitive\n\nEverything else in ChaCha20 is just *which 4 cells of the 16-word state* this quarter-round gets applied to. The quarter-round itself is 4 ARX lines on (a, b, c, d):\n\n```\na += b;  d ^= a;  d <<<= 16\nc += d;  b ^= c;  b <<<= 12\na += b;  d ^= a;  d <<<=  8\nc += d;  b ^= c;  b <<<=  7\n```\n\n(`<<<= n` means \"rotate left by n bits, in place\".)\n\n**Your task — just the first line.** Given:\n\n- `a = 0x11111111`\n- `b = 0x01020304`\n- `c = 0x9b8d6f43`\n- `d = 0x01234567`\n\nCompute the **new `a`** after `a = a + b mod 2³²`. Enter as hex (with or without `0x`) or decimal.",
+      "help_template": "**In plain English:** ChaCha20 runs 20 rounds × 8 quarter-rounds = 160 quarter-rounds per 64-byte block. That's a lot to do by hand, so we do one ARX line — addition mod 2³². Carry over from the low half of (a+b) propagates into the high half exactly like ordinary arithmetic; if the sum exceeded 0xFFFFFFFF it would wrap, but here it doesn't.",
+      "validator_key": "quarter_round_line", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 124,
+    "fields": {
+      "lesson": 12, "order": 4, "slug": "block-function", "kind": "info",
+      "prompt_template": "### The block function — 20 rounds of quarter-rounds\n\nThe quarter-round you just did, applied to 8 different patterns of (a, b, c, d) across the 4×4 state, 10 times over:\n\n**Column rounds (4 quarter-rounds):**\n```\nQR(0, 4,  8, 12)   ← column 0\nQR(1, 5,  9, 13)   ← column 1\nQR(2, 6, 10, 14)   ← column 2\nQR(3, 7, 11, 15)   ← column 3\n```\n\n**Diagonal rounds (4 quarter-rounds):**\n```\nQR(0, 5, 10, 15)   ← main diagonal\nQR(1, 6, 11, 12)   ← shifted right by 1\nQR(2, 7,  8, 13)   ← shifted right by 2\nQR(3, 4,  9, 14)   ← shifted right by 3\n```\n\nOne *double-round* = column round + diagonal round. ChaCha20 does **10 double-rounds = 20 rounds total**.\n\n**Critical final step:** add the *original* state back, word by word. Without this, the rounds would be invertible (each is bijective on its own — quarter-rounds run \"backwards\" just fine). The final add prevents an attacker from running the rounds in reverse.\n\nOutput: 64 bytes of keystream. To encrypt, increment the block counter (state word 12) and produce the next block. XOR the keystream with plaintext = ciphertext.",
+      "help_template": "**Why columns then diagonals?** Column rounds mix bytes vertically within a column. After that, every byte in a column has been touched by every other byte in that column — but bytes across columns are still independent. Diagonal rounds (each picks 1 cell from each column) connect the columns to each other. Two rounds = full diffusion across all 16 words.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 125,
+    "fields": {
+      "lesson": 12, "order": 5, "slug": "poly1305-construction", "kind": "info",
+      "prompt_template": "### Poly1305 — the one-time MAC\n\nChaCha20 alone gives you confidentiality. To detect tampering you need a MAC. Poly1305 is the MAC half of the AEAD.\n\n**The setup.** Take a 256-bit key, split it:\n\n- First 128 bits = `r` (the polynomial coefficient).\n- Next 128 bits = `s` (the final additive blind).\n\n**Clamp `r`** — zero specific bits per RFC 8439 §2.5.1 so the polynomial evaluation can't overflow the field. (Specifically: top 4 bits of bytes 3, 7, 11, 15 and bottom 2 bits of bytes 4, 8, 12.)\n\n**Evaluate** the polynomial in **GF(2¹³⁰ − 5)**:\n\n```\ntag = ((c₁·rⁿ + c₂·rⁿ⁻¹ + … + cₙ·r) mod (2¹³⁰ − 5) + s) mod 2¹²⁸\n```\n\nwhere `c₁, c₂, …, cₙ` are 16-byte chunks of the message (with a high bit set to distinguish lengths). The result is a 16-byte tag.\n\n**The critical security property.** Poly1305 is a **one-time** MAC. Using the same (r, s) on *two different messages* leaks `r` — and after that, the attacker can forge tags. So how do we MAC a long-lived session?\n\n**Per-message keys.** In ChaCha20-Poly1305 AEAD, the Poly1305 key is derived from `ChaCha20(key, counter=0, nonce)` — the first 32 bytes of the keystream block at counter 0. Since the nonce changes per message, so does (r, s), automatically. Counter 0 is reserved for this — encryption starts at counter 1.",
+      "help_template": "**Why a polynomial MAC?** Because it's *fast* — evaluating a polynomial is just multiply-and-add, and over GF(2¹³⁰ − 5) the math is straightforward. Compared to HMAC-SHA256 (which makes the SHA-256 compression function the security primitive), Poly1305 has a tight algebraic security proof: forging a tag is provably as hard as solving discrete log in the field, which is hard.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 126,
+    "fields": {
+      "lesson": 12, "order": 6, "slug": "encrypt-a-message", "kind": "input-text",
+      "prompt_template": "### Encrypt a real message with ChaCha20-Poly1305\n\nType a message and optional **associated data** (an unencrypted header that's still authenticated — think: a version tag, recipient ID, or content-type).\n\nThe page will:\n\n1. Generate a random 32-byte key + 12-byte nonce.\n2. Derive the Poly1305 one-time key from ChaCha20 at counter=0.\n3. Encrypt your message with ChaCha20 starting at counter=1.\n4. Compute the 16-byte Poly1305 tag over `aad ‖ pad ‖ ct ‖ pad ‖ len(aad) ‖ len(ct)`.\n5. Decrypt to confirm you get the original message back.\n6. **Tamper** a single byte of the ciphertext, try to decrypt → tag verification fails → loud rejection.\n\nAll the crypto runs in your browser via a pure-JS ChaCha20-Poly1305 implementation validated against RFC 8439 test vectors. (Web Crypto doesn't expose ChaCha20-Poly1305 as of 2026.)",
+      "help_template": "**Why pad each part?** The MAC input concatenates AAD, ciphertext, and their lengths. Without padding+lengths, an attacker could shift a byte from the end of the AAD to the start of the ciphertext and still match the tag. Padding to 16-byte boundaries and tagging on the exact lengths makes the MAC input unambiguous — every (aad, ct) pair produces a distinct byte stream.",
+      "validator_key": "encrypt_aead", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 127,
+    "fields": {
+      "lesson": 12, "order": 7, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen the ARX building block, walked through the full block function, learned how Poly1305 produces an algebraically-proven MAC, and watched a real AEAD encrypt + authenticate + tamper-reject in your browser. The Python recap below uses pyca's `cryptography` library to do the same thing on your laptop.\n\n**What this lesson unlocks.** With AES and ChaCha20-Poly1305 in hand, you can now read [TLS 1.3](https://datatracker.ietf.org/doc/html/rfc8446) and understand ~80% of it:\n\n- **X25519** for key exchange (next lesson topic).\n- **Ed25519** or **RSA** for certificate signatures.\n- **ChaCha20-Poly1305 or AES-GCM** for record encryption — what you just learned.\n\n**Next steps:**\n\n- **XChaCha20** — a variant with a 192-bit nonce (vs ChaCha20's 96-bit). Useful when you generate nonces randomly instead of via a counter and want a vanishing collision probability. Same underlying ARX.\n- **ChaCha8 / ChaCha12** — reduced-round variants. Faster, smaller security margin. ChaCha20's 20 rounds are deliberately conservative.\n- **Salsa20** — Bernstein's earlier design, the direct predecessor. ChaCha20 reshuffles the quarter-round to spread changes faster.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]
