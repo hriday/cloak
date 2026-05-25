@@ -1,0 +1,104 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 13,
+    "fields": {
+      "slug": "cipher-modes",
+      "name": "Block Cipher Modes",
+      "family": "symmetric",
+      "status": "live",
+      "order": 13,
+      "intro_template": "## Block Cipher Modes\n\nECB, CBC, CTR, GCM — the recipes around AES. A block cipher encrypts ONE block; modes handle real-sized data, randomization, and authentication."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 13,
+    "fields": {
+      "algorithm": 13,
+      "slug": "modes-around-aes",
+      "title": "Block cipher modes (around AES)",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 131,
+    "fields": {
+      "lesson": 13, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Block cipher modes — the recipes around AES\n\nThe [AES lesson](/algorithms/aes/) taught you what a block cipher does to **one** 16-byte block. Real data is bigger. A **mode of operation** is the recipe for stitching block-cipher calls together to encrypt arbitrary-length messages.\n\nA mode has to solve three problems:\n\n1. **Length** — what do you do when the plaintext isn't a multiple of 16 bytes? (Padding, or stream-cipher mode.)\n2. **Pattern leakage** — what stops two identical plaintext blocks from producing two identical ciphertext blocks? (Chaining, or per-message randomness.)\n3. **Tampering** — does anyone notice if a ciphertext byte is flipped? (Authentication.)\n\nThe four modes we cover:\n\n| Mode | Chaining | Padding | Authenticated |\n|------|----------|---------|---------------|\n| **ECB** | none | yes | no |\n| **CBC** | previous ciphertext block | yes | no |\n| **CTR** | counter-encrypted keystream | no | no |\n| **GCM** | CTR + polynomial MAC | no | **yes** |\n\nGCM is the modern default — confidentiality and integrity in one shot. Everything else in this lesson exists either as historical context (ECB, CBC) or as the building block GCM is built from (CTR).",
+      "help_template": "**In plain English:** AES on its own can only encrypt 16 bytes. A *mode* is how you turn that single-block primitive into something that encrypts files, network requests, database fields — anything real-sized.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 132,
+    "fields": {
+      "lesson": 13, "order": 2, "slug": "ecb-penguin", "kind": "info",
+      "prompt_template": "### ECB — the cipher mode you should never use\n\n**ECB** (Electronic Codebook) is the obvious-but-wrong mode: chop the plaintext into 16-byte blocks, encrypt each one independently. The problem is right there in the name — it's a *codebook*. Identical plaintext blocks always encrypt to the same ciphertext blocks, so the **structure** of your data survives encryption.\n\nThe classic demonstration: encrypt a bitmap. Below, a 32×32 silhouette is encrypted under AES-ECB block-by-block (each 16-byte row of pixels becomes one ciphertext block).\n\n```\nplaintext_blocks = [P_0, P_1, P_2, ..., P_n]\nciphertext_blocks = [E_K(P_0), E_K(P_1), ..., E_K(P_n)]\n```\n\nThe ciphertext bytes are unrecognizable as individual values — ECB *does* hide byte values. But long horizontal runs of the same pixel value produce identical 16-byte plaintext blocks, which encrypt to identical ciphertext blocks, which means **the outline survives**. ECB hides byte values; it does not hide patterns.\n\n> **The rule:** never use ECB. The only times it's mathematically safe are (a) encrypting exactly one 16-byte block of uniformly-random data (e.g. a wrapped key — and even then there are better tools) or (b) building blocks of other modes. If you're tempted to use it for application data, you want CBC, CTR, or GCM instead.",
+      "help_template": "**Why we're not using a real photo:** procedural drawing keeps the demo deterministic and avoids licensing concerns. The point lands either way — anywhere the plaintext has repeating byte patterns, ECB exposes them.\n\n**Note:** Web Crypto doesn't expose ECB directly (deliberately!). We simulate it by encrypting each block with AES-CBC and a zero IV, which is mathematically identical for one block: E_K(0 ⊕ P) = E_K(P).",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 133,
+    "fields": {
+      "lesson": 13, "order": 3, "slug": "cbc-construction", "kind": "info",
+      "prompt_template": "### CBC — chain each block to the previous ciphertext\n\n**CBC** (Cipher Block Chaining) fixes ECB's pattern leakage by XOR-ing each plaintext block with the *previous ciphertext block* before encrypting. The first block has no previous ciphertext, so we use a random 16-byte **IV** (initialization vector) and transmit it alongside the ciphertext.\n\n```\nC_0 = E_K(IV ⊕ P_0)\nC_1 = E_K(C_0 ⊕ P_1)\nC_2 = E_K(C_1 ⊕ P_2)\n...\n```\n\n**Properties:**\n\n- **Identical plaintext blocks now produce different ciphertext blocks** — chaining makes each E_K input depend on everything before it. Two encryptions of the same message produce different ciphertexts as long as the IV differs.\n- **Padding is required** — if the plaintext isn't a multiple of 16 bytes, you have to pad. PKCS#7 is the standard: append N bytes each with value N, where N is the number of padding bytes needed (always between 1 and 16).\n- **Sequential encryption** — you can't compute C_5 without first computing C_4. Decryption *is* parallelizable (each block only needs the previous ciphertext, which you already have), but encryption is not.\n- **Bit-flipping is targeted** — flipping bit i of C_n flips bit i of the decrypted P_{n+1} and scrambles P_n entirely. This is *not* a bug, it's a property — but it's also an attack surface (see the help block).",
+      "help_template": "**Padding-oracle teaser:** CBC's bit-flipping property is the entry point for the **padding-oracle attack**. If the receiver tells you (even via timing!) whether the PKCS#7 padding was valid after decryption, you can recover the plaintext one byte at a time by flipping ciphertext bits and watching for valid-padding responses. The cascade: flip a bit in C_n → corresponding bit flips in P_{n+1} after decryption → if you flip the right bits, the padding becomes valid → the oracle leaks. We'll dedicate a whole future lesson to this.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 134,
+    "fields": {
+      "lesson": 13, "order": 4, "slug": "cbc-walk", "kind": "input-text",
+      "prompt_template": "### Walk through CBC, block by block\n\nThree-block plaintext: `\"YELLOW SUBMARINEYELLOW SUBMARINEYELLOW SUBMARINE\"` (48 bytes, three identical 16-byte blocks). A fresh random IV is shown below.\n\nClick **Encrypt** to walk through the chain. You'll see:\n\n1. `IV ⊕ P_1 → E_K → C_1`\n2. `C_1 ⊕ P_2 → E_K → C_2`\n3. `C_2 ⊕ P_3 → E_K → C_3`\n\nThe three plaintext blocks are byte-for-byte identical, but the three ciphertext blocks will all be different — that's the chain doing its job.",
+      "help_template": "**Why \"YELLOW SUBMARINE\"?** It's exactly 16 bytes (one AES block), making it the canonical block-aligned test vector. The cryptopals challenges use it as a sentinel for ECB detection — if you see this block repeated in ciphertext, you know the mode is ECB.",
+      "validator_key": "cbc_walk", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 135,
+    "fields": {
+      "lesson": 13, "order": 5, "slug": "ctr-construction", "kind": "info",
+      "prompt_template": "### CTR — turn a block cipher into a stream cipher\n\n**CTR** (Counter) doesn't encrypt the plaintext at all. Instead, it generates a **keystream** by encrypting a counter, then XORs the keystream with the plaintext:\n\n```\nkeystream_i = E_K(nonce ‖ counter_i)\nC_i = P_i ⊕ keystream_i\n```\n\nThe counter starts at 0 (or any agreed value) and increments by 1 per block. The **nonce** is a per-message random value, typically 8–12 bytes, that ensures the same key never produces the same keystream twice.\n\n**Properties:**\n\n- **No padding** — XOR exactly `len(plaintext)` bytes of keystream with the plaintext. The ciphertext is exactly as long as the plaintext.\n- **Parallelizable both ways** — each block's keystream is independent. You can compute all 1000 keystream blocks in parallel on a GPU.\n- **Random access** — to decrypt byte 500, generate keystream blocks 31 and 32 (covering bytes 496–527) and XOR. No need to read or decrypt earlier blocks. Disk-encryption-adjacent modes love this.\n- **Catastrophic on nonce reuse** — if you ever encrypt two messages with the same `(key, nonce)`, the keystream is identical. XOR the two ciphertexts together and the keystreams cancel: `C_1 ⊕ C_2 = P_1 ⊕ P_2`. That's a classic two-time pad — both messages leak almost entirely.\n\nCTR is the workhorse mode for high-throughput symmetric encryption. It's also the cipher half of GCM (next step).",
+      "help_template": "**Counter format:** the spec doesn't fix `nonce ‖ counter` exactly — Python's `cryptography` library lets you supply any 16-byte initial counter value. GCM picks a specific format (12-byte nonce ‖ 4-byte counter starting at 1) so the AAD-vs-data counter blocks don't collide.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 136,
+    "fields": {
+      "lesson": 13, "order": 6, "slug": "gcm-construction", "kind": "info",
+      "prompt_template": "### GCM — CTR plus a polynomial MAC\n\n**GCM** (Galois/Counter Mode) is the AEAD (authenticated encryption with associated data) construction built on top of CTR. It outputs `(ciphertext, 16-byte tag)`; without the matching tag, decryption fails.\n\n**Two halves:**\n\n1. **CTR for encryption** — exactly as the previous step, with a 12-byte nonce and a 4-byte counter starting at 1.\n2. **GHASH for authentication** — a polynomial MAC over the ciphertext (and optional **AAD** — associated data: header bytes that are authenticated but not encrypted). The MAC key is `H = AES(K, 0¹²⁸)` — the AES encryption of the all-zeros block under the same key.\n\n```\nciphertext = CTR(K, nonce, plaintext)\ntag = GHASH(H, AAD, ciphertext) ⊕ AES(K, nonce ‖ 1)\noutput = (ciphertext, tag)\n```\n\nGHASH treats each 16-byte block as an element of GF(2¹²⁸) and computes a polynomial in `H`. You don't need to implement it — the library does — but it's worth knowing the shape: it's a *universal hash* keyed by H, not a cryptographic hash.\n\n**Properties:**\n\n- **Authenticated** — bit-flips are detected. The receiver recomputes the tag during decryption; mismatch → reject.\n- **Same CTR caveat, worse consequence** — reusing `(key, nonce)` doesn't just leak plaintext via two-time-pad on CTR; it also leaks the authentication key H, so the attacker can forge arbitrary tags. Nonce-reuse is catastrophic.\n- **AAD covers headers** — encrypt the body, authenticate the headers. Both contribute to the tag.\n\nGCM is the mode the AES lesson used (`crypto.subtle.encrypt({name: \"AES-GCM\"}, ...)`). Now you know what's inside it.",
+      "help_template": "**Why polynomial MAC, not HMAC?** GHASH runs at line speed on hardware that already has AES — the same circuits doing CTR encryption can be reused for the polynomial multiplication. HMAC-SHA-256 would double the per-byte cost. The tradeoff is fragility: HMAC keeps working under nonce reuse; GHASH does not.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 137,
+    "fields": {
+      "lesson": 13, "order": 7, "slug": "pick-a-mode", "kind": "choose-from-list",
+      "prompt_template": "### Pick a mode for each scenario\n\nThree scenarios. Pick the best mode for each. (Hint: for at least one of them, two answers are accepted.)\n\n**Scenario 1.** Sending an HTTP request body over an untrusted network.\n\n**Scenario 2.** Encrypting a database column where two rows with the same plaintext must look different.\n\n**Scenario 3.** Per-record disk encryption where random access matters and integrity is handled elsewhere (e.g., by the filesystem).",
+      "help_template": "**Think about what each scenario *requires*:**\n\n- An untrusted network means anyone can flip bits. You need integrity, not just confidentiality.\n- A database column with duplicate plaintexts that must look different means ECB is out; beyond that, the answer depends on whether you want auth.\n- Random access means you need to decrypt byte i without reading bytes 0..i-1.",
+      "validator_key": "pick_a_mode", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 138,
+    "fields": {
+      "lesson": 13, "order": 8, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've seen four modes — ECB (the anti-pattern), CBC (chained, padded, foot-gun on bit-flips), CTR (parallel and random-access, catastrophic on nonce reuse), GCM (CTR + GHASH, the modern default).\n\nThe Python below shows AES-128 in CBC, CTR, and GCM. Run it; tamper with a byte of the GCM ciphertext and watch `decrypt` raise `InvalidTag`.\n\n### What we skipped\n\n- **CFB / OFB** — older modes, mostly replaced by CTR. CFB is still seen in some legacy protocols.\n- **CCM** — AEAD mode used in WPA2 and some IoT. Two-pass (encrypt-then-MAC), simpler than GCM, slower.\n- **SIV / GCM-SIV** — nonce-misuse-resistant AEAD. If your application can't guarantee unique nonces, these are the better choice.\n- **XTS** — the disk-encryption mode (BitLocker, LUKS, FileVault). Tweakable, doesn't expand, no auth. Its own lesson eventually.\n\n### Forward links\n\n- **Padding-oracle attack** — CBC's bit-flipping cascade weaponized. Next lesson.\n- **AES-XTS for disk encryption** — why XTS instead of CTR or GCM at the disk-block level.\n- **ChaCha20-Poly1305** — the same AEAD shape as GCM, different primitives. (You may have seen it in the [ChaCha20-Poly1305 lesson](/algorithms/chacha20-poly1305/).)",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  }
+]
