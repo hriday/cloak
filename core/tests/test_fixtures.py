@@ -536,3 +536,87 @@ def test_elliptic_curves_fixture_loads(db):
         "discrete-log-problem", "done",
     ]
     assert [s.slug for s in steps] == expected
+
+
+@pytest.mark.django_db
+def test_dilithium_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/dilithium/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=25)
+    assert a.slug == "dilithium" and a.family == "pq" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=25)
+    assert l.slug == "lattice-signatures"
+    assert Step.objects.filter(lesson=l).count() == 8
+
+
+@pytest.mark.django_db
+def test_sphincs_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/sphincs-plus/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=26)
+    assert a.slug == "sphincs-plus" and a.family == "pq" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=26)
+    assert l.slug == "hash-based-signatures"
+    assert Step.objects.filter(lesson=l).count() == 8
+
+
+@pytest.mark.django_db
+def test_bleichenbacher_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/bleichenbacher/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=27)
+    assert a.slug == "bleichenbacher" and a.family == "asymmetric" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=27)
+    assert l.slug == "million-message-attack"
+    assert Step.objects.filter(lesson=l).count() == 7
+
+
+@pytest.mark.django_db
+def test_collisions_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/collisions/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=28)
+    assert a.slug == "collisions" and a.family == "hash" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=28)
+    assert l.slug == "same-hash-different-data"
+    assert Step.objects.filter(lesson=l).count() == 7
+
+
+@pytest.mark.django_db
+def test_birthday_attack_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/birthday-attack/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=29)
+    assert a.slug == "birthday-attack" and a.family == "hash" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=29)
+    assert l.slug == "square-root-of-n"
+    assert Step.objects.filter(lesson=l).count() == 6
+
+
+@pytest.mark.django_db
+def test_rsa_pss_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/rsa-pss/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=30)
+    assert a.slug == "rsa-pss" and a.family == "asymmetric" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=30)
+    assert l.slug == "padded-rsa-signing"
+    assert Step.objects.filter(lesson=l).count() == 7
+
+
+@pytest.mark.django_db
+def test_bcrypt_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/bcrypt/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=31)
+    assert a.slug == "bcrypt" and a.family == "hash" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=31)
+    assert l.slug == "slowed-down-blowfish"
+    assert Step.objects.filter(lesson=l).count() == 7

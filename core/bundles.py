@@ -106,20 +106,20 @@ BUNDLES = [
     {
         "slug": "why-crypto-looks-weird",
         "title": "Why crypto looks weird",
-        "tagline": "The attacks that motivated the design choices in the rest of the catalog. Padding oracles. ECB penguins. Length extension. PS3 nonce reuse. Each one is a reason something is built the way it is.",
-        "algorithms": ["padding-oracle", "length-extension", "cipher-modes", "ecdsa"],
+        "tagline": "The attacks that motivated the design choices in the rest of the catalog. Padding oracles (CBC + RSA), ECB penguins, length extension, hash collisions, birthday math, PS3 nonce reuse — each one explains a design decision.",
+        "algorithms": ["padding-oracle", "bleichenbacher", "length-extension", "collisions", "birthday-attack", "cipher-modes", "ecdsa"],
     },
     {
         "slug": "post-quantum-primer",
         "title": "Post-quantum primer",
-        "tagline": "Shor's algorithm breaks RSA, ECDH, and ECDSA on a fault-tolerant quantum computer. Kyber is what TLS and Signal are migrating to.",
-        "algorithms": ["kyber", "x25519"],
+        "tagline": "Shor's algorithm breaks RSA, ECDH, and ECDSA on a fault-tolerant quantum computer. NIST standardized three replacements in August 2024.",
+        "algorithms": ["kyber", "dilithium", "sphincs-plus", "x25519"],
     },
     {
         "slug": "hashing-for-developers",
         "title": "Hashing for developers",
-        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages; HKDF derives keys; SHA-3 is the alternative when you want diversity. Plus password hashing for database leaks.",
-        "algorithms": ["sha256", "sha3", "hmac", "hkdf", "password-hashing"],
+        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages; HKDF derives keys; SHA-3 is the alternative when you want diversity. Plus password hashing (PBKDF2/bcrypt/Argon2).",
+        "algorithms": ["sha256", "sha3", "hmac", "hkdf", "password-hashing", "bcrypt"],
     },
     {
         "slug": "first-cryptography-lesson",
@@ -130,8 +130,8 @@ BUNDLES = [
     {
         "slug": "signatures-old-to-new",
         "title": "Signatures, classical to modern",
-        "tagline": "Sign with a private key, verify with a public one. From RSA's textbook math through ECDSA's nonce-reuse footguns to the elegant Schnorr / Ed25519 design family.",
-        "algorithms": ["rsa", "ecdsa", "schnorr", "ed25519"],
+        "tagline": "Sign with a private key, verify with a public one. From RSA's textbook math through RSA-PSS, ECDSA's nonce-reuse footguns, and the Schnorr/Ed25519 design family, to the post-quantum signatures from NIST 2024.",
+        "algorithms": ["rsa", "rsa-pss", "ecdsa", "schnorr", "ed25519", "dilithium", "sphincs-plus"],
     },
     {
         "slug": "key-exchange-classical-to-modern",

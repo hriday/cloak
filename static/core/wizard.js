@@ -17,6 +17,13 @@ const DEMO_FILENAMES = {
   "ecdsa": "ecdsa_toy.js",
   "kyber": "kyber_demo.js",
   "elliptic-curves": "ec_demo.js",
+  "dilithium": "dilithium_demo.js",
+  "sphincs-plus": "sphincs_demo.js",
+  "bleichenbacher": "bleich_simulator.js",
+  "collisions": "coll_demo.js",
+  "birthday-attack": "bday_demo.js",
+  "rsa-pss": "rsapss_simulator.js",
+  "bcrypt": "bcrypt_demo.js",
 };
 
 async function loadAlgorithmModules(slug) {
@@ -327,6 +334,9 @@ function wizardComponent(initial) {
         "vigenere-break",                     // classical-ciphers
         "schnorr-sign-and-verify",            // Schnorr
         "point-addition", "point-doubling",   // elliptic-curves
+        "verify-md5-collision", "verify-sha1-collision", // collisions
+        "find-a-collision",                   // birthday-attack
+        "time-the-cost",                      // bcrypt
       ]);
       if (SLUGS.has(step.slug)) return true;
       // ChaCha20's encrypt-a-message has a custom branch; AES's same-slug
@@ -370,6 +380,10 @@ function wizardComponent(initial) {
         "schnorr-sign-and-verify",    // schnorr: {op, message, signature?}
         "point-addition",             // elliptic-curves: button-driven animation
         "point-doubling",             // elliptic-curves: button-driven animation
+        "verify-md5-collision",       // collisions: button-driven hashing demo
+        "verify-sha1-collision",      // collisions: button-driven hashing demo
+        "find-a-collision",           // birthday-attack: button-driven brute force
+        "time-the-cost",              // bcrypt: {password, cost}
       ]);
       if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
         input = { ...this.multiInput };
@@ -394,6 +408,8 @@ function wizardComponent(initial) {
         "pbkdf2", "compare-hashes",
         "derive-keys", "run-the-attack", "schnorr-sign-and-verify",
         "point-addition", "point-doubling",
+        "verify-md5-collision", "verify-sha1-collision",
+        "find-a-collision", "time-the-cost",
       ]);
       if (EXPLORATORY_SLUGS.has(step.slug)) {
         this.persistLocal();
