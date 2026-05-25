@@ -18,6 +18,34 @@ FAMILY_SECTIONS = [
 ]
 
 
+def journey(request, bundle_slug):
+    """Render a single bundle as a narrative essay — title, tagline, stations
+    (per-algorithm prose), outro. Algorithms not currently live are skipped.
+    Returns 404 if no bundle has the given slug."""
+    from .bundles import BUNDLES
+    import markdown as md_lib
+    bundle = next((b for b in BUNDLES if b["slug"] == bundle_slug), None)
+    if not bundle:
+        from django.http import Http404
+        raise Http404("journey not found")
+    by_slug = {a.slug: a for a in Algorithm.objects.filter(status="live")}
+    stations = []
+    for st in bundle.get("stations", []):
+        algo = by_slug.get(st["algorithm"])
+        if not algo:
+            continue
+        stations.append({
+            "algorithm": algo,
+            "lesson_slug": algo.lessons.order_by("order").first().slug if algo.lessons.exists() else None,
+            "prose_html": md_lib.markdown(st["prose"], extensions=["fenced_code", "tables"]),
+        })
+    return render(request, "core/journey.html", {
+        "bundle": bundle,
+        "stations": stations,
+        "outro_html": md_lib.markdown(bundle.get("outro", ""), extensions=["fenced_code", "tables"]) if bundle.get("outro") else "",
+    })
+
+
 def landing(request):
     algorithms = list(Algorithm.objects.filter(status="live"))
     by_slug = {a.slug: a for a in algorithms}

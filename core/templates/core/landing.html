@@ -12,15 +12,15 @@
   </div>
   <div class="bundle-grid">
     {% for bundle in bundles %}
-      <a class="bundle-card" href="{% url 'algorithm_intro' bundle.first.slug %}">
-        <h3>{{ bundle.title }}</h3>
+      <a class="bundle-card{% if bundle.has_essay %} bundle-card-essay{% endif %}" href="{% if bundle.has_essay %}{% url 'journey' bundle.slug %}{% else %}{% url 'algorithm_intro' bundle.first.slug %}{% endif %}">
+        <h3>{{ bundle.title }}{% if bundle.has_essay %} <span class="essay-badge">essay</span>{% endif %}</h3>
         <p class="bundle-tagline">{{ bundle.tagline }}</p>
         <div class="bundle-path">
           {% for algo in bundle.algorithms %}
             <span class="bundle-chip">{{ algo.name }}</span>{% if not forloop.last %}<span class="bundle-arrow">→</span>{% endif %}
           {% endfor %}
         </div>
-        <span class="bundle-start">Start with {{ bundle.first.name }} →</span>
+        <span class="bundle-start">{% if bundle.has_essay %}Read the essay →{% else %}Start with {{ bundle.first.name }} →{% endif %}</span>
       </a>
     {% endfor %}
   </div>

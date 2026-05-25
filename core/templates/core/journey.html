@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+{% block title %}{{ bundle.title }} — cloak{% endblock %}
+{% block content %}
+<div class="journey">
+  <a href="{% url 'landing' %}" class="journey-back">← All journeys</a>
+  <h1 class="journey-title">{{ bundle.title }}</h1>
+  <p class="journey-tagline">{{ bundle.tagline }}</p>
+
+  <div class="journey-path">
+    {% for s in stations %}
+      <span class="journey-chip">{{ s.algorithm.name }}</span>{% if not forloop.last %}<span class="journey-arrow">→</span>{% endif %}
+    {% endfor %}
+  </div>
+
+  <hr class="journey-sep">
+
+  {% for s in stations %}
+    <section class="journey-station">
+      <div class="journey-station-header">
+        <span class="journey-station-num">{{ forloop.counter }}</span>
+        <h2>{{ s.algorithm.name }}</h2>
+      </div>
+      <div class="journey-prose">{{ s.prose_html|safe }}</div>
+      <a class="btn" href="{% url 'lesson_runner' s.algorithm.slug s.lesson_slug %}">Walk the {{ s.algorithm.name }} lesson →</a>
+    </section>
+  {% endfor %}
+
+  {% if outro_html %}
+    <hr class="journey-sep">
+    <div class="journey-outro">{{ outro_html|safe }}</div>
+  {% endif %}
+
+  <div class="journey-footer">
+    <a href="{% url 'landing' %}" class="btn secondary">← All journeys</a>
+  </div>
+</div>
+{% endblock %}
