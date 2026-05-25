@@ -319,3 +319,117 @@ def test_chacha20_poly1305_fixture_loads(db):
     by_slug = {s.slug: s for s in steps}
     assert by_slug["quarter-round"].validator_key == "quarter_round_line"
     assert by_slug["encrypt-a-message"].validator_key == "encrypt_aead"
+
+
+@pytest.mark.django_db
+def test_cipher_modes_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/cipher-modes/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=13)
+    assert algo.slug == "cipher-modes"
+    assert algo.family == "symmetric"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=13)
+    assert lesson.slug == "modes-around-aes"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    assert [s.slug for s in steps] == [
+        "intro", "ecb-penguin", "cbc-construction", "cbc-walk",
+        "ctr-construction", "gcm-construction", "pick-a-mode", "done",
+    ]
+
+
+@pytest.mark.django_db
+def test_padding_oracle_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/padding-oracle/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=14)
+    assert algo.slug == "padding-oracle"
+    assert algo.family == "symmetric"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=14)
+    assert lesson.slug == "decrypt-without-the-key"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "pkcs7-recap", "bit-flipping", "attack-one-byte",
+        "attack-full-block", "defenses", "done",
+    ]
+
+
+@pytest.mark.django_db
+def test_password_hashing_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/password-hashing/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=15)
+    assert algo.slug == "password-hashing"
+    assert algo.family == "hash"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=15)
+    assert lesson.slug == "slow-on-purpose"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    assert [s.slug for s in steps] == [
+        "intro", "naive-sha256-failure", "pbkdf2", "bcrypt",
+        "argon2-construction", "compare-hashes", "which-to-use", "done",
+    ]
+
+
+@pytest.mark.django_db
+def test_diffie_hellman_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/diffie-hellman/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=16)
+    assert algo.slug == "diffie-hellman"
+    assert algo.family == "asymmetric"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=16)
+    assert lesson.slug == "the-1976-handshake"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "modular-exp", "the-handshake", "do-a-handshake",
+        "discrete-log", "real-world-params", "done",
+    ]
+
+
+@pytest.mark.django_db
+def test_ecdsa_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/ecdsa/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=17)
+    assert algo.slug == "ecdsa"
+    assert algo.family == "asymmetric"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=17)
+    assert lesson.slug == "the-ps3-disaster"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "curve-recap", "sign-mechanics", "verify-mechanics",
+        "the-ps3-attack", "aftermath-and-defenses", "done",
+    ]
+
+
+@pytest.mark.django_db
+def test_kyber_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/kyber/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=18)
+    assert algo.slug == "kyber"
+    assert algo.family == "pq"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=18)
+    assert lesson.slug == "lattice-kem"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    assert [s.slug for s in steps] == [
+        "intro", "lwe-warmup", "polynomial-rings", "keygen",
+        "encapsulation", "decapsulation", "real-kyber-and-hybrid", "done",
+    ]

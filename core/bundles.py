@@ -30,10 +30,28 @@ BUNDLES = [
         "algorithms": ["rsa", "aes", "hybrid"],
     },
     {
+        "slug": "why-crypto-looks-weird",
+        "title": "Why crypto looks weird",
+        "tagline": "The attacks that motivated the design choices in the rest of the catalog. Padding oracles. ECB penguins. PS3 nonce reuse. Each one is a reason something is built the way it is.",
+        "algorithms": ["padding-oracle", "cipher-modes", "ecdsa"],
+    },
+    {
+        "slug": "post-quantum-primer",
+        "title": "Post-quantum primer",
+        "tagline": "Shor's algorithm breaks RSA, ECDH, and ECDSA on a fault-tolerant quantum computer. Kyber is what TLS and Signal are migrating to.",
+        "algorithms": ["kyber", "x25519"],
+    },
+    {
         "slug": "hashing-for-developers",
         "title": "Hashing for developers",
-        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages. The two primitives under almost every protocol on the internet.",
-        "algorithms": ["sha256", "hmac"],
+        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages; password hashing protects against database leaks.",
+        "algorithms": ["sha256", "hmac", "password-hashing"],
+    },
+    {
+        "slug": "key-exchange-classical-to-modern",
+        "title": "Key exchange, classical to modern",
+        "tagline": "Diffie-Hellman invented the public-key handshake in 1976. Fifty years and one curve later, X25519 is what everyone uses.",
+        "algorithms": ["diffie-hellman", "x25519", "kyber"],
     },
     {
         "slug": "how-card-payments-work",
@@ -44,8 +62,8 @@ BUNDLES = [
     {
         "slug": "block-ciphers-old-to-new",
         "title": "Block ciphers, old to new",
-        "tagline": "How AES became the standard. The 30-year story from DES's deathbed through Blowfish and Twofish to ChaCha20.",
-        "algorithms": ["triple-des", "blowfish", "twofish", "aes", "chacha20-poly1305"],
+        "tagline": "How AES became the standard. The 30-year story from DES's deathbed through Blowfish and Twofish to ChaCha20 — plus the modes that make it work.",
+        "algorithms": ["triple-des", "blowfish", "twofish", "aes", "chacha20-poly1305", "cipher-modes"],
     },
 ]
 
