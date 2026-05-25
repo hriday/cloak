@@ -9,6 +9,7 @@ class Algorithm(models.Model):
         ("hash", "Hash & MAC"),
         ("pq", "Post-Quantum"),
         ("hsm", "HSM"),
+        ("historical", "Historical / Pre-modern"),
     ]
     STATUS_CHOICES = [
         ("live", "Live"),

@@ -9,6 +9,7 @@ from .models import Algorithm, Lesson, UserProgress
 # Display order + label for family sections on the landing. Hidden if empty.
 # Order matches a rough "easy → exotic" pedagogical progression.
 FAMILY_SECTIONS = [
+    ("historical", "Historical / pre-modern", "Where cryptography started — substitution and shift ciphers, frequency analysis, the one-time pad. The on-ramp."),
     ("asymmetric", "Asymmetric", "Public/private keypairs. Anyone can encrypt; only the holder can decrypt — or sign."),
     ("symmetric", "Symmetric", "Shared-key ciphers. Both sides hold the same key; fast enough for bulk data."),
     ("hash", "Hash & MAC", "One-way functions that fingerprint data and authenticate messages — the building blocks under almost every protocol."),
