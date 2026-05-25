@@ -1,0 +1,94 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 16,
+    "fields": {
+      "slug": "diffie-hellman",
+      "name": "Diffie-Hellman",
+      "family": "asymmetric",
+      "status": "live",
+      "order": 16,
+      "intro_template": "## Diffie-Hellman — the 1976 handshake\n\nTwo strangers agree on a shared secret over a public channel. The math trick that started modern public-key crypto."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 16,
+    "fields": {
+      "algorithm": 16,
+      "slug": "the-1976-handshake",
+      "title": "Diffie-Hellman: the 1976 handshake",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 161,
+    "fields": {
+      "lesson": 16, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## The impossible-sounding problem\n\nAlice and Bob have never met. They want to encrypt messages to each other with the same key. Eve listens to every byte they send. **How do they agree on the key?**\n\nPre-1976, the answer was *physical*: a courier carried a locked briefcase, or the parties met in person and exchanged a one-time pad. Banks, embassies, and militaries did exactly this — and the courier was always the weakest link.\n\nThen in November 1976, Whitfield Diffie and Martin Hellman published **New Directions in Cryptography** (IEEE Transactions on Information Theory, vol. IT-22). It opens with a sentence that aged well:\n\n> *\"We stand today on the brink of a revolution in cryptography.\"*\n\nThe paper introduced a math trick that lets two strangers agree on a shared secret over a fully public channel — no courier, no pre-shared key, no trust. Eve can record every bit they exchange and *still* not learn the secret. Diffie and Hellman won the 2015 Turing Award for it. The entire field of public-key cryptography traces back to this single paper.\n\nThe next 6 steps build the handshake from first principles: the math primer (modular exponentiation), the protocol itself, a hand-computed exchange with small numbers, the discrete-log assumption that makes it secure, real-world parameter choices, and a Python implementation using the same library every modern TLS / IPsec / SSH stack reaches for.",
+      "help_template": "**In plain English:** Two people, a public wiretap, no prior contact — and somehow they end up sharing a number nobody else knows. The whole trick is one mathematical fact: it's easy to compute `g^x mod p` forward, and *exponentially* hard to invert. That asymmetry is the foundation of every public-key system invented since.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 162,
+    "fields": {
+      "lesson": 16, "order": 2, "slug": "modular-exp", "kind": "info",
+      "prompt_template": "### Modular exponentiation — the only math you need\n\nDiffie-Hellman runs on a single operation: **`g^x mod p`**. Pick a base `g`, raise it to a power `x`, divide by `p`, keep the remainder.\n\nWorked example with `g = 5`, `p = 23`:\n\n```\n5^1 mod 23 =     5\n5^2 mod 23 =    25 mod 23 =  2\n5^3 mod 23 =     5 · 2 mod 23 = 10\n5^4 mod 23 =     5 · 10 mod 23 = 50 mod 23 = 4\n5^5 mod 23 =     5 · 4 mod 23 = 20\n5^6 mod 23 =     5 · 20 mod 23 = 100 mod 23 = 8\n```\n\n| k  | 5^k     | 5^k mod 23 |\n|----|---------|------------|\n| 1  | 5       | 5          |\n| 2  | 25      | 2          |\n| 3  | 125     | 10         |\n| 4  | 625     | 4          |\n| 5  | 3125    | 20         |\n| 6  | 15625   | **8**      |\n\nNotice how `5^k` grows fast — by `k=6` it's already over fifteen thousand. But `5^k mod 23` stays bouncing around in `[0, 22]` forever, because the *remainder* after dividing by 23 can never exceed 22. That's the whole point of the `mod p` — it keeps the numbers small.\n\n**The key insight:** going forward is easy. Even for huge `p` (think 2048 bits), computing `g^x mod p` takes a few hundred multiplications via *repeated squaring*. But going *backward* — recovering `x` from `g^x mod p` — has no known fast algorithm. For p ≈ 2²⁰⁴⁸, it's infeasible on any classical computer. That hard-to-invert asymmetry is the **discrete logarithm problem**, and it's the security assumption the entire 1976 handshake sits on.\n\nIn step 4 you'll do one of these by hand. For now, just remember: forward = easy, backward = hard.",
+      "help_template": "**In plain English:** `g^x mod p` is *modular exponentiation*. The `mod p` part just means \"divide by p and keep the remainder\" — it caps how big the answer can get. Computing it forward is fast even for enormous numbers (that's just multiplication). Computing it backward — given the result, find `x` — is the **discrete log problem**, and nobody knows how to do it quickly. That one-way property is what makes Diffie-Hellman work.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 163,
+    "fields": {
+      "lesson": 16, "order": 3, "slug": "the-handshake", "kind": "info",
+      "prompt_template": "### The handshake\n\nDiffie-Hellman is four lines of arithmetic. Here it is in full.\n\n**Public parameters** (everyone knows these, including Eve): a prime `p` and a generator `g`.\n\n**The protocol:**\n\n```\nAlice                              Bob\n-----                              ---\npick secret a                      pick secret b\ncompute A = g^a mod p              compute B = g^b mod p\n              ──── send A ────►\n              ◄──── send B ────\ncompute s = B^a mod p              compute s = A^b mod p\n```\n\nThat's the whole protocol. Both sides land on the same `s`. The reason:\n\n```\ns_alice = B^a mod p = (g^b)^a mod p = g^(ab) mod p\ns_bob   = A^b mod p = (g^a)^b mod p = g^(ab) mod p\n```\n\nExponentiation **commutes**: `(g^a)^b = (g^b)^a`. That's the entire trick. Alice and Bob each compute one side of the equation `g^(ab) mod p`, from opposite directions, and they meet in the middle.\n\n**What Eve sees:** she records the wire and ends up with `p, g, A, B` — all four of those are public. To recover the shared secret she needs `g^(ab) mod p`, but she only has `g^a mod p` and `g^b mod p`. Multiplying them gives `g^(a+b) mod p`, not `g^(ab) mod p` — wrong answer. To get `ab` she'd need to recover either `a` or `b` from its public counterpart, which means solving the **discrete logarithm problem** — easy for tiny `p`, infeasible for the 2048-bit primes used in practice.\n\n**Two people, one public wire, zero pre-shared anything → identical secret.** That's the 1976 trick.\n\nNext step: you do one by hand.",
+      "help_template": "**In plain English:** Each side picks a private number (Alice picks `a`, Bob picks `b`) and sends a public number derived from it (`A = g^a mod p`, `B = g^b mod p`). To compute the shared secret each side does the *same* operation with the *other person's* public number — raising it to their own private power. The math `(g^a)^b = (g^b)^a` guarantees they land on the same answer. Eve, who only sees the two public numbers, has no shortcut without solving discrete log.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 164,
+    "fields": {
+      "lesson": 16, "order": 4, "slug": "do-a-handshake", "kind": "input-numeric",
+      "prompt_template": "### Do a handshake by hand\n\nAlice and Bob agreed on public parameters `p = 23`, `g = 5`.\n\n- Alice picked her secret `a = 6` and sent Bob `A = g^a mod p = 5^6 mod 23 = 8`.\n- Bob picked his secret `b = 15` and sent Alice `B = g^b mod p = 5^15 mod 23 = 19`.\n\n**You are Alice.** Compute the shared secret:\n\n```\ns = B^a mod p = 19^6 mod 23\n```\n\nEnter the result (a single integer in `[0, 22]`).",
+      "help_template": "**In plain English:** Repeated squaring keeps the numbers small. Compute `19² mod 23`, then square *that* to get `19⁴ mod 23`, then multiply by `19² mod 23` again to get `19⁶ mod 23`. Reduce mod 23 after every multiplication — that's the trick to keeping the intermediates manageable.",
+      "validator_key": "dh_compute", "codegen_key": "do_a_handshake"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 165,
+    "fields": {
+      "lesson": 16, "order": 5, "slug": "discrete-log", "kind": "info",
+      "prompt_template": "### Discrete log — the security assumption\n\nYou just computed `s = 2` in a 23-element group. Now imagine that group has `2²⁰⁴⁸` elements.\n\nEve's job, formally: given `p`, `g`, and `y = g^x mod p`, find `x`. This is the **discrete logarithm problem (DLP)**.\n\n**For tiny `p` it's trivial.** With `p = 23, g = 5`, Eve just enumerates:\n\n```\n5^1  mod 23 = 5\n5^2  mod 23 = 2\n5^3  mod 23 = 10\n5^4  mod 23 = 4\n5^5  mod 23 = 20\n5^6  mod 23 = 8    ← match! Alice's secret a = 6.\n```\n\nSix tries to recover Alice's private exponent. For `p = 23`, classical DH is a toy.\n\n**For `p ≈ 2²⁰⁴⁸`, the best known classical algorithm is the General Number Field Sieve (GNFS)**, with sub-exponential complexity `L_p[1/3, ∛(64/9)]`. Translation: it's far too slow to run on any computer that currently exists or will exist in the next several decades, assuming standard hardware trends. The current record for solving DLP in a prime field is around 795 bits (set in 2019 by Boudot et al., via several thousand CPU-years on academic clusters). 2048 bits is a long way past that.\n\n### The quantum asterisk\n\n**Shor's algorithm** (Peter Shor, 1994), running on a fault-tolerant quantum computer, solves DLP in polynomial time. The same algorithm also factors integers, which is why RSA is in the same boat. *If* a sufficiently large quantum computer is built (current state of the art: ~1000 noisy qubits; estimates for breaking 2048-bit DLP: millions of logical qubits, which require billions of physical ones), classical DH and RSA both fall together.\n\nThat's why NIST has been standardizing post-quantum key encapsulation mechanisms. **Kyber / ML-KEM** (FIPS 203, August 2024) is the future-proof replacement: a lattice-based KEM whose security rests on Module-LWE, not discrete log. The handshake idea survives the transition — the underlying hard problem changes.\n\n### Why we still care about classical DH in 2026\n\nEven though ECDH (next lesson: X25519) and post-quantum KEMs have largely displaced classical DH in new protocols, mod-p DH is still everywhere in legacy: IPsec/IKEv2 negotiates RFC 3526 groups, many SSH implementations still offer `diffie-hellman-group14-sha256`, and pre-TLS-1.3 deployments use it heavily. Understanding it is non-negotiable for anyone reading existing crypto protocol specs.",
+      "help_template": "**In plain English:** The whole protocol's security comes down to: \"given `g^x mod p`, can you recover `x`?\" For small `p`, you just brute-force every value of `x` until one works. For huge `p`, no classical algorithm runs in reasonable time. A future large quantum computer would change that (Shor's algorithm) — which is why post-quantum KEMs like Kyber are being standardized as replacements.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 166,
+    "fields": {
+      "lesson": 16, "order": 6, "slug": "real-world-params", "kind": "info",
+      "prompt_template": "### Real-world parameters\n\nThe lesson used `p = 23, g = 5`. Production DH uses primes thousands of bits long, drawn from a small set of standardized public groups.\n\n### RFC 3526 — the MODP groups\n\nRFC 3526 (May 2003) specifies a family of well-known DH primes, all of the form `p = 2^k − 2^(k−64) − 1 + 2^64 · ({floor 2^(k−130) π} + offset)`. Generator is always `g = 2`. The named groups:\n\n| Name    | Size      | Recommended? |\n|---------|-----------|--------------|\n| Group 5  | 1536 bits | Deprecated. Below current floor. |\n| Group 14 | 2048 bits | Floor. Still widely deployed. |\n| Group 15 | 3072 bits | ~128-bit security. Good. |\n| Group 16 | 4096 bits | ~152-bit security. Better. |\n| Group 17 | 6144 bits | ~176-bit security. |\n| Group 18 | 8192 bits | ~192-bit security. |\n\n**Why standardized public groups?** Two reasons:\n\n1. **No parameter negotiation per peer.** Both sides already know `p` and `g`, so the handshake is just \"send my public key, receive yours.\" Saves a round trip.\n2. **Defense against backdoored primes.** A maliciously chosen `p` can be a *trapdoor prime* — one where the originator knows a shortcut for the discrete log. (See: the Dual_EC_DRBG saga, where NIST shipped a backdoored elliptic curve in 2006 that was later attributed to the NSA via Snowden leaks.) Public, widely-reviewed primes don't have this problem.\n\n### Logjam — the cautionary tale\n\nIn 2015, Adrian et al. published **\"Imperfect Forward Secrecy: How Diffie-Hellman Fails in Practice\"** (CCS '15). The headline finding:\n\n- **512-bit DH groups** (still allowed in TLS export ciphers up to that year) could be precomputed by a single attacker in a week. After precomputation, any individual handshake using that prime broke in *seconds*. The attack got its own CVE and forced an internet-wide push to disable export DH.\n- **1024-bit groups** were estimated to be within reach of a nation-state attacker's budget (hundreds of millions of dollars). The paper noted that a handful of widely-used 1024-bit primes account for the majority of HTTPS, SSH, and VPN traffic — meaning a single precomputation would compromise an enormous fraction of internet crypto.\n- **2048-bit and up** are not currently within reach. That's the recommended floor today.\n\nThe Logjam result is why every modern guide says \"DH ≥ 2048 bits or move to ECDH.\"\n\n### Why the world moved to ECDH\n\nClassical DH at 2048 bits has 2048-bit public keys (~256 bytes) and slow scalar ops. **ECDH** (elliptic-curve DH) achieves equivalent security with ~256-bit keys (~32 bytes) — 8× smaller, faster on every measured hardware platform, and immune to precomputation-style attacks (each curve point is essentially unique to the exchange, so precomputed tables don't help). TLS 1.3 (RFC 8446, 2018) deprecated classical DH outright — the only DH primitive standardized in modern TLS is **X25519** (and its higher-security cousin X448).\n\nIf you're designing a new protocol in 2026: use X25519 (lesson 9 of this course) or, if you need post-quantum security, the Kyber / X25519 hybrid that TLS 1.3 is currently rolling out.",
+      "help_template": "**In plain English:** Real DH uses huge primes — at least 2048 bits — and a small set of standardized ones (the RFC 3526 \"MODP\" groups). Using a public, well-reviewed prime prevents two bad outcomes: per-peer parameter negotiation (slow) and accidentally using a backdoored prime (catastrophic). The Logjam attack (2015) proved that 512- and 1024-bit groups had become weak, which is why 2048 is the floor today — and why most new code uses ECDH instead.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 167,
+    "fields": {
+      "lesson": 16, "order": 7, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've built the 1976 handshake from the ground up:\n\n- **The problem** — two strangers, a public channel, an eavesdropper. Pre-1976 the answer was a courier; Diffie and Hellman published the math trick that retired the courier.\n- **Modular exponentiation** — `g^x mod p`. Fast forward, hard backward.\n- **The protocol** — Alice sends `A = g^a mod p`, Bob sends `B = g^b mod p`, both compute `s = g^(ab) mod p` from opposite directions. Exponentiation commutes; that's the whole trick.\n- **A worked example by hand** — `p = 23, g = 5, a = 6, b = 15` → `s = 19⁶ mod 23 = 2`.\n- **The discrete log assumption** — trivial for `p = 23`, infeasible classically for `p ≈ 2²⁰⁴⁸`, broken by Shor's algorithm on a future quantum computer.\n- **Real-world parameters** — RFC 3526 MODP groups, 2048-bit floor, Logjam (2015) as the cautionary tale, the industry shift to ECDH for new protocols.\n\n### Where this primitive shows up\n\n- **Legacy TLS (1.0–1.2)** — `DHE-RSA-AES128-GCM-SHA256` and friends. Still seen in the wild for compatibility with old clients.\n- **IPsec / IKEv2** — RFC 3526 MODP groups are negotiated by name (\"DH Group 14\", \"DH Group 16\"). Still the most common configuration for site-to-site VPNs.\n- **SSH** — `diffie-hellman-group14-sha256` and `diffie-hellman-group16-sha512` are widely supported alongside `curve25519-sha256`. OpenSSH defaults to curve25519 now, but DH groups remain enabled for older peers.\n- **PGP / GPG** — classical DH (ElGamal) is one of the supported public-key algorithms for encryption.\n\n### Forward links\n\n- **X25519** (lesson 9) — same handshake, on an elliptic curve, with 32-byte keys and immunity to Logjam-style precomputation. The default in TLS 1.3.\n- **Kyber / ML-KEM** (future lesson) — the post-quantum replacement, standardized as FIPS 203 (August 2024). Same handshake *shape* (a key encapsulation mechanism), different hard problem (lattices instead of discrete log).\n\n### Sidebar: static vs ephemeral DH (DHE)\n\nThe lesson treated `a` and `b` as one-shot private values. In production, you have a choice:\n\n- **Static DH** — the same private key is reused across many handshakes. If it's ever compromised, every past session is decryptable.\n- **Ephemeral DH (DHE)** — fresh keypairs for every handshake. The private keys are discarded immediately after the shared secret is derived. If a long-term identity key is ever compromised, past sessions remain safe — that's **forward secrecy**.\n\nEvery modern TLS deployment uses *ephemeral* DH for this reason. The cipher suite names with `DHE` or `ECDHE` in them are the ones to look for; raw `DH` or `ECDH` (without the `E`) means static.\n\n### Python equivalent\n\nThe runnable script above uses `cryptography.hazmat.primitives.asymmetric.dh` — the same library every modern Python TLS / IPsec / SSH tool reaches for. The shape mirrors what you just did by hand, just with 2048-bit primes instead of `p = 23`:\n\n```python\nparameters    = dh.generate_parameters(generator=2, key_size=2048)\nalice_priv    = parameters.generate_private_key()\nbob_priv      = parameters.generate_private_key()\nalice_shared  = alice_priv.exchange(bob_priv.public_key())\nbob_shared    = bob_priv.exchange(alice_priv.public_key())\nassert alice_shared == bob_shared\n```\n\nGo back to the [home page](/) to revisit any algorithm.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "full_script"
+    }
+  }
+]
