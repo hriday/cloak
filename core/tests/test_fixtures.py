@@ -433,3 +433,85 @@ def test_kyber_fixture_loads(db):
         "intro", "lwe-warmup", "polynomial-rings", "keygen",
         "encapsulation", "decapsulation", "real-kyber-and-hybrid", "done",
     ]
+
+
+@pytest.mark.django_db
+def test_sha3_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/sha3/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=19)
+    assert algo.slug == "sha3"
+    assert algo.family == "hash"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=19)
+    assert lesson.slug == "the-sponge"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "merkle-damgard-vs-sponge", "the-sponge-construction",
+        "keccak-f", "walk-empty", "hash-a-sentence", "done",
+    ]
+
+
+@pytest.mark.django_db
+def test_hkdf_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/hkdf/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=20)
+    assert algo.slug == "hkdf"
+    assert algo.family == "hash"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=20)
+    assert lesson.slug == "extract-then-expand"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 6
+
+
+@pytest.mark.django_db
+def test_length_extension_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/length-extension/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=21)
+    assert algo.slug == "length-extension"
+    assert algo.family == "hash"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=21)
+    assert lesson.slug == "forge-without-the-key"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+
+
+@pytest.mark.django_db
+def test_classical_ciphers_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/classical-ciphers/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=22)
+    assert algo.slug == "classical-ciphers"
+    assert algo.family == "historical"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=22)
+    assert lesson.slug == "before-modern"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 9
+
+
+@pytest.mark.django_db
+def test_schnorr_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/schnorr/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=23)
+    assert algo.slug == "schnorr"
+    assert algo.family == "asymmetric"
+    assert len(algo.intro_template) <= 200
+    lesson = Lesson.objects.get(pk=23)
+    assert lesson.slug == "four-line-signature"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    by_slug = {s.slug: s for s in steps}
+    assert "schnorr-sign-and-verify" in by_slug  # renamed to avoid Ed25519 collision
+    assert by_slug["schnorr-sign-and-verify"].validator_key == "schnorr_operation"

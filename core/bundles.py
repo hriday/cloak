@@ -106,8 +106,8 @@ BUNDLES = [
     {
         "slug": "why-crypto-looks-weird",
         "title": "Why crypto looks weird",
-        "tagline": "The attacks that motivated the design choices in the rest of the catalog. Padding oracles. ECB penguins. PS3 nonce reuse. Each one is a reason something is built the way it is.",
-        "algorithms": ["padding-oracle", "cipher-modes", "ecdsa"],
+        "tagline": "The attacks that motivated the design choices in the rest of the catalog. Padding oracles. ECB penguins. Length extension. PS3 nonce reuse. Each one is a reason something is built the way it is.",
+        "algorithms": ["padding-oracle", "length-extension", "cipher-modes", "ecdsa"],
     },
     {
         "slug": "post-quantum-primer",
@@ -118,8 +118,20 @@ BUNDLES = [
     {
         "slug": "hashing-for-developers",
         "title": "Hashing for developers",
-        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages; password hashing protects against database leaks.",
-        "algorithms": ["sha256", "hmac", "password-hashing"],
+        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages; HKDF derives keys; SHA-3 is the alternative when you want diversity. Plus password hashing for database leaks.",
+        "algorithms": ["sha256", "sha3", "hmac", "hkdf", "password-hashing"],
+    },
+    {
+        "slug": "first-cryptography-lesson",
+        "title": "Where to start",
+        "tagline": "If you've never touched cryptography, start here. Caesar through one-time pad — all the ciphers that broke, and one (the OTP) that's mathematically perfect but impractical.",
+        "algorithms": ["classical-ciphers"],
+    },
+    {
+        "slug": "signatures-old-to-new",
+        "title": "Signatures, classical to modern",
+        "tagline": "Sign with a private key, verify with a public one. From RSA's textbook math through ECDSA's nonce-reuse footguns to the elegant Schnorr / Ed25519 design family.",
+        "algorithms": ["rsa", "ecdsa", "schnorr", "ed25519"],
     },
     {
         "slug": "key-exchange-classical-to-modern",
