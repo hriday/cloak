@@ -10,6 +10,11 @@ const DEMO_FILENAMES = {
   "chacha20-poly1305": "chap_demo.js",
   "hsm": "hsm_simulator.js",
   "aes": "aes_demo.js",
+  "cipher-modes": "ecb_demo.js",
+  "padding-oracle": "po_simulator.js",
+  "password-hashing": "pw_demo.js",
+  "ecdsa": "ecdsa_toy.js",
+  "kyber": "kyber_demo.js",
 };
 
 async function loadAlgorithmModules(slug) {
@@ -52,6 +57,8 @@ function wizardComponent(initial) {
     aesSBOX: [],
     aesOneRoundStates: [],
     shaAvalanche: null,        // SHA-256: precomputed bit-diff of "hello"/"Hello"
+    modePenguin: null,         // cipher-modes: {plaintext: Uint8Array(1024), ecb: Uint8Array(1024)}
+    pwInstantHash: null,       // password-hashing: SHA-256("password123") hex, for the naive demo
     coprimeOptions: [],
     inlineCode: "",
     stuckLevel: 0,
@@ -78,6 +85,28 @@ function wizardComponent(initial) {
       if (this.algorithmSlug === "sha256" && mods.demo?.bitDiff) {
         try { this.shaAvalanche = await mods.demo.bitDiff("hello", "Hello"); }
         catch (_e) { /* Web Crypto unavailable */ }
+      }
+      // Cipher-modes penguin step: precompute the procedural silhouette + its
+      // ECB encryption so the template branch can render both side-by-side
+      // without an async wait on view.
+      if (this.algorithmSlug === "cipher-modes" && mods.demo?.drawSilhouette && mods.demo?.ecbEncrypt) {
+        try {
+          const plaintext = mods.demo.drawSilhouette();
+          const key = new Uint8Array(16);
+          for (let i = 0; i < 16; i++) key[i] = (i * 17 + 5) & 0xff;  // deterministic, doesn't matter
+          const ecb = await mods.demo.ecbEncrypt(plaintext, key);
+          this.modePenguin = { plaintext: Array.from(plaintext), ecb: Array.from(ecb) };
+        } catch (_e) { /* Web Crypto unavailable */ }
+      }
+      // Password-hashing naive-SHA-256 step: precompute the "password123" hash
+      // so the template can show the instant-cracking demo without a button.
+      if (this.algorithmSlug === "password-hashing" && globalThis.crypto?.subtle) {
+        try {
+          const enc = new TextEncoder().encode("password123");
+          const buf = await crypto.subtle.digest("SHA-256", enc);
+          this.pwInstantHash = Array.from(new Uint8Array(buf))
+            .map((b) => b.toString(16).padStart(2, "0")).join("");
+        } catch (_e) {}
       }
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
@@ -283,6 +312,9 @@ function wizardComponent(initial) {
         "compute-hmac", "verify-and-tamper", // HMAC
         "exchange-keys",                      // X25519
         "sign-and-verify",                    // Ed25519
+        "cbc-walk",                           // cipher-modes
+        "attack-one-byte", "attack-full-block", // padding-oracle
+        "pbkdf2", "compare-hashes",           // password-hashing
       ]);
       if (SLUGS.has(step.slug)) return true;
       // ChaCha20's encrypt-a-message has a custom branch; AES's same-slug
@@ -315,6 +347,11 @@ function wizardComponent(initial) {
       const MULTI_INPUT_SLUGS = new Set([
         "simulated-hsm", "pin-translation", "compute-hmac",
         "verify-and-tamper", "sign-and-verify", "encrypt-a-message",
+        "cbc-walk",                   // cipher-modes: button-driven, validator returns demo data
+        "pick-a-mode",                // cipher-modes: {s1, s2, s3}
+        "attack-one-byte", "attack-full-block",  // padding-oracle: button-driven
+        "pbkdf2",                     // password-hashing: {password, iterations}
+        "compare-hashes",             // password-hashing: {password}
       ]);
       if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
         input = { ...this.multiInput };
@@ -335,6 +372,8 @@ function wizardComponent(initial) {
       const EXPLORATORY_SLUGS = new Set([
         "simulated-hsm", "pin-translation", "compute-hmac",
         "verify-and-tamper", "sign-and-verify", "encrypt-a-message",
+        "cbc-walk", "attack-one-byte", "attack-full-block",
+        "pbkdf2", "compare-hashes",
       ]);
       if (EXPLORATORY_SLUGS.has(step.slug)) {
         this.persistLocal();

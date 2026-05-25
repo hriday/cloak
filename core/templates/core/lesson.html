@@ -214,6 +214,100 @@
         </div>
       </template>
 
+      <!-- cipher-modes step 4: cbc-walk — button drives the three-block demo -->
+      <template x-if="step.slug === 'cbc-walk'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" @click="async () => { const r = await demo.runCbcWalk(); state = { ...state, mode_iv_hex: r.iv_hex, mode_plaintext: r.plaintext, mode_ct_blocks: r.ct_blocks }; persistLocal(); }">Encrypt "YELLOW SUBMARINE" × 3 under CBC</button>
+          <button class="btn secondary" x-show="state.mode_ct_blocks" @click="check(); advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- cipher-modes step 7: pick-a-mode (three scenarios) -->
+      <template x-if="step.slug === 'pick-a-mode'">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:14px;">
+          <div>
+            <div style="margin-bottom:6px;"><strong>Scenario 1:</strong> sending an HTTP request body (need integrity)</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <template x-for="opt in ['ECB','CBC','CTR','GCM']" :key="opt">
+                <button :class="multiInput.s1 === opt ? 'btn' : 'btn secondary'" @click="multiInput.s1 = opt" x-text="opt"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <div style="margin-bottom:6px;"><strong>Scenario 2:</strong> encrypting database fields (identical secrets must look different)</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <template x-for="opt in ['ECB','CBC','CTR','GCM']" :key="opt">
+                <button :class="multiInput.s2 === opt ? 'btn' : 'btn secondary'" @click="multiInput.s2 = opt" x-text="opt"></button>
+              </template>
+            </div>
+          </div>
+          <div>
+            <div style="margin-bottom:6px;"><strong>Scenario 3:</strong> per-record disk encryption with random access (no integrity required)</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <template x-for="opt in ['ECB','CBC','CTR','GCM']" :key="opt">
+                <button :class="multiInput.s3 === opt ? 'btn' : 'btn secondary'" @click="multiInput.s3 = opt" x-text="opt"></button>
+              </template>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px;">
+            <button class="btn" :disabled="!multiInput.s1 || !multiInput.s2 || !multiInput.s3" @click="check()">Check answers</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+          </div>
+        </div>
+      </template>
+
+      <!-- padding-oracle step 4: recover one byte -->
+      <template x-if="step.slug === 'attack-one-byte'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" :disabled="state.po_recovered_byte_hex" @click="check()">Run the attack (last byte only)</button>
+          <button class="btn secondary" x-show="state.po_recovered_byte_hex" @click="advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- padding-oracle step 5: recover full block -->
+      <template x-if="step.slug === 'attack-full-block'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" :disabled="state.po_plaintext" @click="check()">Run the full-block attack</button>
+          <button class="btn secondary" x-show="state.po_plaintext" @click="advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- password-hashing step 3: PBKDF2 timing demo -->
+      <template x-if="step.slug === 'pbkdf2'">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Password</label>
+            <input type="text" x-model="multiInput.password" placeholder="any password" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Iterations</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <template x-for="n in [1000, 10000, 100000, 1000000]" :key="n">
+                <button :class="multiInput.iterations === n ? 'btn' : 'btn secondary'" @click="multiInput.iterations = n" x-text="n.toLocaleString()"></button>
+              </template>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" :disabled="!multiInput.password || !multiInput.iterations" @click="check()">Run PBKDF2</button>
+            <button class="btn secondary" x-show="state.pw_pbkdf2_hex" @click="advance()">Continue →</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- password-hashing step 6: compare all hashers -->
+      <template x-if="step.slug === 'compare-hashes'">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Password</label>
+            <input type="text" x-model="multiInput.password" placeholder="any password" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" :disabled="!multiInput.password" @click="check()">Compare all hashers</button>
+            <button class="btn secondary" x-show="state.pw_compare_results" @click="advance()">Continue →</button>
+          </div>
+        </div>
+      </template>
+
       <template x-if="step.kind === 'choose-from-list'">
         <div style="margin-top:12px;">
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
@@ -602,6 +696,110 @@
           <div x-show="state.chap_decrypted" style="margin-top:6px;"><strong>Decrypted:</strong> <span x-text="state.chap_decrypted"></span> <span x-show="state.chap_decrypted === state.chap_message" style="color:var(--ok, #2a8a3e);">✓ matches</span></div>
           <div x-show="state.chap_tamper_failed" style="margin-top:6px;color:var(--ok, #2a8a3e);">✓ Tamper test: a single-byte flip in the ciphertext made decryption fail (InvalidTag). That's the AEAD guarantee.</div>
           <div x-show="state.chap_encrypt_error" style="color:var(--bad, #c0392b);margin-top:6px;">⚠ <span x-text="state.chap_encrypt_error"></span></div>
+        </div>
+      </template>
+
+      <!-- cipher-modes step 2: ECB penguin (procedural silhouette + ECB-encrypted, side by side) -->
+      <template x-if="step.slug === 'ecb-penguin' && modePenguin">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;text-align:center;">
+            <div>
+              <div style="color:var(--muted);font-size:0.85em;margin-bottom:6px;">Original (32×32 silhouette)</div>
+              <div style="display:grid;grid-template-columns:repeat(32,8px);gap:0;justify-content:center;">
+                <template x-for="(b, i) in modePenguin.plaintext" :key="i">
+                  <div :style="`width:8px;height:8px;background:rgb(${b},${b},${b});`"></div>
+                </template>
+              </div>
+            </div>
+            <div>
+              <div style="color:var(--muted);font-size:0.85em;margin-bottom:6px;">After ECB encryption</div>
+              <div style="display:grid;grid-template-columns:repeat(32,8px);gap:0;justify-content:center;">
+                <template x-for="(b, i) in modePenguin.ecb" :key="i">
+                  <div :style="`width:8px;height:8px;background:rgb(${b},${b},${b});`"></div>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;color:var(--muted);font-size:0.9em;line-height:1.5;">The outline is still visible after ECB encryption — identical plaintext blocks produced identical ciphertext blocks. ECB hides byte values, not patterns. <strong style="color:var(--text);">Never use ECB.</strong></div>
+        </div>
+      </template>
+
+      <!-- cipher-modes step 4: cbc-walk result -->
+      <template x-if="step.slug === 'cbc-walk' && state.mode_ct_blocks">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Plaintext (3 blocks):</strong> <span x-text="state.mode_plaintext"></span></div>
+          <div style="word-break:break-all;margin-top:4px;"><strong>IV:</strong> <span x-text="state.mode_iv_hex"></span></div>
+          <template x-for="(blk, i) in state.mode_ct_blocks" :key="i">
+            <div style="word-break:break-all;"><strong x-text="`Block ${i+1}:`"></strong> <span x-text="blk"></span></div>
+          </template>
+          <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">All three plaintext blocks are identical ("YELLOW SUBMARINE"), but the three ciphertext blocks differ — that's CBC chaining doing its job.</div>
+        </div>
+      </template>
+
+      <!-- cipher-modes step 7: pick-a-mode result -->
+      <template x-if="step.slug === 'pick-a-mode' && state.mode_scenario_1">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;">
+          <div>Scenario 1 (HTTP body): <strong x-text="state.mode_scenario_1"></strong> <span style="color:var(--ok, #2a8a3e);">✓</span></div>
+          <div>Scenario 2 (DB fields): <strong x-text="state.mode_scenario_2"></strong> <span style="color:var(--ok, #2a8a3e);">✓</span></div>
+          <div>Scenario 3 (disk, random access): <strong x-text="state.mode_scenario_3"></strong> <span style="color:var(--ok, #2a8a3e);">✓</span></div>
+          <div style="margin-top:10px;"><button class="btn" @click="advance()">Continue →</button></div>
+        </div>
+      </template>
+
+      <!-- padding-oracle step 4: byte-recovery result -->
+      <template x-if="step.slug === 'attack-one-byte' && state.po_recovered_byte_hex">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div style="word-break:break-all;"><strong>Target ciphertext:</strong> <span x-text="state.po_target_block_hex"></span></div>
+          <div><strong>Queries sent to oracle:</strong> <span x-text="state.po_queries_made"></span></div>
+          <div style="margin-top:6px;"><strong>Recovered byte (last byte of plaintext):</strong> <span style="color:var(--ok, #2a8a3e);font-weight:600;" x-text="`0x${state.po_recovered_byte_hex}`"></span></div>
+          <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">No key. No decryption-with-key. Just observing whether the server said "bad padding" or "ok" for each forged ciphertext.</div>
+        </div>
+      </template>
+
+      <!-- padding-oracle step 5: full-block result -->
+      <template x-if="step.slug === 'attack-full-block' && state.po_plaintext">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Recovered plaintext:</strong> "<span style="color:var(--ok, #2a8a3e);" x-text="state.po_plaintext"></span>"</div>
+          <div style="margin-top:4px;word-break:break-all;"><strong>Hex:</strong> <span x-text="state.po_plaintext_hex"></span></div>
+          <div><strong>Total queries:</strong> <span x-text="state.po_total_queries"></span> (≈ 128 per byte × 16 bytes)</div>
+        </div>
+      </template>
+
+      <!-- password-hashing step 2: naive SHA-256 of "password123" -->
+      <template x-if="step.slug === 'naive-sha256-failure' && pwInstantHash">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Input:</strong> "password123"</div>
+          <div style="margin-top:4px;word-break:break-all;"><strong>SHA-256:</strong> <span x-text="pwInstantHash"></span></div>
+          <div style="margin-top:8px;color:var(--bad, #c0392b);font-size:0.88em;">Computed in &lt;1 ms. A GPU farm tries ~10 billion such guesses per second. Plain SHA-256 is not a password hash.</div>
+        </div>
+      </template>
+
+      <!-- password-hashing step 3: PBKDF2 result -->
+      <template x-if="step.slug === 'pbkdf2' && state.pw_pbkdf2_hex">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Password:</strong> <span x-text="state.pw_pbkdf2_password"></span> · <strong>Iterations:</strong> <span x-text="state.pw_pbkdf2_iter.toLocaleString()"></span></div>
+          <div style="margin-top:4px;"><strong>Salt:</strong> <span x-text="state.pw_pbkdf2_salt"></span></div>
+          <div style="margin-top:4px;word-break:break-all;"><strong>PBKDF2-SHA256:</strong> <span x-text="state.pw_pbkdf2_hex"></span></div>
+          <div style="margin-top:6px;"><strong>Took:</strong> <span style="color:var(--ok, #2a8a3e);font-weight:600;" x-text="`${Math.round(state.pw_pbkdf2_ms)} ms`"></span></div>
+        </div>
+      </template>
+
+      <!-- password-hashing step 6: compare-all chart (log scale) -->
+      <template x-if="step.slug === 'compare-hashes' && state.pw_compare_results">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;">
+          <div style="display:flex;flex-direction:column;gap:6px;font-family:ui-monospace, monospace;font-size:0.88em;">
+            <template x-for="row in state.pw_compare_results" :key="row.algo">
+              <div style="display:grid;grid-template-columns:160px 1fr 90px 60px;gap:8px;align-items:center;">
+                <span x-text="row.algo"></span>
+                <div style="background:var(--code-bg);height:10px;border-radius:2px;overflow:hidden;">
+                  <div :style="`background:var(--accent);height:100%;width:${Math.min(100, Math.log10(Math.max(row.ms,1)) * 25)}%;`"></div>
+                </div>
+                <span style="text-align:right;" x-text="`${Math.round(row.ms)} ms`"></span>
+                <span x-show="row.cited" style="color:var(--muted);font-size:0.85em;">(cited)</span>
+              </div>
+            </template>
+          </div>
+          <div style="margin-top:10px;color:var(--muted);font-size:0.85em;">Log scale. SHA-256 is microseconds; password hashes are hundreds of milliseconds. That ≈100,000× gap is the whole point.</div>
         </div>
       </template>
 
