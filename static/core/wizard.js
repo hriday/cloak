@@ -1,3 +1,17 @@
+// Per-algorithm "demo" module names. Most lessons expose a small Web Crypto
+// or simulator wrapper that the wizard pre-imports and stashes on `this.demo`
+// so template branches can call into it (`this.demo.hashEmpty()`, etc.)
+// without redoing the dynamic import on every click.
+const DEMO_FILENAMES = {
+  "sha256": "sha_demo.js",
+  "hmac": "hmac_demo.js",
+  "x25519": "x25_demo.js",
+  "ed25519": "ed25_simulator.js",
+  "chacha20-poly1305": "chap_demo.js",
+  "hsm": "hsm_simulator.js",
+  "aes": "aes_demo.js",
+};
+
 async function loadAlgorithmModules(slug) {
   const base = `/static/algorithms/${slug}`;
   // Cache-bust per page load. Chromium aggressively caches ES modules and a
@@ -10,7 +24,13 @@ async function loadAlgorithmModules(slug) {
   ]);
   let tables = null;
   try { tables = await import(`${base}/tables.js${v}`); } catch (_e) { /* not all algorithms have tables */ }
-  return { validators, codegen, tables };
+  let demo = null;
+  const demoFile = DEMO_FILENAMES[slug];
+  if (demoFile) {
+    try { demo = await import(`${base}/${demoFile}${v}`); }
+    catch (_e) { /* demo module is optional */ }
+  }
+  return { validators, codegen, tables, demo };
 }
 
 function wizardComponent(initial) {
@@ -28,8 +48,10 @@ function wizardComponent(initial) {
     validators: null,
     codegen: null,
     tables: null,
+    demo: null,                // optional per-algorithm Web Crypto wrapper
     aesSBOX: [],
     aesOneRoundStates: [],
+    shaAvalanche: null,        // SHA-256: precomputed bit-diff of "hello"/"Hello"
     coprimeOptions: [],
     inlineCode: "",
     stuckLevel: 0,
@@ -46,9 +68,16 @@ function wizardComponent(initial) {
       this.validators = mods.validators;
       this.codegen = mods.codegen;
       this.tables = mods.tables;
+      this.demo = mods.demo;
       if (mods.tables?.SBOX) this.aesSBOX = mods.tables.SBOX;
       if (mods.tables?.SBOX && mods.tables?.mixColumn) {
         this.aesOneRoundStates = this._computeOneRound(mods.tables);
+      }
+      // SHA-256 avalanche step: precompute the "hello" / "Hello" bit diff
+      // once at lesson start. The avalanche template branch reads this.
+      if (this.algorithmSlug === "sha256" && mods.demo?.bitDiff) {
+        try { this.shaAvalanche = await mods.demo.bitDiff("hello", "Hello"); }
+        catch (_e) { /* Web Crypto unavailable */ }
       }
       this.refreshInlineCode();
       this.maybeRefreshCoprimeOptions();
@@ -241,6 +270,27 @@ function wizardComponent(initial) {
       return keys.every((k) => k in this.state);
     },
 
+    // Lesson template helper: does `step` have a slug-keyed custom input UI
+    // that overrides the default input-text textarea? Used by lesson.html to
+    // gate the default textarea so two competing input UIs don't render at
+    // once. Some slugs collide across algorithms (e.g., both AES and
+    // ChaCha20 have an "encrypt-a-message" step) — those are scoped by
+    // algorithmSlug.
+    hasCustomInputBranch(step) {
+      const SLUGS = new Set([
+        "simulated-hsm",
+        "walk-empty", "hash-a-sentence",     // SHA-256
+        "compute-hmac", "verify-and-tamper", // HMAC
+        "exchange-keys",                      // X25519
+        "sign-and-verify",                    // Ed25519
+      ]);
+      if (SLUGS.has(step.slug)) return true;
+      // ChaCha20's encrypt-a-message has a custom branch; AES's same-slug
+      // step uses the default textarea, so we discriminate by algorithm.
+      if (step.slug === "encrypt-a-message" && this.algorithmSlug === "chacha20-poly1305") return true;
+      return false;
+    },
+
     maybeRefreshCoprimeOptions() {
       if (this.currentStep?.kind === "choose-from-list" && this.currentStep.slug === "pick-e" && "phi" in this.state) {
         const v = `?v=${(window.CLOAK_ASSETS_VERSION || Date.now())}`;
@@ -254,11 +304,19 @@ function wizardComponent(initial) {
       const step = this.currentStep;
       if (!step) return;
       let input;
-      // simulated-hsm has kind='input-text' but the UI is multi-field (op + message + signature),
-      // so route it through multiInput like the input-multi kinds. pin-translation has
-      // kind='input-numeric' but the UI takes two inputs (PIN + PAN), so it also routes
-      // through multiInput — the validator accepts {pin, pan} and defaults PAN when blank.
-      if (step.kind === "input-multi" || step.slug === "simulated-hsm" || step.slug === "pin-translation") {
+      // Slug-keyed multi-input routing: steps whose validator takes an object
+      // even though `step.kind` would naturally route to a single input.
+      // - simulated-hsm: {op, message, signature}
+      // - pin-translation: {pin, pan}
+      // - compute-hmac: {key, message}
+      // - verify-and-tamper: {verifyAction}
+      // - sign-and-verify (Ed25519): {op, message, signature}
+      // - encrypt-a-message (ChaCha20): {message, aad}
+      const MULTI_INPUT_SLUGS = new Set([
+        "simulated-hsm", "pin-translation", "compute-hmac",
+        "verify-and-tamper", "sign-and-verify", "encrypt-a-message",
+      ]);
+      if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
         input = { ...this.multiInput };
       } else if (step.kind === "input-text") {
         input = this.sentenceInput;
@@ -271,9 +329,14 @@ function wizardComponent(initial) {
       this.hint = "";
       this.state = { ...this.state, ...result.value };
       this.refreshInlineCode();
-      // simulated-hsm and pin-translation are exploratory — let the user re-run the
-      // operation multiple times before manually advancing via the Continue button.
-      if (step.slug === "simulated-hsm" || step.slug === "pin-translation") {
+      // Exploratory steps — user may want to re-run before advancing (sign
+      // multiple messages, try multiple PINs, etc.). Their template branches
+      // render a Continue button manually once the user is ready.
+      const EXPLORATORY_SLUGS = new Set([
+        "simulated-hsm", "pin-translation", "compute-hmac",
+        "verify-and-tamper", "sign-and-verify", "encrypt-a-message",
+      ]);
+      if (EXPLORATORY_SLUGS.has(step.slug)) {
         this.persistLocal();
         this.syncServer();
         return;

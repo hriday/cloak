@@ -75,7 +75,7 @@
         </div>
       </template>
 
-      <template x-if="step.kind === 'input-text' && step.slug !== 'simulated-hsm'">
+      <template x-if="step.kind === 'input-text' && !hasCustomInputBranch(step)">
         <div style="margin-top:12px;">
           <textarea
             x-model="sentenceInput"
@@ -113,6 +113,103 @@
           </div>
           <div x-show="state.hsm_last_op" style="margin-top:10px;">
             <button class="btn" @click="advance()">Continue →</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- SHA-256 step 5: compute SHA-256("") via Web Crypto, write to sentenceInput, advance -->
+      <template x-if="step.slug === 'walk-empty'">
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn" @click="async () => { sentenceInput = await demo.hashEmpty(); check(); }">Compute SHA-256(&quot;&quot;)</button>
+          <input type="text" x-model="sentenceInput" readonly placeholder="hex appears here" style="min-width:480px;font-family:ui-monospace, monospace;font-size:0.82em;">
+          <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+        </div>
+      </template>
+
+      <!-- SHA-256 step 7: type a sentence, click Hash to compute via Web Crypto, then Continue -->
+      <template x-if="step.slug === 'hash-a-sentence'">
+        <div style="margin-top:12px;">
+          <textarea x-model="sentenceInput" placeholder="Type a sentence (≤500 ASCII chars)" maxlength="500" rows="3" style="width:100%;font-family:inherit;padding:8px;"></textarea>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">
+            <span style="color:var(--muted);font-size:0.8em;" x-text="`${sentenceInput.length} / 500`"></span>
+            <div style="display:flex;gap:8px;">
+              <button class="btn" :disabled="!sentenceInput" @click="async () => { state = { ...state, sha_message: sentenceInput, sha_message_hex: await demo.hashHex(sentenceInput) }; persistLocal(); }">Hash</button>
+              <button class="btn secondary" x-show="state.sha_message_hex" @click="check()">Continue →</button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- HMAC step 5: key + message inputs, compute MAC button -->
+      <template x-if="step.slug === 'compute-hmac'">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Key</label>
+            <input type="text" x-model="multiInput.key" placeholder="any secret string" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Message</label>
+            <textarea x-model="multiInput.message" placeholder="text to authenticate" maxlength="500" rows="2" style="width:100%;font-family:inherit;padding:8px;"></textarea>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" :disabled="!multiInput.key || !multiInput.message" @click="check()">Compute MAC</button>
+            <button class="btn secondary" x-show="state.hm_mac_hex" @click="advance()">Continue →</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+          </div>
+        </div>
+      </template>
+
+      <!-- HMAC step 6: verify / tamper buttons (no text input — uses stored state.hm_key + hm_message) -->
+      <template x-if="step.slug === 'verify-and-tamper'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" @click="multiInput.verifyAction = 'verify'; check()">Verify (original)</button>
+          <button class="btn secondary" @click="multiInput.verifyAction = 'tamper'; check()">Verify (tampered)</button>
+          <button class="btn secondary" x-show="state.hm_verify_result !== undefined" @click="advance()">Continue →</button>
+        </div>
+      </template>
+
+      <!-- X25519 step 7: button to run the simulated KEX -->
+      <template x-if="step.slug === 'exchange-keys'">
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn" @click="check()">Run the exchange</button>
+          <button class="btn secondary" x-show="state.x25_shared_secret" @click="advance()">Continue →</button>
+          <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+        </div>
+      </template>
+
+      <!-- Ed25519 step 5: sibling of simulated-hsm, sign/verify with the lesson's ephemeral keypair -->
+      <template x-if="step.slug === 'sign-and-verify'">
+        <div style="margin-top:12px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+            <button :class="multiInput.op === 'sign' ? 'btn' : 'btn secondary'" @click="multiInput.op = 'sign'; check()">Sign</button>
+            <button :class="multiInput.op === 'verify' ? 'btn' : 'btn secondary'" @click="multiInput.op = 'verify'; check()">Verify</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+          </div>
+          <textarea x-model="multiInput.message" placeholder="Message to sign or verify" maxlength="500" rows="3" style="width:100%;font-family:inherit;padding:8px;"></textarea>
+          <div x-show="multiInput.op === 'verify'" style="margin-top:8px;">
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:4px;">Signature (128 hex chars from a prior sign):</label>
+            <input type="text" x-model="multiInput.signature" placeholder="hex signature" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div x-show="state.ed25_last_op" style="margin-top:10px;">
+            <button class="btn" @click="advance()">Continue →</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- ChaCha20-Poly1305 step 6: message + AAD + Encrypt button (algorithm-scoped because AES has the same slug) -->
+      <template x-if="step.slug === 'encrypt-a-message' && algorithmSlug === 'chacha20-poly1305'">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Message</label>
+            <textarea x-model="multiInput.message" placeholder="plaintext (≤500 ASCII chars)" maxlength="500" rows="2" style="width:100%;font-family:inherit;padding:8px;"></textarea>
+          </div>
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Associated data (optional)</label>
+            <input type="text" x-model="multiInput.aad" placeholder="e.g., a header — authenticated but not encrypted" maxlength="200" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" :disabled="!multiInput.message" @click="check()">Encrypt + tamper test</button>
+            <button class="btn secondary" x-show="state.chap_ciphertext_hex" @click="advance()">Continue →</button>
           </div>
         </div>
       </template>
@@ -403,6 +500,108 @@
           <div x-show="state.a_ciphertext_hex" style="word-break:break-all;"><strong>Ciphertext:</strong> <span x-text="state.a_ciphertext_hex"></span></div>
           <div x-show="state.a_recovered" style="margin-top:6px;"><strong>Decrypted:</strong> <span x-text="state.a_recovered"></span> <span x-show="state.a_recovered === state.a_message" style="color:var(--ok, #2a8a3e);">✓ matches</span></div>
           <div x-show="state.a_encrypt_error" style="color:var(--bad, #c0392b);margin-top:6px;">⚠ <span x-text="state.a_encrypt_error"></span></div>
+        </div>
+      </template>
+
+      <!-- SHA-256 step 6: avalanche widget (precomputed in wizard init) -->
+      <template x-if="step.slug === 'avalanche' && shaAvalanche">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;font-family:ui-monospace, monospace;font-size:0.82em;">
+            <div>
+              <div style="color:var(--muted);font-size:0.9em;margin-bottom:4px;">SHA-256(&quot;hello&quot;)</div>
+              <div style="word-break:break-all;line-height:1.5;" x-text="shaAvalanche.hex1"></div>
+            </div>
+            <div>
+              <div style="color:var(--muted);font-size:0.9em;margin-bottom:4px;">SHA-256(&quot;Hello&quot;)</div>
+              <div style="word-break:break-all;line-height:1.5;" x-text="shaAvalanche.hex2"></div>
+            </div>
+          </div>
+          <div style="margin-top:14px;font-size:0.9em;">
+            <div style="color:var(--muted);margin-bottom:4px;">Bit-level diff (red = differing bits)</div>
+            <div style="display:flex;flex-wrap:wrap;gap:1px;font-family:ui-monospace, monospace;font-size:0.65em;line-height:1;">
+              <template x-for="(b, i) in shaAvalanche.diffMask.split('')" :key="i">
+                <span :style="b === '1' ? 'color:#ef4444;background:#3f1d1d;padding:1px 3px;' : 'color:var(--muted);padding:1px 3px;'" x-text="b"></span>
+              </template>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:0.95em;">
+            <strong x-text="`${shaAvalanche.diffCount} of 256 bits differ`"></strong>
+            <span style="color:var(--muted);"> — flipping a single bit of input changes ≈half the output bits. That's avalanche.</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- SHA-256 step 7: show the hash after the user clicks Hash -->
+      <template x-if="step.slug === 'hash-a-sentence' && state.sha_message_hex">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Input:</strong> <span x-text="state.sha_message"></span></div>
+          <div style="margin-top:6px;word-break:break-all;"><strong>SHA-256:</strong> <span x-text="state.sha_message_hex"></span></div>
+        </div>
+      </template>
+
+      <!-- HMAC step 5: show the MAC after compute -->
+      <template x-if="step.slug === 'compute-hmac' && state.hm_mac_hex">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Key:</strong> <span x-text="state.hm_key"></span></div>
+          <div><strong>Message:</strong> <span x-text="state.hm_message"></span></div>
+          <div style="word-break:break-all;margin-top:6px;"><strong>HMAC-SHA256:</strong> <span x-text="state.hm_mac_hex"></span></div>
+        </div>
+      </template>
+
+      <!-- HMAC step 6: show the verify outcome -->
+      <template x-if="step.slug === 'verify-and-tamper' && state.hm_verify_result !== undefined">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;">
+          <div style="font-family:ui-monospace, monospace;"><strong>Message used:</strong> <span x-text="state.hm_tampered ? state.hm_tampered_message : state.hm_message"></span></div>
+          <div style="font-family:ui-monospace, monospace;word-break:break-all;margin-top:4px;"><strong>MAC checked:</strong> <span x-text="state.hm_mac_hex"></span></div>
+          <div style="margin-top:8px;">
+            <span x-show="state.hm_verify_result === true" style="color:var(--ok, #2a8a3e);font-weight:500;">✓ MAC verified — message authentic</span>
+            <span x-show="state.hm_verify_result === false" style="color:var(--bad, #c0392b);font-weight:500;">✗ MAC mismatch — message altered or wrong key</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- X25519 step 7: result of the exchange -->
+      <template x-if="step.slug === 'exchange-keys' && (state.x25_shared_secret || state.x25_error)">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.9em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div style="word-break:break-all;"><strong>Alice's public key:</strong> <span x-text="state.x25_alice_pub"></span></div>
+          <div style="word-break:break-all;margin-top:4px;"><strong>Bob's public key:</strong> <span x-text="state.x25_bob_pub"></span></div>
+          <div style="word-break:break-all;margin-top:8px;"><strong>Shared secret (from Alice's side):</strong> <span x-text="state.x25_shared_secret"></span></div>
+          <div x-show="state.x25_match" style="margin-top:8px;color:var(--ok, #2a8a3e);font-weight:500;">✓ Both sides derived the same secret — KEX succeeded</div>
+          <div x-show="state.x25_used_fallback" style="margin-top:8px;color:var(--warn, #f59e0b);font-size:0.9em;">Note: this browser doesn't support Web Crypto X25519, so the page is showing the canonical RFC 7748 §6.1 test vectors instead.</div>
+        </div>
+      </template>
+
+      <!-- Ed25519 step 5: sign/verify result panel (sibling of simulated-hsm) -->
+      <template x-if="step.slug === 'sign-and-verify' && state.ed25_last_op">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Last operation:</strong> <span x-text="state.ed25_last_op"></span></div>
+          <div><strong>Input:</strong> <span x-text="state.ed25_last_input"></span></div>
+          <template x-if="state.ed25_last_op === 'sign' && state.ed25_last_signature">
+            <div style="word-break:break-all;margin-top:4px;"><strong>Signature (hex):</strong> <span x-text="state.ed25_last_signature"></span></div>
+          </template>
+          <template x-if="state.ed25_last_op === 'verify'">
+            <div style="margin-top:4px;">
+              <strong>Result:</strong>
+              <span x-show="state.ed25_verify_result === true" style="color:var(--ok, #2a8a3e);">✓ Signature valid</span>
+              <span x-show="state.ed25_verify_result === false" style="color:var(--bad, #c0392b);">✗ Signature invalid (tampered or wrong key)</span>
+            </div>
+          </template>
+          <div x-show="state.ed25_op_error" style="color:var(--bad, #c0392b);margin-top:6px;">⚠ <span x-text="state.ed25_op_error"></span></div>
+        </div>
+      </template>
+
+      <!-- ChaCha20-Poly1305 step 6: encrypted result + tamper outcome -->
+      <template x-if="step.slug === 'encrypt-a-message' && algorithmSlug === 'chacha20-poly1305' && (state.chap_ciphertext_hex || state.chap_encrypt_error)">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.9em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Plaintext:</strong> <span x-text="state.chap_message"></span></div>
+          <div x-show="state.chap_aad"><strong>AAD:</strong> <span x-text="state.chap_aad"></span></div>
+          <div style="margin-top:4px;word-break:break-all;"><strong>Key:</strong> <span x-text="state.chap_key_hex"></span></div>
+          <div style="word-break:break-all;"><strong>Nonce:</strong> <span x-text="state.chap_nonce_hex"></span></div>
+          <div style="word-break:break-all;margin-top:4px;"><strong>Ciphertext:</strong> <span x-text="state.chap_ciphertext_hex"></span></div>
+          <div style="word-break:break-all;"><strong>Tag:</strong> <span x-text="state.chap_tag_hex"></span></div>
+          <div x-show="state.chap_decrypted" style="margin-top:6px;"><strong>Decrypted:</strong> <span x-text="state.chap_decrypted"></span> <span x-show="state.chap_decrypted === state.chap_message" style="color:var(--ok, #2a8a3e);">✓ matches</span></div>
+          <div x-show="state.chap_tamper_failed" style="margin-top:6px;color:var(--ok, #2a8a3e);">✓ Tamper test: a single-byte flip in the ciphertext made decryption fail (InvalidTag). That's the AEAD guarantee.</div>
+          <div x-show="state.chap_encrypt_error" style="color:var(--bad, #c0392b);margin-top:6px;">⚠ <span x-text="state.chap_encrypt_error"></span></div>
         </div>
       </template>
 
