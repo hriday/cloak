@@ -67,20 +67,29 @@ export function easeInOut(t) {
 // need to think about devicePixelRatio.
 export function setupCanvas(canvas, viewport) {
   const dpr = window.devicePixelRatio || 1;
-  // Determine display size from CSS (or canvas width/height attributes if
-  // there's no CSS applied yet). The HTML attributes provide the *logical*
-  // pixel size; we multiply by DPR for the backing store.
-  const cssW = canvas.clientWidth || canvas.width;
-  const cssH = canvas.clientHeight || canvas.height;
-  if (canvas._dprApplied !== dpr || canvas._cssW !== cssW || canvas._cssH !== cssH) {
+  // One-shot HiDPI setup. The first call captures the canvas's logical
+  // dimensions from its HTML attributes (which the template sets to a fixed
+  // size), multiplies by DPR for the backing store, and caches both. Every
+  // subsequent call short-circuits — we DO NOT re-read clientWidth/height
+  // (which can oscillate due to CSS max-width / page-layout constraints,
+  // causing runaway resize feedback inside per-frame animation loops).
+  if (!canvas._dprApplied) {
+    // Pull the *logical* size from the HTML attributes set in the template.
+    // canvas.width/height at this point are the integers the template set
+    // (e.g., 600x400). Once we mutate them to apply DPR, we never read them
+    // back — we trust _cssW/_cssH instead.
+    const cssW = canvas.width;
+    const cssH = canvas.height;
+    canvas._cssW = cssW;
+    canvas._cssH = cssH;
     canvas.width  = Math.round(cssW * dpr);
     canvas.height = Math.round(cssH * dpr);
     canvas.style.width  = cssW + "px";
     canvas.style.height = cssH + "px";
     canvas._dprApplied = dpr;
-    canvas._cssW = cssW;
-    canvas._cssH = cssH;
   }
+  const cssW = canvas._cssW;
+  const cssH = canvas._cssH;
   const ctx = canvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
