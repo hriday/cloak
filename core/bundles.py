@@ -18,10 +18,22 @@ page.
 
 BUNDLES = [
     {
+        "slug": "how-tls-1-3-works",
+        "title": "How TLS 1.3 works",
+        "tagline": "The modern handshake. ECDH for key exchange, an authenticated cipher for the record stream, Ed25519 (or a CA-signed RSA cert) for identity.",
+        "algorithms": ["x25519", "chacha20-poly1305", "ed25519"],
+    },
+    {
         "slug": "how-https-works",
-        "title": "How HTTPS works",
-        "tagline": "Two strangers meet on the internet and build a secure channel from scratch. The classic asymmetric-meets-symmetric handshake.",
+        "title": "How HTTPS works (the classic story)",
+        "tagline": "The older RSA-based TLS handshake, still useful to understand. Two strangers meet on the internet and build a secure channel — asymmetric meets symmetric.",
         "algorithms": ["rsa", "aes", "hybrid"],
+    },
+    {
+        "slug": "hashing-for-developers",
+        "title": "Hashing for developers",
+        "tagline": "SHA-256 fingerprints data; HMAC authenticates messages. The two primitives under almost every protocol on the internet.",
+        "algorithms": ["sha256", "hmac"],
     },
     {
         "slug": "how-card-payments-work",
@@ -32,8 +44,8 @@ BUNDLES = [
     {
         "slug": "block-ciphers-old-to-new",
         "title": "Block ciphers, old to new",
-        "tagline": "How AES became the standard. The 25-year story from DES's deathbed through Blowfish and Twofish to today.",
-        "algorithms": ["triple-des", "blowfish", "twofish", "aes"],
+        "tagline": "How AES became the standard. The 30-year story from DES's deathbed through Blowfish and Twofish to ChaCha20.",
+        "algorithms": ["triple-des", "blowfish", "twofish", "aes", "chacha20-poly1305"],
     },
 ]
 

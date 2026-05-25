@@ -191,3 +191,131 @@ def test_twofish_fixture_loads(db):
     vs_aes_prompt = by_slug["vs-aes"].prompt_template
     assert "|" in vs_aes_prompt
     assert "---" in vs_aes_prompt
+
+
+@pytest.mark.django_db
+def test_sha256_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/sha256/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=8)
+    assert algo.slug == "sha256"
+    assert algo.name == "SHA-256"
+    assert algo.family == "hash"
+    assert algo.status == "live"
+    assert len(algo.intro_template) <= 200
+
+    lesson = Lesson.objects.get(pk=8)
+    assert lesson.algorithm_id == 8
+    assert lesson.slug == "walk-the-hash"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    assert [s.slug for s in steps] == [
+        "intro", "preprocessing", "init-state", "compression",
+        "walk-empty", "avalanche", "hash-a-sentence", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["walk-empty"].kind == "input-text"
+    assert by_slug["walk-empty"].validator_key == "walk_empty_hash"
+    assert by_slug["hash-a-sentence"].validator_key == "pick_sha_sentence"
+
+
+@pytest.mark.django_db
+def test_hmac_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/hmac/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=9)
+    assert algo.slug == "hmac"
+    assert algo.name == "HMAC"
+    assert algo.family == "hash"
+    assert len(algo.intro_template) <= 200
+
+    lesson = Lesson.objects.get(pk=9)
+    assert lesson.slug == "mac-the-message"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "naive-mac", "length-extension", "hmac-construction",
+        "compute-hmac", "verify-and-tamper", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["compute-hmac"].validator_key == "compute_hmac"
+    assert by_slug["verify-and-tamper"].validator_key == "verify_hmac"
+
+
+@pytest.mark.django_db
+def test_x25519_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/x25519/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=10)
+    assert algo.slug == "x25519"
+    assert algo.name == "X25519"
+    assert algo.family == "asymmetric"
+    assert len(algo.intro_template) <= 200
+
+    lesson = Lesson.objects.get(pk=10)
+    assert lesson.slug == "key-exchange-on-a-curve"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 8
+    assert [s.slug for s in steps] == [
+        "intro", "classical-dh", "do-a-dh", "why-curves",
+        "curve25519-spec", "clamping", "exchange-keys", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["do-a-dh"].validator_key == "compute_dh"
+    assert by_slug["clamping"].validator_key == "clamp_byte"
+    assert by_slug["exchange-keys"].validator_key == "exchange_keys"
+
+
+@pytest.mark.django_db
+def test_ed25519_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/ed25519/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=11)
+    assert algo.slug == "ed25519"
+    assert algo.name == "Ed25519"
+    assert algo.family == "asymmetric"
+    assert len(algo.intro_template) <= 200
+
+    lesson = Lesson.objects.get(pk=11)
+    assert lesson.slug == "sign-with-edwards"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "key-derivation", "sign-mechanics", "verify-mechanics",
+        "sign-and-verify", "vs-rsa-comparison", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["sign-and-verify"].validator_key == "ed25519_operation"
+
+
+@pytest.mark.django_db
+def test_chacha20_poly1305_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/chacha20-poly1305/fixtures.json")
+
+    from core.models import Algorithm, Lesson, Step
+    algo = Algorithm.objects.get(pk=12)
+    assert algo.slug == "chacha20-poly1305"
+    assert algo.name == "ChaCha20-Poly1305"
+    assert algo.family == "symmetric"
+    assert len(algo.intro_template) <= 200
+
+    lesson = Lesson.objects.get(pk=12)
+    assert lesson.slug == "arx-aead"
+    steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
+    assert len(steps) == 7
+    assert [s.slug for s in steps] == [
+        "intro", "arx-design", "quarter-round", "block-function",
+        "poly1305-construction", "encrypt-a-message", "done",
+    ]
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["quarter-round"].validator_key == "quarter_round_line"
+    assert by_slug["encrypt-a-message"].validator_key == "encrypt_aead"
