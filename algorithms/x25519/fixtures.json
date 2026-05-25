@@ -1,0 +1,104 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 10,
+    "fields": {
+      "slug": "x25519",
+      "name": "X25519",
+      "family": "asymmetric",
+      "status": "live",
+      "order": 10,
+      "intro_template": "## X25519 — key exchange on a curve\n\nTwo strangers on a public network agree on a shared secret without ever transmitting it. The primitive behind TLS 1.3, Signal, WireGuard, SSH."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 10,
+    "fields": {
+      "algorithm": 10,
+      "slug": "key-exchange-on-a-curve",
+      "title": "X25519: key exchange on a curve",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 101,
+    "fields": {
+      "lesson": 10, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Key exchange — the impossible-sounding problem\n\nAlice and Bob have never met. They want to agree on a shared secret over a network where Eve sees every byte they send. **They can't transmit the secret** — Eve would see it. They can't pre-share a key — they've never met. They have to *construct* a secret out of public messages, and the construction has to be one Eve can watch the whole time without learning the answer.\n\nThis is **key exchange** (or **key agreement**), and the modern world quietly depends on it:\n\n- **TLS 1.3** — every HTTPS handshake since ~2018 starts with an X25519 exchange. Your browser and the server agree on a session key over a wire-tappable network in one round trip.\n- **Signal Protocol** — every message you send through Signal, WhatsApp, or Messenger's E2E mode rides on top of X25519 (the X3DH and Double Ratchet protocols both use it).\n- **WireGuard** — the modern VPN. Its entire handshake is X25519 plus a hash.\n- **SSH** — `curve25519-sha256` has been the default key-exchange method since OpenSSH 7.4 (Dec 2016).\n\nThe primitive that makes all of this work was published in 1976 (Diffie-Hellman) and refined for elliptic curves in the late 1980s. X25519 is the specific elliptic-curve flavor designed by Daniel Bernstein in 2005 — fast, small, audited, hard to misuse.\n\nIn the next 7 steps you'll build it up: classical Diffie-Hellman first (mod-p arithmetic with small primes you can do by hand), then the conceptual jump to elliptic curves, then X25519 specifically — the curve, the clamping, and a live exchange between two in-page keypairs.",
+      "help_template": "**In plain English:** Every other crypto lesson you've done used a public key to *encrypt*. X25519 is different — nothing is ever encrypted with the public key. Both sides each compute the same secret from their own private key and the other's public key. That conceptual shift (from encryption to *agreement*) is the load-bearing idea here.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 102,
+    "fields": {
+      "lesson": 10, "order": 2, "slug": "classical-dh", "kind": "info",
+      "prompt_template": "### Classical Diffie-Hellman (1976)\n\nDiffie and Hellman's original 1976 paper laid out the entire pattern. The math is just modular exponentiation.\n\n**Public parameters** (everyone knows these, including Eve): a prime `p` and a generator `g`.\n\n**The protocol:**\n\n```\nAlice                              Bob\n-----                              ---\npick secret a                      pick secret b\ncompute A = g^a mod p              compute B = g^b mod p\n              ──── send A ────►\n              ◄──── send B ────\ncompute s = B^a mod p              compute s = A^b mod p\n```\n\nBoth land on the same `s`, because:\n\n```\nB^a = (g^b)^a = g^(ab) = (g^a)^b = A^b   (mod p)\n```\n\n**Worked example** with tiny numbers: `p = 23`, `g = 5`, `a = 6`, `b = 15`.\n\n- Alice sends `A = 5^6 mod 23 = 15625 mod 23 = 8`.\n- Bob sends `B = 5^15 mod 23 = 19`.\n- Alice computes `s = B^a mod p = 19^6 mod 23 = 2`.\n- Bob computes `s = A^b mod p = 8^15 mod 23 = 2`.\n- They agree on `s = 2`.\n\nEve watched the wire and saw `p=23, g=5, A=8, B=19`. To recover `a` from `A=8`, she'd need to solve `5^a ≡ 8 (mod 23)` — the **discrete logarithm problem**. For tiny numbers it's easy; for 2048-bit `p` it's the entire reason DH is secure.\n\n**The asymmetry that makes it work:** modular exponentiation is easy *forward* (`g^a mod p` is just repeated squaring, fast even for huge numbers) and hard *backward* (recovering `a` from `g^a mod p` is exponential-time in the size of `p`).",
+      "help_template": "**In plain English:** Alice and Bob each pick a private number and send a public number derived from it. Combining your own private number with the other person's public number always lands on the same answer — but Eve, who only sees the two public numbers, can't reach it. The whole show rides on one fact: it's easy to raise `g` to a power mod `p`, and *exponentially* hard to undo.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 103,
+    "fields": {
+      "lesson": 10, "order": 3, "slug": "do-a-dh", "kind": "input-numeric",
+      "prompt_template": "### Compute the shared secret by hand\n\nAlice and Bob have agreed on public parameters `p = 23`, `g = 5`.\n\n- Alice picked secret `a = 6` and sent Bob `A = g^a mod p = 5^6 mod 23 = 8`.\n- Bob picked secret `b = 15` and sent Alice `B = g^b mod p = 5^15 mod 23 = 19`.\n\n**You are Alice.** Compute the shared secret:\n\n```\ns = B^a mod p = 19^6 mod 23\n```\n\nEnter the result (a single integer).",
+      "help_template": "**In plain English:** Repeated squaring keeps the intermediate numbers small. Compute `19^2 mod 23`, then square *that* to get `19^4 mod 23`, then multiply by `19^2` again to get `19^6 mod 23`. Reduce mod 23 after every multiplication — that's the whole trick to keeping the numbers manageable.",
+      "validator_key": "compute_dh", "codegen_key": "do_a_dh"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 104,
+    "fields": {
+      "lesson": 10, "order": 4, "slug": "why-curves", "kind": "info",
+      "prompt_template": "### Why move to elliptic curves?\n\nClassical Diffie-Hellman works fine — but it needs **big** numbers. For 128-bit security you need a ~3072-bit prime `p`. Every public key is 3072 bits (~384 bytes). Every modular exponentiation is slow.\n\nElliptic curves get the same security with much smaller numbers:\n\n| Security level | DH prime size | ECDH curve size |\n|---|---|---|\n| 80-bit (legacy) | 1024 bits | 160 bits |\n| 128-bit | 3072 bits | 256 bits |\n| 192-bit | 7680 bits | 384 bits |\n| 256-bit | 15360 bits | 512 bits |\n\nA 256-bit elliptic-curve public key is **12× smaller** than the DH equivalent and the math is faster. The smaller pubkey size matters in practice: it's why TLS handshakes got noticeably faster after switching to ECDHE around 2013.\n\n### Same DH pattern, different group\n\nThe miracle: **the entire DH protocol structure transfers unchanged.** Everything you just learned still applies — just replace \"integer mod p\" with \"point on a curve\" and \"multiplication\" with the curve's group operation.\n\n```\nDH (mod-p)                         ECDH (curve)\n----------                         ------------\npublic params: p, g                public params: curve, base point G\nAlice picks scalar a               Alice picks scalar a\nAlice sends A = g^a mod p          Alice sends A = a · G   (scalar multiplication)\nBob picks scalar b                 Bob picks scalar b\nBob sends B = g^b mod p            Bob sends B = b · G\nshared = B^a = A^b                 shared = a · B = b · A = (ab) · G\n```\n\nA **point on an elliptic curve** is just a pair `(x, y)` satisfying the curve equation. Curve points form a *group* — you can \"add\" two points to get a third point on the curve (geometrically: draw a line through them, find the third intersection, reflect across the x-axis). \"Scalar multiplication\" `n · P` means adding `P` to itself `n` times.\n\nThe hard problem becomes the **Elliptic Curve Discrete Logarithm Problem (ECDLP)**: given `A` and `G`, find `a` such that `A = a · G`. There's no known classical algorithm that's substantially faster than brute force — that's why 256-bit ECC gets you ~128 bits of security.\n\nWe're not going to walk the curve arithmetic by hand. The point is **structural**: same DH, different group. The next step picks one specific curve — Curve25519 — and we'll work with that for the rest of the lesson.",
+      "help_template": "**In plain English:** Diffie-Hellman is a pattern, not a specific math. Any group where (a) you can combine elements, and (b) it's hard to undo `g^x`, will work. Elliptic curves give you that with smaller numbers and faster operations. The same handshake idea works — you just trade `g^x mod p` for `x · G` (point multiplication on a curve).",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 105,
+    "fields": {
+      "lesson": 10, "order": 5, "slug": "curve25519-spec", "kind": "info",
+      "prompt_template": "### Curve25519 — the specific curve\n\nDaniel Bernstein published **Curve25519** in 2005 (\"Curve25519: new Diffie-Hellman speed records\", eprint 2006/006). It's designed for fast, constant-time, hard-to-misuse ECDH. The IETF standardized the protocol as **X25519** in RFC 7748 (2016).\n\nThe curve equation, in Montgomery form:\n\n```\ny² = x³ + 486662·x² + x         (mod 2²⁵⁵ − 19)\n```\n\nThe field is `GF(2²⁵⁵ − 19)` — integers mod the prime `2²⁵⁵ − 19`. That prime gives the curve its name (Curve **25519**). It's chosen because it's close to a power of two, making field arithmetic fast on 32-bit and 64-bit hardware.\n\n**Base point** (the `G` from the previous step): the point with u-coordinate `9`. Just `9`.\n\n### What X25519 actually transmits\n\nX25519 is a clever simplification: it works entirely on the **u-coordinate** (the Montgomery-form x-coordinate) of curve points. You never need to send or compute the y-coordinate at all. This means:\n\n- **Private key:** 32 random bytes (after *clamping* — next step).\n- **Public key:** 32 bytes, the u-coordinate of `priv · G` as a little-endian integer.\n- **Shared secret:** 32 bytes, the u-coordinate of `Alice_priv · Bob_pub` (= `Bob_priv · Alice_pub`).\n\nEverything is 32 bytes. No certificate parsing, no DER decoding, no point-on-curve validation pitfalls (a famous source of bugs in older ECDH implementations).\n\n### The Montgomery ladder\n\nScalar multiplication `priv · G` is computed by the **Montgomery ladder** — an algorithm that does the same arithmetic operations regardless of the scalar's bit pattern. That constant-time property defeats timing side-channels. We're not walking the ladder by hand; just know that's what's running when you call `crypto.subtle.deriveBits` on the next step.\n\n### Clamping\n\nBefore use, the 32-byte private key gets three bits twiddled (\"clamped\"). The next step walks the rule and asks you to apply it. The why: it prevents small-subgroup attacks and pins the scalar to exactly 254 bits so the Montgomery ladder runs in constant time.",
+      "help_template": "**In plain English:** Curve25519 is one specific elliptic curve, chosen by Bernstein for speed and safety. X25519 is the protocol of doing Diffie-Hellman on it. Both sides exchange 32-byte messages (the u-coordinates of their public points) and derive a 32-byte shared secret. The whole protocol is tiny — a public key is 32 bytes, shorter than an IPv6 address.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 106,
+    "fields": {
+      "lesson": 10, "order": 6, "slug": "clamping", "kind": "input-numeric",
+      "prompt_template": "### Clamp the private-key byte\n\nA fresh X25519 private key is 32 random bytes, but before use the spec *clamps* three bits. Two reasons:\n\n1. **Small-subgroup attacks:** without clamping, a malicious peer can craft a public key that leaks information about your private key. Forcing the scalar to be a multiple of 8 puts it in the cofactor-8 subgroup where the attack doesn't apply.\n2. **Constant-time scalar multiplication:** pinning the high bit to a specific position makes the Montgomery ladder run exactly the same number of iterations every time, defeating timing side-channels.\n\nThe rules (RFC 7748 §5):\n\n```\nByte 0:  clear bits 0, 1, 2     →  byte0 = byte0 AND 0xF8\nByte 31: clear bit 7            →  byte31 = byte31 AND 0x7F\nByte 31: set bit 6              →  byte31 = byte31 OR 0x40\n```\n\n**Your random byte 0 is `0xA7`** (binary `10100111`). Apply the byte-0 rule and enter the result in hex (e.g. `0xNN`) or decimal.\n\n```\n  0xA7 = 1 0 1 0 0 1 1 1\n& 0xF8 = 1 1 1 1 1 0 0 0\n  ─────────────────────\n         ? ? ? ? ? ? ? ?\n```",
+      "help_template": "**In plain English:** AND with `0xF8` (`11111000` in binary) wipes out the bottom three bits and leaves the top five alone. Your bottom three bits are `111` — they become `000`. The top five (`10100`) pass through unchanged.\n\n**Byte 31, for context:** if your byte 31 were `0x4F`, applying `AND 0x7F OR 0x40` gives `0x4F` (the high bit was already clear, bit 6 was already set — it happens to be a no-op for that value).",
+      "validator_key": "clamp_byte", "codegen_key": "clamping"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 107,
+    "fields": {
+      "lesson": 10, "order": 7, "slug": "exchange-keys", "kind": "input-text",
+      "prompt_template": "### Run a live X25519 exchange\n\nClick **Run the exchange** below. Behind the scenes this page will:\n\n1. Generate two X25519 keypairs in your browser (Alice and Bob) via `crypto.subtle.generateKey({name:\"X25519\"}, true, [\"deriveBits\"])`.\n2. Export both 32-byte public keys.\n3. Derive the shared secret from **both** sides — Alice's private + Bob's public, *and* Bob's private + Alice's public.\n4. Render all four hex blobs and check that the two shared-secret values are byte-for-byte identical.\n\nThe two derived secrets *will* match. That's the whole point of the protocol — they're mathematically guaranteed to land on the same bytes.\n\n**To advance:** type the word `match` below (the validator will run the exchange and confirm).\n\n**Browser compatibility:** X25519 in Web Crypto requires Chrome 110+ (Feb 2023), Firefox 125+ (Apr 2024), or Safari 17+ (Sep 2023). If your browser is older, the page will fall back to the RFC 7748 §6.1 canonical test vectors — the math is identical, just with frozen bytes instead of fresh random ones.",
+      "help_template": "**In plain English:** Two keypairs, two derivations, one identical 32-byte answer. If you re-ran this with fresh keys you'd get different public keys and a different shared secret — but the two derivations on each run would still match each other.",
+      "validator_key": "exchange_keys", "codegen_key": "exchange_keys"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 108,
+    "fields": {
+      "lesson": 10, "order": 8, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've built X25519 from the ground up:\n\n- **Classical Diffie-Hellman** — the 1976 modular-exponentiation pattern. You computed `19^6 mod 23 = 2` by hand.\n- **Why curves** — same DH structure, smaller numbers (~12× key-size win at 128-bit security), faster scalar ops, identical security argument modulo \"discrete log → elliptic-curve discrete log\".\n- **Curve25519** — Bernstein's 2005 curve, equation `y² = x³ + 486662x² + x` over `GF(2²⁵⁵ − 19)`, base point with u-coordinate 9, designed for fast constant-time scalar mult.\n- **Clamping** — the three-bit ritual (`byte0 AND 0xF8`, `byte31 AND 0x7F OR 0x40`) that dodges small-subgroup attacks and pins the scalar to exactly 254 bits.\n- **A live exchange** — two in-browser X25519 keypairs deriving the same 32-byte secret from both directions.\n\n### Where this primitive shows up\n\n- **TLS 1.3** — `x25519` is the default `key_share` group on every modern browser/server.\n- **Signal Protocol** — the X3DH initial handshake and the Double Ratchet's DH operations both use X25519.\n- **WireGuard** — the entire handshake is X25519 + BLAKE2s + ChaCha20-Poly1305. Famously ~4000 lines of code for the whole VPN.\n- **SSH** — `curve25519-sha256` (RFC 8731) has been the default since OpenSSH 7.4 (2016).\n- **Age** — the file-encryption tool by Filippo Valsorda uses X25519 for recipient keys.\n\n### What we skipped, on purpose\n\n- **Full elliptic-curve arithmetic.** We gave geometric intuition for point addition; no chord-and-tangent algebra. The arithmetic is a rabbit hole — a worthwhile one, but a different lesson.\n- **The Montgomery ladder.** Mentioned as the constant-time algorithm under the hood; not walked.\n- **HKDF.** Production systems *never* feed the raw X25519 output to a symmetric cipher. They run it through HKDF-Expand with a context string first — the raw secret has algebraic structure a real key shouldn't. Future lesson.\n- **Ed25519.** Signatures on the twisted-Edwards form of the same curve. Same field, same base point family — different operation (signing instead of agreement). Future lesson.\n- **X448.** The higher-security cousin: Curve448, ~224-bit security, 56-byte keys. RFC 7748 specifies it alongside X25519.\n- **Quantum.** Shor's algorithm breaks ECDH just like it breaks RSA. When large quantum computers arrive, X25519 will need replacement by a post-quantum KEM like **Kyber / ML-KEM** (NIST FIPS 203, Aug 2024). Future lesson.\n\n### Python equivalent\n\nThe full script you can copy and run is above. It uses `cryptography.hazmat.primitives.asymmetric.x25519` — the same library every modern Python TLS / SSH tool reaches for. The shape mirrors what you just did in the browser:\n\n```python\nalice_priv = X25519PrivateKey.generate()\nbob_priv   = X25519PrivateKey.generate()\nshared_a = alice_priv.exchange(bob_priv.public_key())\nshared_b = bob_priv.exchange(alice_priv.public_key())\nassert shared_a == shared_b\n```\n\nGo back to the [home page](/) to revisit any algorithm.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "full_script"
+    }
+  }
+]
