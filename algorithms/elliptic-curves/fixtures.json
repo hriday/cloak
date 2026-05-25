@@ -1,0 +1,104 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 24,
+    "fields": {
+      "slug": "elliptic-curves",
+      "name": "Elliptic curves",
+      "family": "asymmetric",
+      "status": "live",
+      "order": 9,
+      "intro_template": "## Elliptic curves — the foundation under X25519, Ed25519, ECDSA\n\nA visual lesson on the group structure: point addition, doubling, scalar multiplication, and why discrete log is hard."
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 24,
+    "fields": {
+      "algorithm": 24,
+      "slug": "curves-visually",
+      "title": "Elliptic curves, visually",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 241,
+    "fields": {
+      "lesson": 24, "order": 1, "slug": "intro", "kind": "info",
+      "prompt_template": "## Elliptic curves — the shape under modern crypto\n\nThree of the lessons you've already walked — **X25519** (key exchange), **Ed25519** (signing), **ECDSA** (signing on NIST curves) — all hand-wave one operation: *\"scalar multiplication on the curve.\"* The math under that phrase is what this lesson exists to show.\n\nAn **elliptic curve** is the solution set of a cubic equation:\n\n```\ny² = x³ + a·x + b\n```\n\nFor each choice of `a` and `b`, you get a different curve. The name is a historical accident — these curves are **not** ellipses. They got the name from their connection to *elliptic integrals*, which arose in 18th-century work on computing the arc length of an ellipse. The shape itself looks nothing like an oval.\n\nThe magic is that the *points on* an elliptic curve form a **group**: you can \"add\" two points to get a third, you can \"multiply\" a point by an integer (just add it to itself n times), and the operations satisfy associativity and have an identity element. That group structure is what every elliptic-curve crypto primitive is built on.\n\n### Where this shows up\n\n- **TLS server certificates** — the dominant cert type today is ECDSA on **P-256** (NIST's `secp256r1`). Your browser does point-multiplication every time a TLS handshake validates a cert.\n- **Bitcoin / Ethereum** — every wallet address is the hash of an elliptic-curve public key on **secp256k1**. Every transaction is signed with ECDSA (Bitcoin) or a Schnorr-on-secp256k1 variant.\n- **SSH, WireGuard, Signal, Tor** — all use **Curve25519** (the curve under X25519 and Ed25519).\n- **Smart cards, passports, EMV chips** — billions of devices doing point-mult in firmware.\n\nBy the end of this lesson you'll be able to picture what `k · G` *means* geometrically — what `priv · BasePoint` is doing inside the X25519 / Ed25519 / ECDSA lessons.\n\n**8 steps. No prerequisites beyond high-school algebra.**",
+      "help_template": "**In plain English:** This is the foundation lesson. We're not going to sign anything or exchange keys — those have their own lessons. We're going to look at *what's happening on the curve* when those other lessons say \"compute k·G.\" Mostly pictures, animations, and one finite-field scatter plot.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 242,
+    "fields": {
+      "lesson": 24, "order": 2, "slug": "the-curve", "kind": "info",
+      "prompt_template": "### The shape of `y² = x³ + a·x + b`\n\nFor every (x, y) satisfying the equation, you get a point on the curve. Because **y is squared**, if (x, y) is a point, so is (x, −y). That's why every elliptic curve is **symmetric about the x-axis** — every point comes paired with its reflection.\n\nClick the buttons below to see different (a, b) choices. Each produces a different shape, but the symmetry across the x-axis is universal.\n\n### One algebraic restriction: non-singular curves only\n\nThe curve must be **non-singular** — no cusps, no self-intersections — for the group law to work. The check is one number:\n\n```\n4·a³ + 27·b² ≠ 0\n```\n\nIf the discriminant is zero, the curve has a pinch point or a node, and the geometric \"draw a line through two points\" construction breaks at exactly that singular spot. Every elliptic curve used in cryptography is required to satisfy this.\n\n### Notation note\n\nThe equation form `y² = x³ + a·x + b` is called **short Weierstrass form**. Some curves (Edwards form, Montgomery form, Hessian form) use other equations — they're convertible to Weierstrass with a change of variables, but the alternate forms enable faster or safer arithmetic in specific contexts. We'll stick with short Weierstrass for the rest of this lesson because it's the form the geometric pictures match.",
+      "help_template": "**In plain English:** Same equation shape, different curves depending on a and b. The widget below lets you flip through a few — pay attention to which ones have a connected single curve versus two disconnected pieces (an oval plus a separate branch). Both topologies are common; both work fine for the group operations on the next step.",
+      "validator_key": "info", "codegen_key": "the_curve"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 243,
+    "fields": {
+      "lesson": 24, "order": 3, "slug": "point-addition", "kind": "input-text",
+      "prompt_template": "### Adding two points: the chord-and-reflect rule\n\nThe operation \"P + Q\" on a curve is defined geometrically:\n\n1. **Draw a line** through the two points P and Q.\n2. The line crosses the curve at **exactly one more point** (by Bézout's theorem — a cubic and a line meet in 3 places counted with multiplicity).\n3. **Reflect** that third intersection across the x-axis.\n4. The reflection is P + Q.\n\nWhy the reflection? Because we *define* the addition law so that any three collinear points on the curve sum to the **point at infinity** (an extra \"virtual\" point that vertical lines all meet at, which serves as the group's identity element). To make the algebra close up cleanly, P + Q has to be the reflection of the unflipped third intersection.\n\nClick **Add P + Q** below to watch it happen step by step. The animation:\n\n1. Draws the chord through P (red) and Q (blue).\n2. Marks the third intersection (faint circle).\n3. Drops a dashed vertical line to the reflection.\n4. Lands the result point (green) at P + Q.\n\nThe algebraic formula (which we'll show below the chart after you run the animation):\n\n```\ns  = (yQ − yP) / (xQ − xP)         ← slope of the chord\nxᵣ = s² − xP − xQ                  ← x of the third intersection\nyᵣ = s · (xP − xᵣ) − yP            ← already negated, gives the reflection\n```\n\nThis is the entire addition law on a Weierstrass curve. Every ECC library on Earth implements exactly this.",
+      "help_template": "**In plain English:** Two points → one line through them → that line hits the curve a third time → flip across the x-axis. The result is P + Q.\n\nThe formula looks scary but it's just \"slope, then plug into the curve equation.\" The slope is rise/run. The third intersection x-coord falls out of Vieta's formula on the cubic. The y-coord is the line equation, with a built-in negation for the reflection.",
+      "validator_key": "point_addition", "codegen_key": "point_addition"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 244,
+    "fields": {
+      "lesson": 24, "order": 4, "slug": "point-doubling", "kind": "input-text",
+      "prompt_template": "### Doubling a point: tangent-and-reflect\n\nWhat does **P + P** mean? You can't draw a line through one point — every line through P is valid. So the addition rule needs a special case:\n\n**Use the tangent at P** instead of a chord. The tangent line touches the curve at P (counted twice for the cubic intersection count) and crosses the curve at exactly one more point. Reflect that intersection across the x-axis — that's 2P.\n\nIntuition: imagine Q sliding along the curve toward P. The chord through them rotates and approaches the tangent at P in the limit Q → P. So doubling is just \"the addition formula in the limit P=Q.\"\n\nThe tangent slope comes from implicit differentiation of `y² = x³ + a·x + b`:\n\n```\n2y · dy/dx = 3x² + a\ndy/dx = (3x² + a) / (2y)\n```\n\nSo the full doubling formula:\n\n```\ns   = (3·xP² + a) / (2·yP)         ← tangent slope at P\nx₂ₚ = s² − 2·xP                    ← x of the other intersection\ny₂ₚ = s · (xP − x₂ₚ) − yP          ← reflected y\n```\n\nClick **Double P** below to watch the tangent get drawn and 2P emerge. Note that if `yP = 0`, the tangent is vertical and 2P is the point at infinity (the same way `P + (−P)` lands there).",
+      "help_template": "**In plain English:** No second point? Use the tangent. The tangent at P is the limit of secants P–Q as Q slides toward P, so it's morally the same operation — just with the doubling formula instead of the addition formula. After the algebra, you reflect across the x-axis the same way.",
+      "validator_key": "point_doubling", "codegen_key": "point_doubling"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 245,
+    "fields": {
+      "lesson": 24, "order": 5, "slug": "scalar-multiplication", "kind": "input-numeric",
+      "prompt_template": "### Scalar multiplication: k · P via double-and-add\n\nNow that you have addition and doubling, **scalar multiplication** is straightforward: `k · P` means \"add P to itself k times.\" For k = 3 that's `P + P + P`. For k = 13 that's `P + P + ... + P` (thirteen times).\n\nBut adding 13 times naively is slow — and for real crypto where `k` is a 256-bit number (~10⁷⁷ in size), naive repeated addition is *physically impossible*. The trick: **double-and-add**, same idea as fast modular exponentiation.\n\n### Algorithm\n\n```\nresult  = ∞  (point at infinity)\naddend  = P\n\nwhile k > 0:\n    if (k mod 2 == 1):              # if the lowest bit is set\n        result = result + addend    # add the current addend\n    addend = double(addend)         # double the addend for the next bit\n    k = k >> 1                      # shift right one bit\n\nreturn result\n```\n\nFor `k = 13 = 0b1101` (bits LSB→MSB: 1, 0, 1, 1):\n\n| iter | bit | action      | addend after | accumulator after |\n|------|-----|-------------|--------------|--------------------|\n| 0    | 1   | acc += P    | 2P           | P                  |\n| 1    | 0   | skip        | 4P           | P                  |\n| 2    | 1   | acc += 4P   | 8P           | 5P                 |\n| 3    | 1   | acc += 8P   | 16P          | 13P                |\n\n**4 iterations** instead of 13 — and the ratio gets better as k grows. For a 256-bit k, double-and-add does at most ~512 point operations instead of 2²⁵⁶.\n\n### Try it\n\nEnter a small **k** between 2 and 15, then click **Play & continue** to watch the algorithm hop along the curve. The green dot is the accumulator (k·P so far); the yellow dot is the current addend (P, 2P, 4P, 8P, ...).",
+      "help_template": "**In plain English:** Write k in binary. Walk the bits from low to high. Two counters: accumulator (starts at ∞) and addend (starts at P). For each bit: if 1, add addend into accumulator. Either way, double addend and shift k. Done in log₂(k) iterations.\n\n**Why it works:** binary expansion. k = Σ bᵢ · 2ⁱ, so k·P = Σ bᵢ · 2ⁱ·P. The addend tracks the 2ⁱ·P factor; the bᵢ decides whether to include it.",
+      "validator_key": "scalar_multiplication", "codegen_key": "scalar_multiplication"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 246,
+    "fields": {
+      "lesson": 24, "order": 6, "slug": "finite-field-curve", "kind": "info",
+      "prompt_template": "### Real crypto uses curves over a FINITE FIELD, not the reals\n\nThe pictures so far have all been *real-number* curves — smooth, infinite, easy to draw. But real-number arithmetic is no good for cryptography:\n\n- You can't store an arbitrary real number — floating point loses bits.\n- There's no \"hardness\" — the discrete-log analogue over the reals can be solved by calculus.\n- The curves have *infinitely many* points; we need a finite group.\n\nThe fix: do the same arithmetic, but **modulo a prime p**. The field becomes `GF(p) = {0, 1, 2, ..., p−1}`, and the curve equation becomes:\n\n```\ny² ≡ x³ + a·x + b   (mod p)\n```\n\nThe set of solutions `(x, y) ∈ [0, p)²` satisfying this equation is finite. For a real-world curve like **secp256k1** (Bitcoin), p is a 256-bit prime and there are about 2²⁵⁶ points; for our tiny demo curve `y² ≡ x³ + 7 (mod 17)`, there are exactly 13 points plus the point at infinity.\n\nLook at the scatter plot below. There's **no smooth curve** anymore — just a sparse grid of dots. The geometry is gone. But the algebra survives: the same `point_add` and `point_double` formulas work, with every arithmetic operation taken `(mod p)` instead of in the real numbers.\n\n### Why does the formula still work?\n\nWalking through the algebra of point addition, every operation is `+`, `−`, `×`, and `÷`. In `GF(p)`:\n\n- `+`, `−`, `×` are just integer ops followed by `mod p`.\n- `÷` becomes multiplication by the **modular inverse** — `a / b mod p` = `a · b⁻¹ mod p`, where `b⁻¹` is found via the extended Euclidean algorithm. Always defined for any nonzero b, because p is prime.\n\nSo the chord-and-reflect rule transfers from \"draw a line, find the third intersection\" to \"solve the same polynomial system mod p, get the third root.\" No pictures, but same algebra.",
+      "help_template": "**In plain English:** Take the same curve equation. Reduce every arithmetic operation `(mod p)`. The continuous curve becomes a sparse cloud of dots, but the group operations still work — and now the group is finite, so we can talk about \"how hard is it to invert.\"",
+      "validator_key": "info", "codegen_key": "finite_field_curve"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 247,
+    "fields": {
+      "lesson": 24, "order": 7, "slug": "discrete-log-problem", "kind": "info",
+      "prompt_template": "### The Elliptic-Curve Discrete-Log Problem (ECDLP)\n\nThis is the security argument behind every elliptic-curve crypto primitive.\n\n**Setup:** the protocol publishes a curve, a base point `G`, and a public point `Q = k · G` for some secret scalar k. To break the protocol, an attacker needs to recover **k** from `(G, Q)`.\n\n**Forward direction:** computing `k · G` from k is easy — double-and-add does it in O(log k) operations. Fast for any k, even 256-bit.\n\n**Backward direction:** computing `k` from `(G, Q = k·G)` is the **discrete-log problem on the curve**, abbreviated **ECDLP**. There is no known classical algorithm substantially faster than:\n\n- **Brute force:** try k = 1, 2, 3, ... until k·G == Q. O(n) where n is the group order. For our toy 13-point curve, ≤13 tries — instant. For secp256k1's ~2²⁵⁶ points, longer than the age of the universe by ~10⁶⁰.\n- **Pollard's rho / Baby-step Giant-step:** O(√n). For 256-bit n, that's 2¹²⁸ — still infeasible.\n\nBecause the best known classical attacks are square-root in the group size, **n-bit ECC gives ~n/2 bits of security**. A 256-bit curve like secp256k1 gives ~128-bit security, matching AES-128.\n\n### Watch it hop\n\nThe widget below picks a base point G on the toy curve `y² ≡ x³ + 7 mod 17`, then computes 1·G, 2·G, 3·G, ... — and you watch the result point jump around the 17×17 grid with **no visible pattern**.\n\nThat's the whole show. If the dots formed an obvious pattern, you could extrapolate from G to predict where k·G lands. They don't. They hop chaotically. So to find k from k·G, your only option is to try every k.\n\nFor our 13-point curve that takes 13 tries. For secp256k1 it takes more tries than there are atoms in the visible universe.\n\n### What quantum changes\n\n**Shor's algorithm** solves ECDLP in polynomial time on a sufficiently large quantum computer — the same way it breaks RSA. When practical quantum computers arrive, ECC needs to be replaced. The leading candidate is **Kyber** (NIST FIPS 203, ML-KEM) for key exchange and **Dilithium** (ML-DSA) for signatures. That's a future lesson.",
+      "help_template": "**In plain English:** k → k·G is easy. k·G → k is impossibly hard on a real curve. That asymmetry — fast forward, infeasible reverse — is what makes elliptic curves useful in crypto. Watch the dots in the widget below; they look random as k grows, and \"looks random\" is exactly what we want from a one-way function.",
+      "validator_key": "info", "codegen_key": "discrete_log_problem"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 248,
+    "fields": {
+      "lesson": 24, "order": 8, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou now have the foundation that every elliptic-curve crypto primitive sits on top of:\n\n- **The curve equation** `y² = x³ + a·x + b` — short Weierstrass form. Symmetric about the x-axis because y is squared. Non-singular when `4a³ + 27b² ≠ 0`.\n- **Point addition** — the chord-and-reflect rule. Algebraically: slope-of-secant, plug into the cubic, reflect the third root.\n- **Point doubling** — tangent instead of chord. Same formula in the limit P=Q.\n- **Scalar multiplication** `k · P` — double-and-add. O(log k) point operations instead of O(k) naive additions.\n- **Curves over a finite field** — every arithmetic op is `(mod p)`. The continuous shape disappears; the algebra survives. The point set is finite (~2²⁵⁶ for real curves).\n- **ECDLP** — `k → k·G` easy; `k·G → k` infeasible. The asymmetry behind every ECC scheme.\n\n### How this powers the lessons you've already walked\n\n- **X25519** (key exchange) — Alice computes `priv_A · G`, Bob computes `priv_B · G`, they exchange those public points. Each side then does *another* scalar multiplication: `priv_A · pub_B` = `priv_B · pub_A` = `(priv_A · priv_B) · G`. Same scalar multiplication you just visualized, on Curve25519 (Montgomery form) instead of short Weierstrass.\n- **Ed25519** (signing) — the per-message random `r` generates `R = r · G`, and the signature is `(R, s)` where `s` involves the private scalar. Both sign and verify do scalar mult.\n- **ECDSA** (signing) — same: `r = (k · G).x mod n`. The PS3 disaster the ECDSA lesson walks through reduces to recovering `k` after Sony reused it. The shape of that math is exactly the discrete-log structure you saw on the previous step.\n- **Schnorr** — same scalar-mult-based signing, with cleaner algebra than ECDSA.\n\n### The Python script\n\nClick **Show full script** at the top of this page. You'll get:\n\n- **Part 1**: hand-rolled `point_add`, `point_double`, `scalar_mul` on the toy curve `y² = x³ + x + 6 mod 11` (same curve the ECDSA lesson uses). Walking the full 13-element subgroup. **No libraries** — just modular arithmetic and the formulas you just learned.\n- **Part 2**: the same primitives via `cryptography.hazmat.primitives.asymmetric.ec` on real curves (P-256, secp256k1, P-384, P-521). One-line keypair generation.\n\nWhen you read the X25519, Ed25519, and ECDSA lessons going forward, `priv · BasePoint` should now have a picture attached to it.\n\nGo back to the [home page](/) to revisit any algorithm.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "full_script"
+    }
+  }
+]
