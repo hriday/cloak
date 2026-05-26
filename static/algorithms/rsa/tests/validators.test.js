@@ -169,3 +169,34 @@ test("encrypt_sentence_head walkthrough computes the answer", () => {
   const expected = Number(m.modPow(72n, 5n, 323n));
   assert.match(rungs[2], new RegExp(String(expected)));
 });
+
+// ---- Pollard's rho validator + walkthrough --------------------------------
+
+test("factor_pollard_rho writes all expected state keys", () => {
+  const result = v.factor_pollard_rho(null, {});
+  assert.equal(result.ok, true);
+  const s = result.value;
+  // Expected keys.
+  assert.equal(typeof s.rsa_rho_n, "number");
+  assert.equal(typeof s.rsa_rho_factor, "number");
+  assert.equal(typeof s.rsa_rho_iterations, "number");
+  assert.equal(typeof s.rsa_brent_iterations, "number");
+  assert.equal(typeof s.rsa_rho_trajectory_length, "number");
+});
+
+test("factor_pollard_rho discovers a true prime divisor of DEMO_N", () => {
+  const { value } = v.factor_pollard_rho(null, {});
+  // factor * (n / factor) === n
+  assert.equal(value.rsa_rho_factor * (value.rsa_rho_n / value.rsa_rho_factor), value.rsa_rho_n);
+  // and is prime (10007 or 10103)
+  assert.ok(value.rsa_rho_factor === 10007 || value.rsa_rho_factor === 10103);
+});
+
+test("factor_pollard_rho walkthrough returns 3 rungs about cycle, gcd, scaling", () => {
+  const rungs = v.walkthroughs.factor_pollard_rho({});
+  assert.equal(rungs.length, 3);
+  rungs.forEach((r) => assert.equal(typeof r, "string"));
+  assert.match(rungs[0], /cycle|repeat/i);
+  assert.match(rungs[1], /gcd/i);
+  assert.match(rungs[2], /1024|2048|universe|brick/i);
+});

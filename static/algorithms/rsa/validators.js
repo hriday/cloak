@@ -1,4 +1,5 @@
 import { isPrime, gcd, modInv, modPow, phi as phiFn } from "./math.js";
+import { pollardRho, brentVariant, DEMO_N } from "./rho_demo.js";
 
 function _parseInt(s) {
   if (s === null || s === undefined) return null;
@@ -104,6 +105,28 @@ export function decrypt(input, state) {
 
 export function info(_input, _state) {
   return { ok: true, value: {} };
+}
+
+// ---- Pollard's rho factoring (button-driven on step 13) -------------------
+// Runs both Floyd's tortoise-and-hare and Brent's variant on the fixed demo
+// modulus DEMO_N and writes the iteration counts + discovered factor into
+// state so the lesson template can render the comparison panel. The
+// `_input` is ignored — the actual click handler is in the template and
+// triggers `runRhoAnimation` for the visual, then calls `check()`.
+export function factor_pollard_rho(_input, _state) {
+  const n = DEMO_N;
+  const rho = pollardRho(n);
+  if (!rho.factor) {
+    return { ok: false, hint: "Pollard's rho didn't converge on this N — would normally retry with a different constant c. (This shouldn't happen on the demo modulus.)" };
+  }
+  const brent = brentVariant(n);
+  return _ok({
+    rsa_rho_n: n,
+    rsa_rho_factor: rho.factor,
+    rsa_rho_iterations: rho.iterations,
+    rsa_brent_iterations: brent.factor ? brent.iterations : rho.iterations,
+    rsa_rho_trajectory_length: rho.trajectory.length,
+  });
 }
 
 function _pickEDeterministic(phi) {
@@ -312,4 +335,10 @@ export const walkthroughs = {
       `**Answer: ${result}.** That's the ASCII code for '${ch}'. (In Python: \`pow(${c}, ${d}, ${n})\`.)`,
     ];
   },
+
+  factor_pollard_rho: (_state) => [
+    `**The cycle:** Define f(x) = x² + 1 mod N. Iterating f produces a sequence x₀, x₁, x₂, … Since there are only N possible values, the sequence must eventually repeat — and modulo any prime factor p of N, it repeats much sooner (after ~√p steps, by the birthday paradox).`,
+    `**The gcd trick:** Run two pointers through the sequence — *tortoise* (one f-step per round) and *hare* (two). When tortoise ≡ hare (mod p), their difference is a multiple of p but NOT of N. So **gcd(|tortoise − hare|, N) = p**, the factor falls out. No need to know p in advance; gcd is fast.`,
+    `**Why this scales: the brick wall.** Pollard's rho costs ~√p f-evaluations, where p is the SMALLER prime factor. For 64-bit primes (~10¹⁹), that's ~10⁹·⁵ ops — minutes on a laptop. For 1024-bit primes (~10³⁰⁸), it's ~10¹⁵⁴ ops — longer than the age of the universe. That asymmetry — toy primes break in milliseconds, real primes are unfactorable — is the entire security argument for using huge primes in production RSA.`,
+  ],
 };
