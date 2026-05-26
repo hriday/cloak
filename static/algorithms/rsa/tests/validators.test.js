@@ -136,9 +136,9 @@ test("decrypt_sentence_head wrong", () => {
   assert.match(r.hint, /323/);
 });
 
-test("cheatState returns target step 12 with full toy + big keypair", () => {
+test("cheatState returns target step 16 (type-sentence, post-rho-detour) with full toy + big keypair", () => {
   const { targetStepOrder, state } = v.cheatState();
-  assert.equal(targetStepOrder, 12);
+  assert.equal(targetStepOrder, 16);
   // toy
   assert.equal(state.p, 3); assert.equal(state.q, 5); assert.equal(state.n, 15);
   assert.equal(state.phi, 8); assert.equal(state.e, 7); assert.equal(state.d, 7);

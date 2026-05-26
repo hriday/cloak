@@ -204,12 +204,13 @@ export function decrypt_sentence_head(input, state) {
 
 // ---- Cheat code -----------------------------------------------------------
 // Returns the state + step order to jump to when the user enters the Konami
-// code. Skips the toy math entirely and lands at step 12 (type-sentence) with
-// both keypairs pre-filled so the playground is fully wired.
+// code. Skips the toy math AND the new Pollard's-rho/Brent detour, landing
+// at step 16 (type-sentence — the start of the real-encryption playground)
+// with both keypairs pre-filled so the playground is fully wired.
 
 export function cheatState() {
   return {
-    targetStepOrder: 12,
+    targetStepOrder: 16,
     state: {
       // Toy keypair (smallest workable: p=3, q=5)
       p: 3, q: 5, n: 15, phi: 8, e: 7, d: 7,
