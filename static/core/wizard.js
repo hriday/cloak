@@ -24,6 +24,7 @@ const DEMO_FILENAMES = {
   "birthday-attack": "bday_demo.js",
   "rsa-pss": "rsapss_simulator.js",
   "bcrypt": "bcrypt_demo.js",
+  "rsa": "rho_demo.js",
 };
 
 async function loadAlgorithmModules(slug) {
@@ -337,6 +338,7 @@ function wizardComponent(initial) {
         "verify-md5-collision", "verify-sha1-collision", // collisions
         "find-a-collision",                   // birthday-attack
         "time-the-cost",                      // bcrypt
+        "factor-with-rho",                    // RSA: Pollard's rho factoring
       ]);
       if (SLUGS.has(step.slug)) return true;
       // ChaCha20's encrypt-a-message has a custom branch; AES's same-slug
@@ -384,6 +386,7 @@ function wizardComponent(initial) {
         "verify-sha1-collision",      // collisions: button-driven hashing demo
         "find-a-collision",           // birthday-attack: button-driven brute force
         "time-the-cost",              // bcrypt: {password, cost}
+        "factor-with-rho",            // RSA: button-driven Pollard's rho run
       ]);
       if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
         input = { ...this.multiInput };
@@ -410,6 +413,7 @@ function wizardComponent(initial) {
         "point-addition", "point-doubling",
         "verify-md5-collision", "verify-sha1-collision",
         "find-a-collision", "time-the-cost",
+        "factor-with-rho",                    // RSA: re-runnable factor demo
       ]);
       if (EXPLORATORY_SLUGS.has(step.slug)) {
         this.persistLocal();

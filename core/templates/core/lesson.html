@@ -217,6 +217,31 @@
       {# Elliptic curves: SVG-animated widgets for steps 2-7 of the curves-visually lesson #}
       {% include "core/_ec_widgets.html" %}
 
+      <!-- RSA Pollard's rho step: button-driven factor + animated rho-shape canvas -->
+      <template x-if="step.slug === 'factor-with-rho'">
+        <div style="margin-top:14px;">
+          <canvas
+            x-ref="rsaRhoCanvas"
+            x-effect="demo && $nextTick(() => demo.setupRhoCanvas && demo.setupRhoCanvas($refs.rsaRhoCanvas))"
+            width="600" height="400"
+            style="width:100%;max-width:600px;border:1px dashed var(--border, #444);border-radius:6px;background:var(--code-bg);"></canvas>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" @click="(async () => { await demo.runRhoAnimation($refs.rsaRhoCanvas, demo.DEMO_N || 101100721, 1); await check(); })()">Run Pollard's rho</button>
+            <button class="btn secondary" x-show="state.rsa_rho_factor" @click="advance()">Continue →</button>
+          </div>
+          <template x-if="state.rsa_rho_factor">
+            <div style="margin-top:12px;padding:10px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-family:ui-monospace, monospace;font-size:0.92em;line-height:1.6;">
+              <div><strong>N:</strong> <span x-text="state.rsa_rho_n"></span></div>
+              <div><strong>Discovered prime factor:</strong> <span style="color:var(--ok, #22c55e);" x-text="state.rsa_rho_factor"></span></div>
+              <div><strong>Other factor:</strong> <span style="color:var(--ok, #22c55e);" x-text="state.rsa_rho_n / state.rsa_rho_factor"></span></div>
+              <div style="margin-top:4px;"><strong>Pollard's iterations:</strong> <span x-text="state.rsa_rho_iterations"></span></div>
+              <div><strong>Brent's iterations (same N):</strong> <span x-text="state.rsa_brent_iterations"></span> <span style="color:var(--muted);" x-text="`(~${Math.round((1 - state.rsa_brent_iterations/state.rsa_rho_iterations) * 100)}% faster)`"></span></div>
+              <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">For 1024-bit primes (~300 decimal digits), Pollard's rho would need ~2<sup>256</sup> iterations. Infeasible. That's why real RSA uses huge primes.</div>
+            </div>
+          </template>
+        </div>
+      </template>
+
       <!-- cipher-modes step 4: cbc-walk — button drives the three-block demo -->
       <template x-if="step.slug === 'cbc-walk'">
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
