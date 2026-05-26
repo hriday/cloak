@@ -116,46 +116,26 @@
     "pk": 10,
     "fields": {
       "lesson": 1, "order": 10, "slug": "toy-complete", "kind": "info",
-      "prompt_template": "## Toy lesson complete\n\nYou encrypted and decrypted a number with RSA. The script that does it is shown above.\n\n**Want to try this on a real sentence?** With these tiny primes (n = {{ state.n }}), an ASCII character won't even fit — 'space' is already ASCII 32, bigger than {{ state.n }}. The next step picks bigger primes and walks you through encrypting actual text.",
+      "prompt_template": "## Toy lesson complete\n\nYou encrypted and decrypted a number with RSA. The script that does it is shown above.\n\n**But — were those primes safe?** With p, q both small (1-3 digits), n is small too. The next few steps show *how* a modern computer factors a small n in milliseconds, so you can see exactly why production RSA uses primes hundreds of digits long. Then we'll come back and do the real-text lesson with bigger primes.",
       "help_template": "",
       "validator_key": "info", "codegen_key": "info"
     }
   },
   {
     "model": "core.step",
-    "pk": 11,
+    "pk": 15,
     "fields": {
-      "lesson": 1, "order": 11, "slug": "pick-big-primes", "kind": "input-multi",
-      "prompt_template": "### Pick bigger primes\n\nFor real text, n must be at least 256 (so any ASCII character fits). Pick two **different** primes, each at least **17**. Suggested pairs: (17, 19), (19, 23), (23, 29).",
-      "help_template": "**In plain English:** RSA can only encrypt numbers smaller than n. Printable ASCII goes up to 126, so n ≥ 127 is the minimum; we use 256 as the bound so even non-printable bytes (0–255) would fit. Both primes ≥ 17 guarantees n ≥ 17 × 19 = 323. Once you pick p and q, the lesson computes n, φ, e, and d for you.",
-      "validator_key": "pick_pq_big", "codegen_key": "info"
-    }
-  },
-  {
-    "model": "core.step",
-    "pk": 12,
-    "fields": {
-      "lesson": 1, "order": 12, "slug": "type-sentence", "kind": "input-text",
-      "prompt_template": "### Type a sentence to encrypt\n\nKey ready: n = {{ state.n2 }}, e = {{ state.e2 }}, d = {{ state.d2 }}.\n\nType up to 500 printable ASCII characters. The table below shows how each character maps to binary and to its ASCII code as you type.",
-      "help_template": "**In plain English:** Every character on your keyboard has a numeric ID (its *ASCII code*) — 'A' is 65, 'a' is 97, space is 32. Computers store characters as those numbers, written in binary. RSA encrypts the number. So the chain is: char → binary (8 bits per char) → ASCII number → encrypted number.",
-      "validator_key": "pick_sentence", "codegen_key": "info"
-    }
-  },
-  {
-    "model": "core.step",
-    "pk": 13,
-    "fields": {
-      "lesson": 1, "order": 13, "slug": "encrypt-sentence", "kind": "input-numeric",
-      "prompt_template": "### Encrypt the first character\n\nThe first character of your sentence is **'{{ state.first_char }}'** — its ASCII code is **{{ state.first_code }}**. So **m = {{ state.first_code }}**.\n\nCompute `c = m^e mod n` with m = {{ state.first_code }}, e = {{ state.e2 }}, n = {{ state.n2 }}.\n\nOnce you get the first one, the lesson will encrypt the rest of the sentence for you.",
-      "help_template": "**In plain English:** Same math as the toy encrypt — `pow(m, e, n)`. The conversion table below confirms the mapping: char → binary → ASCII (which is m).",
-      "validator_key": "encrypt_sentence_head", "codegen_key": "encode_sentence"
+      "lesson": 1, "order": 19, "slug": "done", "kind": "info",
+      "prompt_template": "## Done!\n\nYou've encrypted and decrypted both a single number and a real sentence with RSA. Your full Python script is below — copy it, run it, modify it. The playground below lets you try any other text on the same key.",
+      "help_template": "",
+      "validator_key": "info", "codegen_key": "info"
     }
   },
   {
     "model": "core.step",
     "pk": 14,
     "fields": {
-      "lesson": 1, "order": 14, "slug": "decrypt-sentence", "kind": "input-numeric",
+      "lesson": 1, "order": 18, "slug": "decrypt-sentence", "kind": "input-numeric",
       "prompt_template": "### Decrypt the first character\n\nThe first encrypted number is **{{ state.first_encrypted }}**. That's your **c**.\n\nCompute `m = c^d mod n` with c = {{ state.first_encrypted }}, d = {{ state.d2 }}, n = {{ state.n2 }}. The answer should equal **{{ state.first_code }}** — the ASCII code for **'{{ state.first_char }}'**.\n\nOnce you get the first one, the lesson decrypts the rest for you.",
       "help_template": "**In plain English:** Same math as the toy decrypt — `pow(c, d, n)`. You're working backwards from the ciphertext using the private exponent d. Each result is an ASCII code; assemble them into a string and you should recover the original sentence.",
       "validator_key": "decrypt_sentence_head", "codegen_key": "info"
@@ -163,11 +143,71 @@
   },
   {
     "model": "core.step",
-    "pk": 15,
+    "pk": 13,
     "fields": {
-      "lesson": 1, "order": 15, "slug": "done", "kind": "info",
-      "prompt_template": "## Done!\n\nYou've encrypted and decrypted both a single number and a real sentence with RSA. Your full Python script is below — copy it, run it, modify it. The playground below lets you try any other text on the same key.",
-      "help_template": "",
+      "lesson": 1, "order": 17, "slug": "encrypt-sentence", "kind": "input-numeric",
+      "prompt_template": "### Encrypt the first character\n\nThe first character of your sentence is **'{{ state.first_char }}'** — its ASCII code is **{{ state.first_code }}**. So **m = {{ state.first_code }}**.\n\nCompute `c = m^e mod n` with m = {{ state.first_code }}, e = {{ state.e2 }}, n = {{ state.n2 }}.\n\nOnce you get the first one, the lesson will encrypt the rest of the sentence for you.",
+      "help_template": "**In plain English:** Same math as the toy encrypt — `pow(m, e, n)`. The conversion table below confirms the mapping: char → binary → ASCII (which is m).",
+      "validator_key": "encrypt_sentence_head", "codegen_key": "encode_sentence"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 12,
+    "fields": {
+      "lesson": 1, "order": 16, "slug": "type-sentence", "kind": "input-text",
+      "prompt_template": "### Type a sentence to encrypt\n\nKey ready: n = {{ state.n2 }}, e = {{ state.e2 }}, d = {{ state.d2 }}.\n\nType up to 500 printable ASCII characters. The table below shows how each character maps to binary and to its ASCII code as you type.",
+      "help_template": "**In plain English:** Every character on your keyboard has a numeric ID (its *ASCII code*) — 'A' is 65, 'a' is 97, space is 32. Computers store characters as those numbers, written in binary. RSA encrypts the number. So the chain is: char → binary (8 bits per char) → ASCII number → encrypted number.",
+      "validator_key": "pick_sentence", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 11,
+    "fields": {
+      "lesson": 1, "order": 15, "slug": "pick-big-primes", "kind": "input-multi",
+      "prompt_template": "### Pick bigger primes\n\nFor real text, n must be at least 256 (so any ASCII character fits). Pick two **different** primes, each at least **17**. Suggested pairs: (17, 19), (19, 23), (23, 29).",
+      "help_template": "**In plain English:** RSA can only encrypt numbers smaller than n. Printable ASCII goes up to 126, so n ≥ 127 is the minimum; we use 256 as the bound so even non-printable bytes (0–255) would fit. Both primes ≥ 17 guarantees n ≥ 17 × 19 = 323. Once you pick p and q, the lesson computes n, φ, e, and d for you.",
+      "validator_key": "pick_pq_big", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 16,
+    "fields": {
+      "lesson": 1, "order": 11, "slug": "primes-too-small", "kind": "info",
+      "prompt_template": "## Your primes were tiny\n\nYou just used **p and q that fit in three digits** — under 1000 each. That made n smaller than a million. A modern laptop can factor a number that small in *under a millisecond*: trial division up to √n (about 1000 candidate divisors) and you're done.\n\nReal RSA doesn't work like that. Production keys use primes that are **hundreds of digits long** — at minimum 1024 bits each (≈ 309 decimal digits), and the modern recommendation is 2048 bits (≈ 617 digits) or 3072 bits for new systems. The whole security argument of RSA rests on one fact: nobody knows a fast way to factor a number that is the product of two huge primes.\n\nThe next few steps walk through **the best known classical factoring algorithm for small numbers** — Pollard's rho, 1975, J.M. Pollard. It's not the *fastest* algorithm at really large scale (the General Number Field Sieve wins there), but it's the cleanest one to *see*: a tortoise and a hare chasing each other through a sequence, with the factor falling out of a single gcd computation when they meet.\n\nIf this whole detour feels disorienting — *we just finished encrypting, why are we factoring?* — that's the point. The next step shows you, visually, exactly how easy your toy key was to break.",
+      "help_template": "**In plain English:** Cryptographers measure the strength of a key by how long it would take an adversary to break it. With 3-digit primes, the answer is *microseconds*. With 300-digit primes, the answer is *longer than the age of the universe*. The gap between those two numbers is the whole product.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 17,
+    "fields": {
+      "lesson": 1, "order": 12, "slug": "the-rho-shape", "kind": "info",
+      "prompt_template": "### The rho shape\n\nPollard's rho is built on one observation. Take any function f from {0, 1, …, n−1} to itself — say, **f(x) = x² + 1 (mod n)** — and pick a starting value x₀. Now iterate: x₁ = f(x₀), x₂ = f(x₁), x₃ = f(x₂), …\n\nThis sequence lives entirely inside a set of size n. By the **pigeonhole principle**, it must eventually repeat itself — some xⱼ equals some earlier xᵢ. Once it does, the rest of the sequence is locked into a cycle (because f is deterministic).\n\nIf you plot the trajectory in 2D — putting xᵢ on the horizontal axis and xⱼ on the vertical for paired tortoise/hare positions — the picture has a distinctive shape: a **tail** of points seen only once, leading into a **loop** of points revisited cyclically. Together, the tail-plus-loop looks like the Greek letter **ρ (rho)**. Hence the name.\n\nThe genius of Pollard's 1975 algorithm: he noticed that the *expected length* of the tail-plus-loop is ~√n by the birthday paradox — but if you look at the sequence **modulo a prime factor p of n**, the cycle is much shorter: ~√p. So you'd hit a collision modulo p long before you'd hit one modulo n. And as you'll see next step, that collision is exactly what reveals the factor.",
+      "help_template": "**In plain English:** Imagine you're hopping around a finite playground using a fixed rule. You'll eventually land somewhere you've been before — and from then on, you're stuck in a loop. The path before the loop is the \"tail\". The looped path is the \"loop\". Stack them in a picture and you get a Greek ρ.",
+      "validator_key": "info", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 18,
+    "fields": {
+      "lesson": 1, "order": 13, "slug": "factor-with-rho", "kind": "input-text",
+      "prompt_template": "### Factor N = 101,100,721 with Pollard's rho\n\nN = 10007 × 10103 — two small primes, each five digits. By eye, you couldn't guess that's the factorization. Pollard's rho will find it in a few hundred iterations.\n\nHere's the algorithm:\n\n```\ntortoise = 2\nhare     = 2\nrepeat:\n  tortoise = f(tortoise)         # one step\n  hare     = f(f(hare))          # two steps\n  d        = gcd(|tortoise - hare|, N)\n  if 1 < d < N: factor found!\n```\n\nWhere **f(x) = x² + 1 mod N**. The tortoise/hare pair lets us detect when the sequence has entered its cycle (modulo some prime factor p of N) without storing every value we've seen.\n\nClick the button below to run it. You'll see the trajectory animate as a scatter plot — each point is one (tortoise, hare) pair. The cloud of points traces the rho-shape as the sequence enters its cycle, then the algorithm halts when gcd lights up a divisor of N.",
+      "help_template": "**In plain English:** Two pointers walk a sequence at different speeds. When they land on the same value modulo some prime factor p of N (which happens much sooner than them colliding modulo N itself), their difference is a multiple of p but not of N — so gcd(|tortoise − hare|, N) = p. The factor falls out for free, and you didn't have to know p in advance.",
+      "validator_key": "factor_pollard_rho", "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 19,
+    "fields": {
+      "lesson": 1, "order": 14, "slug": "brents-improvement", "kind": "info",
+      "prompt_template": "### Brent's improvement (1980)\n\nFive years after Pollard, Richard Brent published a refinement: replace Floyd's tortoise-and-hare cycle detection with a **power-of-2 jumping** strategy. Same algorithm shape (same f, same gcd trick), but with the iteration count reduced by roughly 24% on average. Your run above showed both numbers so you can compare on the same N.\n\nThe two strategies (Floyd's vs Brent's) are functionally interchangeable for factoring; Brent's just does fewer redundant f-evaluations. For our small demo N the difference is a few hundred iterations either way — not a big deal. But Brent's variant is the one almost every real implementation uses (CPython's `gmpy2`, PARI/GP, Mathematica's `FactorInteger`).\n\n### So how big does N need to be?\n\nPollard's rho cost is **~√p** function evaluations, where p is the **smaller** prime factor of N. The arithmetic:\n\n- **2 × 10000** (two tiny primes like ours): ~√10000 = 100 iterations. **Milliseconds.**\n- **2 × 64-bit primes** (N ≈ 2¹²⁸): ~2³² iterations ≈ 4 billion. **Seconds to minutes.**\n- **2 × 256-bit primes**: ~2¹²⁸ iterations. **Trillions of years.** Infeasible.\n- **2 × 1024-bit primes** (RSA-2048): ~2⁵¹² iterations. Longer than 10⁹⁰ ages of the universe.\n\nThat's the brick wall. Pollard's rho is the **best known classical attack on small composites**, and it gives up before reaching modern RSA key sizes by an absurd margin. (For huge composites the General Number Field Sieve does better, but even GNFS hasn't broken any RSA key ≥ 2048 bits publicly — the largest factored RSA challenge is RSA-250 at 829 bits, completed in 2020 with a multi-month distributed effort.)\n\nNow — back to the main lesson. Let's pick primes large enough to encrypt real text.",
+      "help_template": "**In plain English:** \"It takes ~√p operations\" doesn't sound that bad until you realize that p is *unimaginably big* in real RSA. Even if every atom in the observable universe were a CPU running a billion iterations per second, you still couldn't finish Pollard's rho on a 2048-bit RSA modulus before the heat death of the universe. The exponential gap between toy primes and production primes is the entire security model.",
       "validator_key": "info", "codegen_key": "info"
     }
   }

@@ -10,12 +10,18 @@ def test_rsa_fixture_loads():
     assert algo.status == "live"
     lesson = Lesson.objects.get(algorithm=algo, slug="encrypt-decrypt")
     steps = list(Step.objects.filter(lesson=lesson).order_by("order"))
-    assert len(steps) == 15
+    assert len(steps) == 19
+    # 4 new steps inserted at orders 11-14 (factoring small primes section)
+    # between toy-complete (order 10) and pick-big-primes (now order 15).
     assert [s.slug for s in steps] == [
         "intro", "pick-pq", "compute-n", "compute-phi", "pick-e",
         "compute-d", "pick-message", "encrypt", "decrypt-done", "toy-complete",
+        "primes-too-small", "the-rho-shape", "factor-with-rho", "brents-improvement",
         "pick-big-primes", "type-sentence", "encrypt-sentence", "decrypt-sentence", "done",
     ]
+    # Spot-check the new validator key on the interactive step.
+    by_slug = {s.slug: s for s in steps}
+    assert by_slug["factor-with-rho"].validator_key == "factor_pollard_rho"
 
 
 @pytest.mark.django_db
