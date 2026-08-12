@@ -1,0 +1,122 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 32,
+    "fields": {
+      "slug": "yescrypt",
+      "name": "yescrypt",
+      "family": "hash",
+      "intro_template": "The hash guarding most Linux logins since 2020 — scrypt's memory-hard idea tuned for /etc/shadow. Meet the $y$ prefix.",
+      "status": "live",
+      "order": 32
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 32,
+    "fields": {
+      "algorithm": 32,
+      "slug": "the-default-nobody-noticed",
+      "title": "yescrypt: the default nobody noticed",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 321,
+    "fields": {
+      "lesson": 32,
+      "order": 1,
+      "slug": "intro",
+      "kind": "info",
+      "prompt_template": "## yescrypt — the hash guarding your login, right now\n\nEvery time you type your password at a Linux login prompt — desktop, server, SSH — there's a good chance **yescrypt** just did the work behind the scenes. On Fedora 35+, Debian 11+, and Ubuntu 22.04+, the password field of `/etc/shadow` defaults to a hash that starts with `$y$`, because glibc delegates password hashing to **libxcrypt**, and libxcrypt's default algorithm is yescrypt.\n\nThat's billions of logins a day, worldwide — and almost nobody knows the name. bcrypt gets [a whole lesson](/algorithms/bcrypt/learn/slowed-down-blowfish/) partly because it's famous: the Rails/PHP/Spring default, chosen explicitly by framework authors. yescrypt is the quieter kind of default — it shipped at the distro level and simply became the most-used password hash on Linux, without anyone having to opt in.\n\n### Who wrote it\n\nyescrypt is the work of **Solar Designer** (Alexander Peslyak), founder of the **Openwall Project** — the same group behind John the Ripper. He submitted yescrypt to the **Password Hashing Competition** (2013–2015), the open contest that ultimately crowned Argon2id the winner. yescrypt was one of the **finalists** and didn't take first place, but the judges gave it a **special recognition** award for being an excellent, deployable successor to scrypt — and that's exactly the role it went on to play: not the academic winner, but the one that shipped everywhere.\n\n### A real shadow line\n\n```\nalice:$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$HboGM6qPrsK.StKYGt6KErmUYtioHreJd98oIeMIGT7:19800:0:99999:7:::\n```\n\nThe second colon-delimited field is the password hash. Everything from `$y$` to the end of the hash is one self-contained yescrypt string — `$y$` (algorithm tag), `j9T` (parameters), `LdJMENpBABJJ3hIHjB1Bi.` (salt), `HboGM6qPrsK...` (the hash output). The next step traces that construction back to where it came from: scrypt.",
+      "help_template": "**In plain English:** yescrypt is the password hash quietly running behind most Linux logins since 2020 — you'll see it as `$y$...` in `/etc/shadow`. It was designed by Solar Designer at Openwall and earned special recognition in the 2013–2015 Password Hashing Competition. This lesson traces it from its scrypt ancestry to a full field-by-field anatomy of the hash string.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 322,
+    "fields": {
+      "lesson": 32,
+      "order": 2,
+      "slug": "scrypt-lineage",
+      "kind": "info",
+      "prompt_template": "### scrypt — the memory-hard idea yescrypt inherited\n\n**Colin Percival** designed **scrypt** in 2009 to protect **Tarsnap**, his online backup service. He needed a key-derivation function that would turn a weak passphrase into a strong encryption key, and he wanted brute-forcing it to stay expensive even for an attacker with custom hardware. The result was the first widely deployed **memory-hard** KDF: one whose cost comes from RAM, not just CPU cycles.\n\n### ROMix: fill, then wander\n\nscrypt's core loop is called **ROMix**, and it runs in two passes over an array of N blocks:\n\n1. **Sequential fill.** Derive block 0 from the password, block 1 from block 0, block 2 from block 1, and so on until all N blocks are written. This pass is cheap to parallelize — it's just a chain.\n2. **Data-dependent random read.** Walk N more steps, but at each step use bytes from the block you just touched to pick *which* of the N blocks to read next. That data-dependence is the trick: you can't precompute or skip ahead, because you don't know which block you'll need until you've computed the one before it.\n\nSkipping the memory (a time-memory trade-off attack) means recomputing blocks on the fly instead — which costs CPU time. Either way, the attacker pays.\n\n### Why memory hurts a cracking rig harder than CPU time does\n\nA password-cracking rig scales cheaply by adding **cores** — that's what GPUs and ASICs are good at. It does **not** scale nearly as cheaply by adding **memory**: 16 MiB of low-latency RAM *per parallel core* is real hardware cost that doesn't shrink the way transistor counts do. A CPU-time-only hash like bcrypt has a tiny per-guess footprint (~4 KB), so thousands of guesses fit on one chip in parallel. A memory-hard hash forces every parallel guess to carry its own multi-megabyte footprint, which caps how many guesses fit at once.\n\n### From scrypt to yescrypt\n\n**yescrypt** takes scrypt's ROMix core and adds tweaks aimed squarely at the *authentication server* use case: extra mixing rounds called **pwxform**, tuned to run fast on ordinary CPUs while still forcing memory traffic, and an *optional* shared **ROM** for large deployments (step 5 covers that). The goal isn't \"slower than scrypt\" — it's \"tuned for logging users into a Linux box,\" a narrower job than Tarsnap's file encryption.",
+      "help_template": "**In plain English:** scrypt (2009, Colin Percival, built for Tarsnap) was the first password KDF to make memory — not just CPU time — the expensive resource. Its ROMix loop fills a big array, then reads it back in an order that depends on the data itself, so you can't skip the memory without recomputing it. yescrypt inherits ROMix and adds its own mixing rounds tuned for login servers.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 323,
+    "fields": {
+      "lesson": 32,
+      "order": 3,
+      "slug": "feel-the-memory",
+      "kind": "input-numeric",
+      "prompt_template": "### Feel the memory cost\n\nPick a password and a memory size, then run the widget. Here's exactly what it does and doesn't simulate:\n\n**What's real:** the widget genuinely allocates the MiB you choose as a flat byte array in your browser, and genuinely touches every byte of it — twice. **Pass 1** fills the array sequentially. **Pass 2** reads it back in a **data-dependent random order** — the index of the next block depends on the data in the block you just read, exactly the ROMix shape from the previous step. Watch **bytes touched**: it should come out to roughly double the memory size you picked, one full pass each.\n\n**What's synthetic:** the function mixing the bytes together is a toy (a fast pseudorandom shuffle), not real yescrypt's pwxform. Real yescrypt does meaningfully more arithmetic per byte, so the widget's milliseconds are **not** what your CPU would take running actual yescrypt. To keep the numbers honest, the table below is measured from libxcrypt's real yescrypt on real hardware.\n\n### Cited real yescrypt (libxcrypt, 2024 laptop)\n\n| Memory | Real yescrypt (libxcrypt, 2024 laptop) |\n|---|---|\n| 1 MiB | ~3 ms |\n| 4 MiB | ~12 ms |\n| 16 MiB | ~50 ms |\n| 64 MiB | ~210 ms |\n\n### What to look for\n\n- Time scales **roughly linearly** with memory — 4× the MiB lands close to 4× the ms, both in the widget and in the cited table.\n- **16 MiB is libxcrypt's actual default** for the `$y$` hashes your distro generates — that's the `j9T` parameter tag you'll decode in the next step.\n- Compare with **bcrypt**, whose only knob is CPU time (the cost factor) — there's no memory dial at all. That's the structural difference between the two families: yescrypt makes attackers pay in RAM, bcrypt only makes them pay in cycles.",
+      "help_template": "**In plain English:** Pick a memory size and a password, then run it. The widget genuinely allocates and touches that much RAM in two passes — sequential fill, then a data-dependent random read — so the memory cost is real, even though the mixing math inside is a toy stand-in for yescrypt's actual pwxform.\n\n**Practical:** libxcrypt's default is 16 MiB, about 50 ms on a 2024 laptop. Time scales roughly linearly with memory — that's the property that makes memory-hardness expensive to parallelize on a cracking rig.",
+      "validator_key": "memory_cost",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 324,
+    "fields": {
+      "lesson": 32,
+      "order": 4,
+      "slug": "anatomy-of-a-y-hash",
+      "kind": "info",
+      "prompt_template": "### Anatomy of a $y$ hash\n\nTake the hash from step 1 and split it on `$`:\n\n```\n$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$HboGM6qPrsK.StKYGt6KErmUYtioHreJd98oIeMIGT7\n |  |  |                      |\n |  |  |                      +- 43-char hash output\n |  |  +- 22-char salt\n |  +- itoa64-encoded parameters\n +- algorithm tag\n```\n\n| Field | Value | Meaning |\n|---|---|---|\n| `y` | — | **Algorithm tag.** Tells libxcrypt's `crypt()` to use yescrypt. |\n| `j9T` | itoa64 | **Encoded cost parameters.** Decodes to `N=4096` blocks and `r=32` (block-size multiplier) — together, roughly `N × r × 128 bytes ≈ 16 MiB` of working memory, libxcrypt's default and the same number from step 3's cited table. |\n| `LdJMENpBABJJ3hIHjB1Bi.` | 22 chars | **Salt.** Random per hash, stored right in the string in the clear — it stops two identical passwords from producing identical hashes, and defeats precomputed rainbow tables. |\n| `HboGM6qPrsK.StKYGt6KErmUYtioHreJd98oIeMIGT7` | 43 chars | **Hash output.** The result of running yescrypt over the salt and password. |\n\n### The itoa64 alphabet\n\nBoth the parameter tag and the salt are encoded in **itoa64**: `./0-9A-Za-z` — 64 printable characters, safe to embed directly in a colon-delimited `/etc/shadow` line with no extra escaping. It's the same idea as bcrypt's own (differently-ordered) base64 variant.\n\nDistro-generated `$y$` salts you'll see in the wild are typically **22 characters** — that's what libxcrypt's own hashing calls produce. If you ever build your own salt generator, note that itoa64 decodes in 4-character-to-3-byte groups, so an arbitrary random salt needs a length that's a multiple of 4 to decode cleanly. That's why the take-home script in step 7 generates a 24-character salt instead of copying the 22-character convention exactly.\n\n### One string, one column\n\nJust like bcrypt's `$2b$...`, the entire yescrypt hash — algorithm, params, salt, output — lives in **one string**. One column in `/etc/shadow` (or any password table) is enough; there's no separate salt or cost-factor column to keep in sync, and `crypt()` re-derives everything it needs from the stored string alone at verify time.",
+      "help_template": "**In plain English:** A `$y$` hash is one self-contained string: algorithm tag, itoa64-encoded cost parameters, a salt, and the hash output, separated by `$`. No separate columns needed — `crypt()` re-derives everything from the stored string at verify time, the same trick bcrypt uses.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 325,
+    "fields": {
+      "lesson": 32,
+      "order": 5,
+      "slug": "rom-and-scale",
+      "kind": "info",
+      "prompt_template": "### The optional ROM — scaling yescrypt to server farms\n\nEverything so far has used yescrypt's per-hash memory (the 16 MiB from step 3). yescrypt also supports an **optional ROM** — a large, shared, read-only table that every hash computed on the machine mixes into its work.\n\n### Why a shared table helps\n\nThe ROM isn't secret, but it does two useful things:\n\n1. **It raises the bar for stealing the hashes.** If an attacker exfiltrates `/etc/shadow`, that alone isn't enough anymore — cracking the hashes also requires a copy of the multi-gigabyte ROM the server used. That's a much bigger, more conspicuous thing to smuggle out than a text file of hashes.\n2. **It doesn't fit in per-core GPU memory.** A cracking GPU has many cores, each with a modest slice of fast on-chip memory. A ROM sized in gigabytes simply doesn't fit alongside thousands of parallel guesses — the attacker either runs far fewer guesses in parallel, or falls back to slower off-chip memory, either way losing most of the speedup a GPU normally offers.\n\n### Who actually turns this on\n\nThe ROM is a deployment choice for **large authentication farms** — large hosting providers or shared login infrastructure — that can afford to keep a multi-gigabyte table resident in RAM on every auth server, and that face a genuinely large-scale credential-theft threat model.\n\n### Why your laptop doesn't use it\n\nYour `/etc/shadow` default (the `$y$j9T$...` hashes from steps 1 and 4) does **not** use a ROM. A laptop or ordinary VM doesn't want to permanently dedicate a resident table sized in gigabytes (think 4 GiB) just to password verification — that memory is needed for everything else the machine runs. The 16 MiB per-hash cost from step 3 is plenty for a single-user machine's threat model; the ROM is a scale-out feature for operators defending millions of accounts at once, not a laptop default.",
+      "help_template": "**In plain English:** yescrypt has an optional shared ROM — a multi-gigabyte table every hash on the server mixes in. It raises the bar for attackers, since they need the ROM too and it won't fit in a GPU core's fast memory, but it costs real RAM to keep resident. Large auth farms turn it on; laptops and ordinary servers skip it.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 326,
+    "fields": {
+      "lesson": 32,
+      "order": 6,
+      "slug": "yescrypt-vs-argon2",
+      "kind": "info",
+      "prompt_template": "### yescrypt vs Argon2id — two winners of different contests\n\nBoth algorithms trace back to the same **Password Hashing Competition** (2013–2015) and share the same goal: a memory-hard password hash that's expensive for attackers and cheap for legitimate logins. They made different bets on how to get there.\n\n| | yescrypt | Argon2id |\n|---|---|---|\n| **PHC result** | Special recognition | **Winner** |\n| **Standards status** | De facto — the libxcrypt/Linux default | RFC 9106; **OWASP's recommended default** |\n| **How it won adoption** | Shipped as glibc's `crypt()` default via libxcrypt | Recommended explicitly by security guidance; picked by new frameworks |\n| **Core mixing** | **pwxform** — a CPU-friendly, table-lookup-heavy transform tuned to run fast on ordinary CPUs while still forcing memory traffic | **Blake2b-based filling** — a simpler, well-analyzed compression function applied uniformly across memory |\n| **Where you meet it** | `/etc/shadow` on modern Linux, without choosing it | New app code that explicitly picks a password-hashing library |\n\n### Same goal, different deployment story\n\nArgon2id **won the competition outright** and is the algorithm OWASP's Password Storage Cheat Sheet recommends by name for new systems — the textbook right answer if you're starting fresh today. yescrypt earned only **special recognition** from the PHC judges, but went on to win a different contest: it became the actual default hash on most Linux distributions, protecting more logins per day than almost anything else, simply by being what libxcrypt ships.\n\nThe technical difference that matters most is *what* the memory-hard mixing looks like: yescrypt's pwxform leans on data-dependent table lookups deliberately kept fast on ordinary CPUs, so a normal login doesn't stall, while Argon2's Blake2b-based filling is simpler to analyze and audit, at the cost of being somewhat more uniform.\n\n### The one wrong answer\n\nIf you're choosing between yescrypt and Argon2id for a new system, either is a legitimately good choice — pick whichever your platform's library supports well. The genuinely **wrong** answer, still seen in production, is a fast general-purpose hash like **SHA-256** or **MD5** with no memory-hardness and no deliberate slowness at all. Those are built for speed, which is exactly the property a password hash must not have.",
+      "help_template": "**In plain English:** Argon2id won the Password Hashing Competition outright and is OWASP's recommended pick for new systems. yescrypt only earned special recognition from the judges, but won the bigger contest — it's the actual default on most Linux systems today via libxcrypt. Either is a good choice; a fast hash like SHA-256 or MD5 with no memory-hardness is not.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 327,
+    "fields": {
+      "lesson": 32,
+      "order": 7,
+      "slug": "done",
+      "kind": "info",
+      "prompt_template": "## Done!\n\nYou've walked yescrypt end to end — from its scrypt ancestry and the ROMix two-pass idea, through feeling the memory cost yourself, decoding a real `$y$` hash field by field, the optional ROM for server farms, and how it stacks up against Argon2id.\n\n### Recap\n\n| Step | Key idea |\n|---|---|\n| 1 (intro) | `$y$` is the default password hash on Fedora 35+/Debian 11+/Ubuntu 22.04+, via libxcrypt. Written by Solar Designer (Openwall); PHC 2013–2015 special recognition. |\n| 2 (scrypt lineage) | Colin Percival's 2009 scrypt was the first memory-hard KDF. ROMix: fill N blocks sequentially, then read them back in a data-dependent random order. Memory scales worse than CPU cores for a cracking rig. |\n| 3 (feel the memory) | The widget really allocates and touches your chosen MiB in two passes; the mixing math is a toy. Real yescrypt scales roughly linearly: 1 MiB ~3 ms, 64 MiB ~210 ms. |\n| 4 (anatomy) | `$y$j9T$<22-char salt>$<43-char hash>` — one self-contained string, itoa64-encoded, same one-column property as bcrypt. |\n| 5 (ROM and scale) | An optional multi-GiB shared table raises the cost of stealing hashes and doesn't fit in per-core GPU memory. Large auth farms use it; laptops don't. |\n| 6 (vs Argon2id) | Argon2id won the PHC and is OWASP's recommendation; yescrypt won the deployment war via libxcrypt. Either is fine — fast hashes like SHA-256/MD5 are not. |\n\n### The codegen\n\nClick **Show full script** below. It's a dependency-free Python script using `ctypes` to call your system's real `crypt(3)` — the exact code path `passwd` and `login` use — to hash and verify a password with yescrypt.\n\n### In the real world\n\n- **Check your own machine.** `sudo grep \"^$USER:\" /etc/shadow` — on a modern Linux distro, the second field almost certainly starts with `$y$`.\n- **The cost is tunable system-wide.** `/etc/login.defs` has a `YESCRYPT_COST_FACTOR` setting that adjusts the memory/time trade-off for every account's future password changes on that machine.\n- **If you're building an app, don't call `crypt(3)` yourself.** Reach for **Argon2id** or **bcrypt** through a maintained library in your language (`argon2-cffi`, `bcrypt`, etc.). yescrypt earns its keep as an OS-level default; application code is better served by a library with first-class support in your ecosystem.",
+      "help_template": "**In plain English:** yescrypt is scrypt's memory-hard ROMix idea, tuned for login servers, and it's probably already running on your machine if you're on a modern Linux distro. Check `/etc/shadow` for `$y$`, tune it via `/etc/login.defs`, and if you're writing new application code, reach for Argon2id or bcrypt through a maintained library instead of calling crypt(3) directly.",
+      "validator_key": "info",
+      "codegen_key": "done"
+    }
+  }
+]

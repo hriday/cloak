@@ -626,3 +626,20 @@ def test_bcrypt_fixture_loads(db):
     l = Lesson.objects.get(pk=31)
     assert l.slug == "slowed-down-blowfish"
     assert Step.objects.filter(lesson=l).count() == 7
+
+
+@pytest.mark.django_db
+def test_yescrypt_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/yescrypt/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=32)
+    assert a.slug == "yescrypt" and a.family == "hash" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=32)
+    assert l.slug == "the-default-nobody-noticed"
+    steps = list(Step.objects.filter(lesson=l).order_by("order"))
+    assert [s.slug for s in steps] == [
+        "intro", "scrypt-lineage", "feel-the-memory", "anatomy-of-a-y-hash",
+        "rom-and-scale", "yescrypt-vs-argon2", "done",
+    ]
+    assert steps[2].validator_key == "memory_cost"
