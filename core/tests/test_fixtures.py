@@ -643,3 +643,20 @@ def test_yescrypt_fixture_loads(db):
         "rom-and-scale", "yescrypt-vs-argon2", "done",
     ]
     assert steps[2].validator_key == "memory_cost"
+
+
+@pytest.mark.django_db
+def test_gost_yescrypt_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/gost-yescrypt/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=33)
+    assert a.slug == "gost-yescrypt" and a.family == "hash" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=33)
+    assert l.slug == "same-engine-russian-paperwork"
+    steps = list(Step.objects.filter(lesson=l).order_by("order"))
+    assert [s.slug for s in steps] == [
+        "intro", "streebog", "the-wrapper", "spot-the-difference", "when-to-use", "done",
+    ]
+    assert steps[3].kind == "choose-from-list"
+    assert steps[3].validator_key == "spot_difference"
