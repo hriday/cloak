@@ -1,6 +1,8 @@
 # cloak
 
-Teaching site for encryption algorithms. RSA first; more coming. Live at https://cloak.moosha.org.
+Teaching site for cryptography — 34 algorithm lessons from RSA to Argon2id,
+grouped into guided journeys. Live at https://cloak.moosha.org. Catalog and
+open ideas: [docs/roadmap.md](docs/roadmap.md).
 
 ## Local development
 
@@ -43,12 +45,22 @@ The web container handles `migrate`, `loaddata algorithms/*/fixtures.json`, `col
 
 The framework is data-driven. To add `foo`:
 
-1. Create `algorithms/foo/{logic.py, validators.py, codegen.py, fixtures.json}`.
-2. Create `static/algorithms/foo/{math.js, validators.js, codegen.js}` plus tests.
-3. The validator + codegen keys named in `fixtures.json` must exist in both Python and JS modules.
-4. `make loadalgos` (or rebuild the image).
+1. Create `algorithms/foo/fixtures.json` (Algorithm + Lesson + Step rows;
+   PK convention: algorithm/lesson PK = catalog order, step PK = lesson PK × 10 + step order).
+2. Create `static/algorithms/foo/{validators.js, codegen.js}` plus tests in
+   `static/algorithms/foo/tests/` — the validator keys named in the fixture
+   must be exported by `validators.js`, and `codegen.js` must export
+   `full_script(state)`. (The original RSA lesson also has Python mirrors in
+   `algorithms/rsa/`; newer lessons are JS-only.)
+3. Interactive steps with custom UI additionally need: a template branch in
+   `core/templates/core/lesson.html` and slug registrations in
+   `static/core/wizard.js` (`hasCustomInputBranch` SLUGS, `MULTI_INPUT_SLUGS`
+   if the validator takes an object, `EXPLORATORY_SLUGS` if the branch renders
+   its own Continue button).
+4. `make loadalgos` (or rebuild the image — the entrypoint reloads all
+   fixtures on every container start).
 
-No core code changes needed.
+Plain info-step lessons need no core code changes.
 
 ## Spec & plan
 
