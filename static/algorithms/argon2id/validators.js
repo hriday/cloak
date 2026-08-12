@@ -59,7 +59,7 @@ export function memory_cost(input, _state) {
 }
 
 // Step 6 — the RAM bill for m=65536 KiB, t=3, p=4. The teaching point:
-// m is the TOTAL memory regardless of t (extra passes over the same
+// m is the TOTAL memory regardless of t (passes over the same
 // memory) and p (lanes split it, they don't multiply it).
 export function tuning_math(input, _state) {
   const raw = String(input ?? "").trim();
