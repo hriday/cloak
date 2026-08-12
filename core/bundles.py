@@ -157,6 +157,69 @@ BUNDLES = [
         "tagline": "How AES became the standard. The 30-year story from DES's deathbed through Blowfish and Twofish to ChaCha20 — plus the modes that make it work.",
         "algorithms": ["triple-des", "blowfish", "twofish", "aes", "chacha20-poly1305", "cipher-modes"],
     },
+    {
+        "slug": "how-linux-stores-your-password",
+        "title": "How Linux stores your password",
+        "tagline": (
+            "From `openssl passwd` to /etc/shadow's $y$, $gy$ and $argon2id$ prefixes. "
+            "Why password storage got slow on purpose, then memory-hungry on purpose."
+        ),
+        "algorithms": ["password-hashing", "bcrypt", "yescrypt", "gost-yescrypt", "argon2id"],
+        "stations": [
+            {
+                "algorithm": "password-hashing",
+                "prose": (
+                    "Run `sudo cat /etc/shadow` on any Linux box and the second field of your own row is "
+                    "a little time capsule: a `$`-separated string that records which algorithm hashed your "
+                    "password, with what salt, at what cost. This journey reads that string end to end.\n\n"
+                    "First, the ground rules. Passwords are never stored — only hashes. But a *fast* hash "
+                    "(SHA-256, MD5) is a catastrophe here: an RTX 4090 guesses tens of billions of SHA-256 "
+                    "candidates per second. The survey lesson walks the fix — salting, then deliberately slow "
+                    "key derivation (PBKDF2 → bcrypt → the memory-hard generation)."
+                ),
+            },
+            {
+                "algorithm": "bcrypt",
+                "prose": (
+                    "bcrypt (1999) made slowness *tunable*: a cost factor `c` means 2^c passes of the Blowfish "
+                    "key schedule, so every +1 doubles the work for defender and attacker alike. It's the `$2b$` "
+                    "prefix you'll still meet everywhere from old shadow files to modern web frameworks.\n\n"
+                    "Its blind spot: bcrypt spends only *time*. 4 KiB of state fits snugly in a GPU's shared "
+                    "memory, so a cracking rig still parallelizes it thousands of lanes wide. Fixing that "
+                    "requires a different kind of expensive."
+                ),
+            },
+            {
+                "algorithm": "yescrypt",
+                "prose": (
+                    "Enter memory-hardness: force each guess to fill and re-walk megabytes, and the attacker's "
+                    "10,000 cores suddenly need 10,000 × 16 MiB of low-latency RAM they don't have. yescrypt — "
+                    "scrypt's descendant, hardened for the login use case — is the `$y$` your distro almost "
+                    "certainly writes today (Fedora 35+, Debian 11+, Ubuntu 22.04+). The most widely deployed "
+                    "password hash that almost nobody can name."
+                ),
+            },
+            {
+                "algorithm": "gost-yescrypt",
+                "prose": (
+                    "A short detour that teaches a big pattern: when a regulator requires nationally certified "
+                    "crypto, you don't reinvent the KDF — you wrap it. `$gy$` is yescrypt's engine with an "
+                    "HMAC built from Russia's Streebog hash around the output. Same salt, same params, same "
+                    "memory-hardness; different paperwork."
+                ),
+            },
+            {
+                "algorithm": "argon2id",
+                "prose": (
+                    "And the modern default for everything that isn't /etc/shadow: Argon2id, winner of the "
+                    "Password Hashing Competition, first recommendation of OWASP and RFC 9106. Its m/t/p "
+                    "knobs make the memory/time/parallelism trade-offs explicit — and its `$argon2id$...` "
+                    "string is self-describing, so parameter upgrades are a one-line config change plus a "
+                    "rehash-on-login. Finish here and that shadow field reads like plain prose."
+                ),
+            },
+        ],
+    },
 ]
 
 

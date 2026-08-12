@@ -92,3 +92,18 @@ def test_dashboard_lists_progress(client):
 def test_dashboard_redirects_anonymous(client):
     resp = client.get(reverse("dashboard"))
     assert resp.status_code == 302
+
+
+def test_linux_passwords_bundle_resolves():
+    from core.bundles import resolve_bundles
+    class FakeAlgo:
+        def __init__(self, slug):
+            self.slug = slug
+    live = {s: FakeAlgo(s) for s in
+            ["password-hashing", "bcrypt", "yescrypt", "gost-yescrypt", "argon2id"]}
+    bundles = resolve_bundles(live)
+    b = next((x for x in bundles if x["slug"] == "how-linux-stores-your-password"), None)
+    assert b is not None
+    assert [a.slug for a in b["algorithms"]] == [
+        "password-hashing", "bcrypt", "yescrypt", "gost-yescrypt", "argon2id",
+    ]
