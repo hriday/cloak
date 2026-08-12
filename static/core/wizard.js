@@ -416,6 +416,8 @@ function wizardComponent(initial) {
         "point-addition", "point-doubling",
         "verify-md5-collision", "verify-sha1-collision",
         "find-a-collision", "time-the-cost",
+        "feel-the-memory",            // yescrypt + argon2id: re-runnable memory demo
+        "spot-the-difference",        // gost-yescrypt: show the answer panel before advancing
         "factor-with-rho",                    // RSA: re-runnable factor demo
       ]);
       if (EXPLORATORY_SLUGS.has(step.slug)) {
