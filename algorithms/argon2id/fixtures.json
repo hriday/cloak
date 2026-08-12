@@ -6,7 +6,7 @@
       "slug": "argon2id",
       "name": "Argon2id",
       "family": "hash",
-      "intro_template": "Winner of the Password Hashing Competition, first pick of OWASP. Memory-hard by design — the $argon2id$ everyone recommends.",
+      "intro_template": "The recommended variant of Argon2, the Password Hashing Competition winner. Memory-hard by design — the $argon2id$ everyone recommends.",
       "status": "live",
       "order": 34
     }
