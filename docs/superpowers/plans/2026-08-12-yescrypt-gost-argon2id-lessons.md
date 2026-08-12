@@ -503,11 +503,13 @@ export function full_script(state) {
     "libcrypt.crypt.argtypes = [ctypes.c_char_p, ctypes.c_char_p]",
     "",
     "# --- Build a $y$ setting string ------------------------------------",
-    "# $y$ <params> $ <salt> $   — 'j9T' encodes libxcrypt's default cost",
-    "# (N=4096 blocks x r=32 => 16 MiB). Salt: 22 chars of the itoa64",
-    "# alphabet, randomly chosen per hash, stored in the clear.",
+    "# $y$ <params> $ <salt>   — 'j9T' encodes libxcrypt's default cost",
+    "# (N=4096 blocks x r=32 => 16 MiB). Salt: 24 chars of the itoa64",
+    "# alphabet. (itoa64 decodes 4 chars -> 3 bytes, so the length must be",
+    "# a multiple of 4 for arbitrary random chars; distros emit 22 chars",
+    "# with a restricted final char, which needs care we don't.)",
     'ITOA64 = "./" + string.digits + string.ascii_uppercase + string.ascii_lowercase',
-    'setting = "$y$j9T$" + "".join(secrets.choice(ITOA64) for _ in range(22)) + "$"',
+    'setting = "$y$j9T$" + "".join(secrets.choice(ITOA64) for _ in range(24))',
     "",
     `PASSWORD = ${JSON.stringify(password)}`,
     "",
@@ -793,7 +795,7 @@ export function spot_difference(input, _state) {
   if (choice === "salt") {
     return {
       ok: false,
-      hint: "Look again — both strings carry the exact same 22-character salt field. The salt doesn't care which hash function mixes it.",
+      hint: "Look again — both strings carry the exact same salt field. The salt doesn't care which hash function mixes it.",
     };
   }
   if (choice === "params") {
@@ -857,8 +859,9 @@ export function full_script(state) {
     "libcrypt.crypt.argtypes = [ctypes.c_char_p, ctypes.c_char_p]",
     "",
     '# $gy$ = gost-yescrypt: yescrypt inside, HMAC-Streebog-256 outside.',
+    "# Salt: 24 itoa64 chars (multiple of 4 decodes cleanly; see yescrypt lesson).",
     'ITOA64 = "./" + string.digits + string.ascii_uppercase + string.ascii_lowercase',
-    'setting = "$gy$j9T$" + "".join(secrets.choice(ITOA64) for _ in range(22)) + "$"',
+    'setting = "$gy$j9T$" + "".join(secrets.choice(ITOA64) for _ in range(24))',
     "",
     `PASSWORD = ${JSON.stringify(password)}`,
     "",
@@ -940,11 +943,14 @@ The spot-the-difference prompt shows two real hash strings. Generate them with t
 ```bash
 docker run --rm python:3.12-slim python -c "
 import crypt
-salt = 'cloakcloakcloakcloakcl'
+salt = 'cloakcloakcloakcloakcloa'  # 24 itoa64 chars (multiple of 4)
 for prefix in ('\$y\$j9T\$', '\$gy\$j9T\$'):
-    print(crypt.crypt('correct-horse-battery-staple', prefix + salt + '\$'))
+    print(crypt.crypt('correct-horse-battery-staple', prefix + salt))
 "
 ```
+
+(Controller pre-verified 2026-08-12: both `$y$` and `$gy$` produce hashes on
+`python:3.12-slim`, so the honest pair is obtainable — no fallback needed.)
 
 If the `$gy$` line fails (Debian's libxcrypt may lack GOST), run the same command in `fedora:latest` with `python3`. If neither works, use the `$y$` real output plus a `$gy$` string with the same salt/params and a clearly different hash field, and add a footnote to the prompt: "the `$gy$` example is representative — generate your own with the Done-step script on Fedora."
 
