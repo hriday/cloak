@@ -1397,6 +1397,18 @@ In `MULTI_INPUT_SLUGS`, after the `"time-the-cost"` entry, add:
 
 (`spot-the-difference` is deliberately NOT in `MULTI_INPUT_SLUGS` — its buttons set `inputValue` and the validator receives a plain string.)
 
+In `EXPLORATORY_SLUGS` (inside `check()`, ~line 410 — steps that do NOT
+auto-advance on a successful check because their branches render their own
+Continue button), after the `"time-the-cost",` entry, add:
+
+```js
+        "feel-the-memory",            // yescrypt + argon2id: re-runnable memory demo
+        "spot-the-difference",        // gost-yescrypt: show the answer panel before advancing
+```
+
+(Discovered by live smoke testing: without this, a successful check
+auto-advances and the learner never sees the result panel.)
+
 - [ ] **Step 2: lesson.html — fix the two default-renderer guards**
 
 Line ~35, change:

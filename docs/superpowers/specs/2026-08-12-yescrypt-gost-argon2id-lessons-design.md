@@ -136,6 +136,9 @@ Import precedent: hybrid's `math.js` re-exports from `rsa/math.js`.
   and argon2id) and `"spot-the-difference"` (gost-yescrypt).
 - `MULTI_INPUT_SLUGS`: add `"feel-the-memory"` (`{password, memoryMiB}`).
   `spot-the-difference` stays single-input (`inputValue`).
+- `EXPLORATORY_SLUGS`: add both `"feel-the-memory"` and
+  `"spot-the-difference"` — their branches render their own Continue, so a
+  successful check must not auto-advance past the result panel.
 
 `core/templates/core/lesson.html`:
 - The default `input-numeric` renderer does not consult
