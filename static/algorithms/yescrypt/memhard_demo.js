@@ -4,13 +4,14 @@
 // has no maintained JS port and a WASM argon2 build would add ~100 KB and
 // block the main thread. What we CAN make real in a browser is the thing
 // bcrypt's lesson couldn't: the MEMORY. This mixer genuinely allocates the
-// chosen number of mebibytes and genuinely touches every byte — a sequential
-// fill pass, then a data-dependent random-read pass (the two-loop shape of
-// scrypt's ROMix, which is the ancestor of both yescrypt and argon2's
-// block-mixing schedule). The mixing function itself is a toy (xorshift32),
-// so the wall-time constant factor is wrong; the CITED_* tables carry honest
-// numbers from real implementations (libxcrypt yescrypt and argon2-cffi with
-// t=3, p=4 on a typical 2024 laptop, single run, rounded).
+// chosen number of mebibytes and genuinely touches every byte on the fill
+// pass, then re-reads a full pass's worth of randomly selected blocks (the
+// two-loop shape of scrypt's ROMix, which is the ancestor of both yescrypt
+// and argon2's block-mixing schedule). The mixing function itself is a toy
+// (xorshift32), so the wall-time constant factor is wrong; the CITED_*
+// tables carry honest numbers from real implementations (libxcrypt yescrypt
+// and argon2-cffi with t=3, p=4 on a typical 2024 laptop, single run,
+// rounded).
 //
 // Node >=19-compatible: no browser globals required.
 

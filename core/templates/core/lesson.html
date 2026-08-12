@@ -435,6 +435,7 @@
             <button class="btn secondary" @click="inputValue = 'salt'; check()">The salt</button>
             <button class="btn secondary" @click="inputValue = 'params'; check()">The params (j9T)</button>
             <button class="btn secondary" @click="inputValue = 'prefix-and-hash'; check()">The prefix + hash bytes</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
           </div>
           <div style="margin-top:10px;" x-show="state.gy_choice">
             <button class="btn" @click="advance()">Continue →</button>
