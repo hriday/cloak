@@ -39,3 +39,34 @@ test("fixtures: step slugs, kinds, validator keys", () => {
   assert.equal(bySlug["spot-the-difference"].validator_key, "spot_difference");
   assert.equal(bySlug["done"].codegen_key, "done");
 });
+
+test("fixtures: spot-the-difference hash pair invariant (salt/params identical, hashes differ)", () => {
+  const bySlug = Object.fromEntries(steps.map((s) => [s.fields.slug, s.fields]));
+  const prompt = bySlug["spot-the-difference"].prompt_template;
+
+  // Pull the two crypt strings out of the fenced code block only, to avoid
+  // matching the inline `$y$`/`$gy$` mentions in the surrounding prose.
+  const codeBlock = prompt.match(/```\n([\s\S]*?)\n```/);
+  assert.ok(codeBlock, "expected a fenced code block in the prompt");
+  const lines = codeBlock[1].split("\n").filter((l) => l.trim().length > 0);
+  assert.equal(lines.length, 2, "expected exactly two lines in the code block");
+
+  const [yLine, gyLine] = lines;
+  const yParts = yLine.split("$"); // ["", "y", "<params>", "<salt>", "<hash>"]
+  const gyParts = gyLine.split("$"); // ["", "gy", "<params>", "<salt>", "<hash>"]
+  assert.equal(yParts.length, 5);
+  assert.equal(gyParts.length, 5);
+  assert.equal(yParts[1], "y");
+  assert.equal(gyParts[1], "gy");
+
+  // Param field (e.g. "j9T") must be identical between the two lines.
+  assert.equal(yParts[2], gyParts[2]);
+
+  // Salt field must be identical between the two lines.
+  assert.equal(yParts[3], gyParts[3]);
+
+  // Hash fields must both be 43 chars, and must differ from each other.
+  assert.equal(yParts[4].length, 43);
+  assert.equal(gyParts[4].length, 43);
+  assert.notEqual(yParts[4], gyParts[4]);
+});
