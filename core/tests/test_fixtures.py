@@ -660,3 +660,21 @@ def test_gost_yescrypt_fixture_loads(db):
     ]
     assert steps[3].kind == "choose-from-list"
     assert steps[3].validator_key == "spot_difference"
+
+
+@pytest.mark.django_db
+def test_argon2id_fixture_loads(db):
+    from django.core.management import call_command
+    call_command("loaddata", "algorithms/argon2id/fixtures.json")
+    from core.models import Algorithm, Lesson, Step
+    a = Algorithm.objects.get(pk=34)
+    assert a.slug == "argon2id" and a.family == "hash" and len(a.intro_template) <= 200
+    l = Lesson.objects.get(pk=34)
+    assert l.slug == "the-one-the-committee-picked"
+    steps = list(Step.objects.filter(lesson=l).order_by("order"))
+    assert [s.slug for s in steps] == [
+        "intro", "why-id", "the-block-matrix", "feel-the-memory",
+        "anatomy-of-an-argon2-hash", "tuning", "argon2-vs-the-rest", "done",
+    ]
+    assert steps[3].validator_key == "memory_cost"
+    assert steps[5].validator_key == "tuning_math"

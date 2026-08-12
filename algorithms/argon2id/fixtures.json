@@ -1,0 +1,136 @@
+[
+  {
+    "model": "core.algorithm",
+    "pk": 34,
+    "fields": {
+      "slug": "argon2id",
+      "name": "Argon2id",
+      "family": "hash",
+      "intro_template": "Winner of the Password Hashing Competition, first pick of OWASP. Memory-hard by design — the $argon2id$ everyone recommends.",
+      "status": "live",
+      "order": 34
+    }
+  },
+  {
+    "model": "core.lesson",
+    "pk": 34,
+    "fields": {
+      "algorithm": 34,
+      "slug": "the-one-the-committee-picked",
+      "title": "Argon2id: the one the committee picked",
+      "order": 1
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 341,
+    "fields": {
+      "lesson": 34,
+      "order": 1,
+      "slug": "intro",
+      "kind": "info",
+      "prompt_template": "## Argon2id — the committee's pick\n\nThe [yescrypt lesson](/algorithms/yescrypt/learn/the-default-nobody-noticed/) and its [GOST-yescrypt companion](/algorithms/gost-yescrypt/learn/same-engine-russian-paperwork/) both trace back to the same open contest: the **Password Hashing Competition** (2013–2015). This lesson covers the algorithm that contest actually **crowned**.\n\n### The competition, and who won it\n\nThe PHC ran an open call for password-hashing designs, drew **24 submissions** from cryptographers worldwide, and after two years of public review and multiple rounds of elimination, named a winner in 2015: **Argon2**, designed by **Alex Biryukov, Daniel Dinu, and Dmitry Khovratovich** at the **University of Luxembourg**. yescrypt, which you met earlier, was one of the finalists and took a special-recognition award — a strong showing, but not the win.\n\nArgon2 originally shipped as two variants, **Argon2d** (data-dependent) and **Argon2i** (data-independent) — the next step covers exactly what that split means. **Argon2id**, the hybrid of the two, was defined shortly after the competition closed and is the variant **RFC 9106** (published 2021) formally recommends, and the one this whole lesson is about. When people say \"Argon2 won the PHC,\" they mean the family; **Argon2id is the specific variant everyone actually deploys today.**\n\n### Where you'll meet `$argon2id$`\n\nThis isn't a museum piece — it's actively the recommended choice in several places you may already be using:\n\n- **Django's `Argon2PasswordHasher`** — not the framework's historical default, but the one Django's own docs recommend reaching for if the `argon2-cffi` package is installed.\n- **libsodium's `pwhash` API** — defaults to Argon2id for password hashing and password-based key derivation.\n- **1Password and Bitwarden** — both offer Argon2id as a key-derivation option for turning your master password into your vault's encryption key.\n- **`/etc/shadow`** — on systems where the local `crypt(3)` build enables it, you'll see `$argon2id$` hash strings sitting alongside `$y$` and `$2b$`.\n\nThe next step opens up that `d`/`i`/`id` split — what each variant actually buys you, and why the hybrid is the one that stuck.",
+      "help_template": "**In plain English:** the Password Hashing Competition (2013–2015, 24 entries) crowned Argon2 as its winner, designed by Biryukov, Dinu, and Khovratovich at the University of Luxembourg. Argon2id — the hybrid variant defined just after the contest and formalized in RFC 9106 — is the one everyone actually deploys: Django's recommended hasher, libsodium's `pwhash` default, an option in 1Password and Bitwarden, and `$argon2id$` in `/etc/shadow` where enabled.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 342,
+    "fields": {
+      "lesson": 34,
+      "order": 2,
+      "slug": "why-id",
+      "kind": "info",
+      "prompt_template": "### Argon2d vs Argon2i vs Argon2id — why the hybrid won\n\nArgon2's memory-filling step has to decide, for each block it computes, *which earlier block to read as a reference* while mixing in the new one. That single design choice — how the reference index is picked — is the entire difference between the three variants.\n\n### Argon2d — data-**d**ependent indexing\n\nThe reference index is computed from the **data already in memory** — the value of a previously-computed block. This is the strongest possible defense against a determined cracking rig: an attacker can't precompute or predict which memory address comes next, so there's no way to skip ahead or optimize the memory access pattern in advance.\n\nThe cost: because the *address* being read depends on secret-derived data, the **pattern of memory accesses** is itself a side channel. On a shared machine, another process watching cache-timing behavior can, in principle, learn something about which addresses your process touched — a **cache-timing side-channel risk**. That's a real concern in any environment where an attacker can run code alongside the password hasher (shared hosting, cloud tenancy, an untrusted co-located process).\n\n### Argon2i — data-**i**ndependent indexing\n\nThe reference index is computed from a **counter and the input parameters only** — never from data already sitting in memory. The access pattern is fixed and public before a single block is filled, so there's nothing about it that leaks through cache timing. That closes the side-channel gap Argon2d leaves open.\n\nThe cost: because the access pattern is public in advance, it's also **precomputable** by an attacker. That makes Argon2i comparatively weaker against **time-memory trade-off (TMTO) attacks** — strategies that recompute cheap-to-derive blocks on the fly instead of storing all of them, trading some CPU time to avoid paying the full memory bill.\n\n### Argon2id — the hybrid\n\nArgon2id runs data-**i**ndependent indexing for the **first half** of the first pass, then switches to data-**d**ependent indexing for the **remainder**. That split buys both protections where each one actually matters:\n\n- The most exposed part of the computation — early on, before there's much derived state to leak — runs side-channel-safe, closing off the cache-timing angle that worries shared-hosting deployments.\n- The rest of the computation runs data-dependent, so a TMTO attacker still can't precompute the bulk of the access pattern.\n\nThat's why Argon2id, not Argon2d or Argon2i alone, is the variant RFC 9106 recommends and the one virtually every library defaults to — it's not a compromise that's weaker than both parents, it's a design that picks up each parent's strength for the part of the computation where that strength is worth the most.",
+      "help_template": "**In plain English:** Argon2d picks its memory-reference addresses from data already computed — strongest against cracking rigs, but the access pattern itself can leak through cache timing. Argon2i picks addresses independent of any data — closes that side channel, but is comparatively weaker against time-memory trade-off attacks since the pattern is predictable in advance. Argon2id runs data-independent for the first half-pass, then data-dependent for the rest — both protections, applied where each matters most. That's why it's the variant everyone standardizes on.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 343,
+    "fields": {
+      "lesson": 34,
+      "order": 3,
+      "slug": "the-block-matrix",
+      "kind": "info",
+      "prompt_template": "### The block matrix — how Argon2 actually lays out memory\n\nArgon2's memory isn't one flat array like scrypt's ROMix. It's carved into **1-KiB blocks** and arranged as a rectangular **matrix**: `p` **lanes** (rows, one per parallel thread) across some number of **columns**, sized so that the whole matrix totals `m` KiB — the memory-cost parameter you'll tune in a couple of steps. The matrix is then filled and re-mixed over `t` **passes**.\n\n```\n        col0     col1     col2     col3\nlane0  [B0,0]──[B0,1]──[B0,2]──[B0,3]  ...\nlane1  [B1,0]──[B1,1]──[B1,2]──[B1,3]  ...\n                            ▲\n                            │  reference block read\nlane2  [B2,0]──[B2,1]──[B2,2]──[B2,3]  ...\nlane3  [B3,0]──[B3,1]──[B3,2]──[B3,3]  ...\n```\n\n### Filling a block\n\nEach block is computed by a **Blake2b-based compression function** that mixes together exactly two inputs:\n\n1. **The previous block** in the same lane — the block immediately to its left, giving each row its own sequential thread of dependency (this is what lets `p` lanes run in parallel: lane 1 doesn't have to wait on lane 2).\n2. **A reference block** — chosen by the indexing rule from the previous step (data-independent or data-dependent, depending on which half of which pass you're in). Critically, the reference block can live in **any lane**, not just the current one — that's the crossing arrow in the diagram above. It's what ties the whole matrix together into one interdependent structure instead of `p` independent strips.\n\n### Why `t` passes matter\n\nOne pass over the matrix already forces an attacker to hold the whole `m` KiB in memory at once, just to keep up with the reference reads. Running `t` **passes** re-walks the same memory `t` times, using each pass's final state to seed the next — more mixing work over the same footprint, without allocating any additional RAM. That distinction — `m` sets the memory, `t` spends more time on the memory you already have — is exactly what the tuning step ahead will ask you to reason through.",
+      "help_template": "**In plain English:** Argon2's memory is a matrix — `p` lanes (rows) by however many columns it takes to total `m` KiB — filled over `t` passes. Every block is a Blake2b-based mix of the previous block in its lane plus a reference block, which can be read from any lane in the matrix (that's the cross-lane arrow). `t` re-walks the same matrix multiple times; it adds computation, not memory.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 344,
+    "fields": {
+      "lesson": 34,
+      "order": 4,
+      "slug": "feel-the-memory",
+      "kind": "input-numeric",
+      "prompt_template": "### Feel the memory cost\n\nPick a password and a memory size, then run the widget. Here's exactly what it does and doesn't simulate:\n\n**What's real:** the widget genuinely allocates the MiB you choose as a flat byte array in your browser, and genuinely touches every byte of it — twice. **Pass 1** fills the array sequentially. **Pass 2** reads it back in a **data-dependent random order** — the index of the next block depends on the data in the block you just read, the same reference-block idea from the previous step. Watch **bytes touched**: it should come out to roughly double the memory size you picked, one full pass each.\n\n**What's synthetic:** the function mixing the bytes together is a toy (a fast pseudorandom shuffle), not real Argon2's Blake2b-based compression function. Real Argon2id does meaningfully more arithmetic per byte — and runs `t=3` full passes in a typical deployment, not the widget's two — so the widget's milliseconds are **not** what your CPU would take running actual Argon2id. To keep the numbers honest, the table below is measured from a real argon2id implementation on real hardware.\n\n### Cited real argon2id (argon2-cffi, t=3, p=4, 2024 laptop)\n\n| Memory | Real argon2id (argon2-cffi, t=3, p=4, 2024 laptop) |\n|---|---|\n| 1 MiB | ~6 ms |\n| 4 MiB | ~24 ms |\n| 16 MiB | ~95 ms |\n| 64 MiB | ~380 ms |\n\n### What to look for\n\n- Time scales **linearly with m** — 4× the memory lands close to 4× the milliseconds, both in the widget and in the cited table. Doubling `m` roughly doubles the RAM an attacker's cracking rig needs *per guess in flight*, which is the whole point of a memory-hard design.\n- Compare with **bcrypt**, whose only knob is CPU time (the cost factor) — there's no memory dial at all. A bcrypt cracking rig scales by adding cores; an Argon2id cracking rig has to add expensive RAM alongside every core, which is a much harder bill to pay at scale.",
+      "help_template": "**In plain English:** Pick a memory size and a password, then run it. The widget genuinely allocates and touches that much RAM in two passes — sequential fill, then a data-dependent random read — so the memory cost is real, even though the mixing math inside is a toy stand-in for Argon2's actual Blake2b-based compression, and real deployments run more than two passes (`t=3` is typical).\n\n**Practical:** a common web-backend choice, `m=65536 KiB` (64 MiB), `t=3`, `p=4`, costs about 380 ms on a 2024 laptop running real argon2id. Time scales roughly linearly with memory — that's the property that makes memory-hardness expensive to parallelize on a cracking rig.",
+      "validator_key": "memory_cost",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 345,
+    "fields": {
+      "lesson": 34,
+      "order": 5,
+      "slug": "anatomy-of-an-argon2-hash",
+      "kind": "info",
+      "prompt_template": "### Anatomy of an Argon2id hash\n\nHere's a real Argon2id hash string, split on `$`:\n\n```\n$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQAAAAAAAAAAA$xkyxBHDDF9C4zHfY/y1I4YvXBvi80RJJcNGGYUZfSbo\n```\n\n| Field | Value | Meaning |\n|---|---|---|\n| `argon2id` | — | **Variant.** Tells any Argon2 library exactly which of `argon2d` / `argon2i` / `argon2id` to run — no ambiguity, no separate config to keep in sync. |\n| `v=19` | 19 (`0x13`) | **Algorithm version.** `0x13` is the current Argon2 spec revision (informally \"version 1.3\"); an older `v=16` (`0x10`) exists too. Any conforming library reads this and picks the matching internals automatically. |\n| `m=65536,t=3,p=4` | — | **Self-describing parameter list.** `m` (memory in KiB), `t` (passes), and `p` (lanes) are spelled out **by name**, right in the string, in plain `key=value` pairs — no lookup table needed to decode a compact tag the way yescrypt's `j9T` requires. |\n| `c29tZXNhbHQAAAAAAAAAAA` | base64 | **Salt**, standard base64 (no padding). Decodes to 16 raw bytes here — the string `somesalt` followed by zero-padding out to 16 bytes, a well-known reference test vector. |\n| `xkyxBHDDF9C4zHfY/y1I4YvXBvi80RJJcNGGYUZfSbo` | base64 | **Tag** — the hash output itself, standard base64, decoding to 32 raw bytes here. This is what actually gets compared (after re-deriving it from a candidate password) at verify time. |\n\n### Chatty vs terse — the same idea, two dialects\n\nCompare this to yescrypt's `$y$j9T$LdJMENpBABJJ3hIHjB1Bi.$HboGM6qPrsK...` from the [yescrypt lesson](/algorithms/yescrypt/learn/the-default-nobody-noticed/). Both formats do exactly the same job — pack the algorithm tag, cost parameters, salt, and output into one self-contained, self-describing string, so `crypt()`-style verification code never needs a separate parameters table. The difference is purely **encoding style**: yescrypt's `j9T` is a terse itoa64-packed tag you'd need a lookup table to decode by eye, while Argon2's `m=65536,t=3,p=4` spells every parameter out by name. Argon2's format is longer on the wire, but it's the one you can read (and sanity-check) without running any code at all.",
+      "help_template": "**In plain English:** `$argon2id$v=19$m=65536,t=3,p=4$<salt>$<hash>` — variant, version (19 = `0x13`, the current spec revision), then `m`/`t`/`p` spelled out by name rather than packed into a terse code, then base64 salt and base64 hash output. Same self-contained idea as yescrypt's `$y$j9T$...`, just a chattier, human-readable encoding of the parameters instead of an itoa64 tag you'd need a lookup table to decode.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 346,
+    "fields": {
+      "lesson": 34,
+      "order": 6,
+      "slug": "tuning",
+      "kind": "input-numeric",
+      "prompt_template": "### Tune the knobs\n\nArgon2id has three independent cost parameters, and it matters which one actually costs you RAM:\n\n- **`m`** — the **total memory**, in **KiB**. This is the whole memory budget for one hash computation, full stop.\n- **`t`** — the number of **extra passes** over that *same* `m` KiB of memory (see the block-matrix step). More passes means more computation time, but it re-walks memory that's already allocated — it does **not** ask for more RAM.\n- **`p`** — the number of **lanes** the matrix is split into. More lanes means more parallelism *within* one hash computation — the `m` KiB gets divided among them, not multiplied.\n\nA common web-backend choice is `m=65536, t=3, p=4`. **How many MiB of RAM does ONE login consume?**",
+      "help_template": "**In plain English:** only `m` sets the RAM bill — `t` adds passes over memory you've already allocated, and `p` splits that same memory into parallel lanes; neither one adds a single extra KiB. `m` is measured in **KiB**, so convert to MiB by dividing by 1024 before you answer.",
+      "validator_key": "tuning_math",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 347,
+    "fields": {
+      "lesson": 34,
+      "order": 7,
+      "slug": "argon2-vs-the-rest",
+      "kind": "info",
+      "prompt_template": "### Argon2id vs the rest — an honest decision table\n\n| Algorithm | When to reach for it |\n|---|---|\n| **Argon2id** | **New applications, starting today.** The best-researched parameter guidance of any password hash, and OWASP's first choice on the Password Storage Cheat Sheet. |\n| **bcrypt** | Already deployed and running fine at **cost factor 12 or higher** — 25 years of production hardening is worth something, and there's no urgent reason to migrate a healthy system. Watch its **72-byte password limit**: longer input gets silently truncated by most implementations. |\n| **yescrypt** | You didn't choose it — **your OS already did.** It's a great default arriving for free via `crypt(3)` on modern Linux; no reason to fight it at the OS layer. |\n| **scrypt** | Still a fine, genuinely memory-hard design — but superseded by its own conceptual descendants (yescrypt tunes it for login servers, Argon2 refined the memory-hard idea further). Not wrong, just not the first pick for something new. |\n| **PBKDF2** | **FIPS-constrained environments only.** It's not memory-hard at all — pure iterated HMAC — so it's dramatically cheaper for a GPU or ASIC to attack per guess. Use it when compliance requires a FIPS-validated primitive and nothing else. |\n| **Plain SHA-x** (SHA-256, SHA-512, …) | **Never**, for passwords. A cryptographic hash is *fast* by design — exactly the property a password hash must not have. |\n\n### OWASP's actual numbers\n\nThe [OWASP Password Storage Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html) gives concrete Argon2id parameter floors, not just \"use Argon2id\" as vague advice:\n\n- **Minimum:** `m=19 MiB, t=2, p=1`.\n- **Better, when you can afford it:** `m=64 MiB` or more — the range this lesson's widget and tuning step have been working in.\n\nThe theme across the whole table: memory-hardness (Argon2id, yescrypt, scrypt) beats CPU-time-only hardness (bcrypt) beats no hardness at all (PBKDF2, and far below that, plain hashing) — pick the highest tier your platform and constraints actually let you reach.",
+      "help_template": "**In plain English:** Argon2id for anything new — OWASP's first choice, with floor parameters `m=19 MiB, t=2, p=1` and `m=64 MiB+` when affordable. bcrypt is fine if it's already deployed at cost 12+ (mind the 72-byte password limit). yescrypt is a fine default you get for free from your OS. scrypt still works but has been superseded by its descendants. PBKDF2 only where FIPS compliance forces it. Plain SHA-x: never for passwords.",
+      "validator_key": "info",
+      "codegen_key": "info"
+    }
+  },
+  {
+    "model": "core.step",
+    "pk": 348,
+    "fields": {
+      "lesson": 34,
+      "order": 8,
+      "slug": "done",
+      "kind": "info",
+      "prompt_template": "## Done!\n\nYou've walked Argon2id end to end — from the Password Hashing Competition that crowned Argon2 and the `d`/`i`/`id` split that produced the hybrid, through the block-matrix layout, feeling the memory cost yourself, decoding a real `$argon2id$` hash field by field, tuning `m`/`t`/`p` by hand, and how it stacks up against the rest of the password-hashing field.\n\n### Recap\n\n| Step | Key idea |\n|---|---|\n| 1 (intro) | PHC (2013–2015, 24 entries) crowned **Argon2**, by Biryukov/Dinu/Khovratovich (Luxembourg). Argon2id, the hybrid defined afterward, is RFC 9106's recommendation — Django, libsodium, 1Password/Bitwarden, and `/etc/shadow` where enabled all reach for it. |\n| 2 (why-id) | Argon2d: data-dependent indexing, strongest vs cracking, cache-timing risk. Argon2i: data-independent, side-channel-safe, weaker vs TMTO. Argon2id: first half-pass 2i, rest 2d — both protections where each matters. |\n| 3 (block matrix) | `m` KiB carved into 1-KiB blocks, `p` lanes × columns, `t` passes. Each block mixes the previous block in its lane with a reference block that can cross lanes, via a Blake2b-based function. |\n| 4 (feel the memory) | The widget really allocates and touches your chosen MiB in two passes; the mixing math is a toy. Real argon2id (t=3, p=4) scales roughly linearly: 1 MiB ~6 ms, 64 MiB ~380 ms. |\n| 5 (anatomy) | `$argon2id$v=19$m=65536,t=3,p=4$<salt>$<tag>` — self-describing named parameters, base64 salt and tag. Chattier than yescrypt's packed `j9T` tag, same self-contained idea. |\n| 6 (tuning) | `m` (KiB) is the entire RAM bill. `t` re-walks the same memory; `p` splits it into lanes. Neither `t` nor `p` adds RAM. |\n| 7 (vs the rest) | Argon2id for new apps (OWASP: `m=19 MiB, t=2, p=1` minimum, `m=64 MiB+` when affordable); bcrypt if already deployed (mind the 72-byte limit); yescrypt as your OS default; PBKDF2 only under FIPS; never plain SHA-x. |\n\n### The codegen\n\nClick **Show full script** below. It's a dependency-free-ish Python script using **`argon2-cffi`** — the maintained binding around the reference C implementation, and the same library Django's `Argon2PasswordHasher` wraps — to hash and verify a password with the parameters you picked in step 4.\n\n### In the real world\n\n- **Django:** put Argon2 first in `PASSWORD_HASHERS` and it becomes the hasher for every new password:\n\n  ```python\n  PASSWORD_HASHERS = [\n      \"django.contrib.auth.hashers.Argon2PasswordHasher\",\n      # ...keep the rest below it, so existing PBKDF2/bcrypt hashes still verify.\n  ]\n  ```\n\n- **Upgrading existing users without forcing a reset:** call `check_needs_rehash()` (or Django's built-in `must_update`/`needs_rehash` handling) right after a successful login. If it returns `True` — because you've since raised `m`, `t`, or `p`, or because the stored hash used an older algorithm entirely — rehash the password you just verified in plaintext and save the new hash. Users get upgraded transparently the next time they log in; nobody has to reset a password just because you tightened the parameters.\n- **Budgeting RAM for real traffic:** `m` is memory **per concurrent login**, not per server. Multiply your chosen `m` by your **peak concurrent logins** to get the RAM your auth service needs to reserve — `m=64 MiB` at 200 simultaneous logins during a Monday-morning traffic spike is **12.8 GiB**, not 64 MiB. Size the box (or the autoscaling headroom) for that peak, not for the steady-state trickle.",
+      "help_template": "**In plain English:** Argon2id is the Password Hashing Competition's winning family, in its recommended hybrid form — memory-hard, side-channel-aware, and the algorithm OWASP points to first for new systems. Put `Argon2PasswordHasher` at the top of Django's `PASSWORD_HASHERS`, use `check_needs_rehash()` to upgrade existing users transparently on their next login, and budget RAM as `m × peak concurrent logins`, not `m` alone.",
+      "validator_key": "info",
+      "codegen_key": "done"
+    }
+  }
+]
