@@ -211,9 +211,9 @@ BUNDLES = [
             {
                 "algorithm": "argon2id",
                 "prose": (
-                    "And the modern default for everything that isn't /etc/shadow: Argon2id, winner of the "
-                    "Password Hashing Competition, first recommendation of OWASP and RFC 9106. Its m/t/p "
-                    "knobs make the memory/time/parallelism trade-offs explicit — and its `$argon2id$...` "
+                    "And the modern default for new applications: **Argon2id** — the recommended variant of "
+                    "**Argon2**, winner of the Password Hashing Competition — first pick of OWASP and RFC 9106. "
+                    "Its m/t/p knobs make the memory/time/parallelism trade-offs explicit — and its `$argon2id$...` "
                     "string is self-describing, so parameter upgrades are a one-line config change plus a "
                     "rehash-on-login. Finish here and that shadow field reads like plain prose."
                 ),
