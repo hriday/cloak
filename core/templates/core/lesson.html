@@ -32,7 +32,7 @@
         </details>
       </template>
 
-      <template x-if="step.kind === 'input-numeric' && step.slug !== 'pin-translation'">
+      <template x-if="step.kind === 'input-numeric' && step.slug !== 'pin-translation' && !hasCustomInputBranch(step)">
         <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <input type="text" x-model="inputValue" placeholder="your answer" @keydown.enter="check()">
           <button class="btn" @click="check()">Check</button>
@@ -405,6 +405,43 @@
         </div>
       </template>
 
+      <!-- yescrypt + argon2id: feel-the-memory — password + memory picker + Run -->
+      <template x-if="step.slug === 'feel-the-memory'">
+        <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Password</label>
+            <input type="text" x-model="multiInput.password" placeholder="any password" style="width:100%;font-family:ui-monospace, monospace;padding:6px 8px;">
+          </div>
+          <div>
+            <label style="color:var(--muted);font-size:0.85em;display:block;margin-bottom:3px;">Memory to fill (MiB)</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <template x-for="n in [1, 4, 16, 64]" :key="n">
+                <button :class="multiInput.memoryMiB === n ? 'btn' : 'btn secondary'" @click="multiInput.memoryMiB = n" x-text="n"></button>
+              </template>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <button class="btn" :disabled="!multiInput.password || !multiInput.memoryMiB" @click="check()">Fill and mix the memory</button>
+            <button class="btn secondary" x-show="state.ys_digest || state.a2_digest" @click="advance()">Continue →</button>
+            <button x-show="hasWalkthrough()" class="btn secondary" @click="showWalkthrough()" x-text="walkthroughLabel()"></button>
+          </div>
+        </div>
+      </template>
+
+      <!-- gost-yescrypt: spot-the-difference — three choice buttons -->
+      <template x-if="step.slug === 'spot-the-difference'">
+        <div style="margin-top:12px;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn secondary" @click="inputValue = 'salt'; check()">The salt</button>
+            <button class="btn secondary" @click="inputValue = 'params'; check()">The params (j9T)</button>
+            <button class="btn secondary" @click="inputValue = 'prefix-and-hash'; check()">The prefix + hash bytes</button>
+          </div>
+          <div style="margin-top:10px;" x-show="state.gy_choice">
+            <button class="btn" @click="advance()">Continue →</button>
+          </div>
+        </div>
+      </template>
+
       <!-- classical-ciphers step 6: vigenère break (button-driven; user types anything) -->
       <template x-if="step.slug === 'vigenere-break'">
         <div style="margin-top:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -433,7 +470,7 @@
         </div>
       </template>
 
-      <template x-if="step.kind === 'choose-from-list'">
+      <template x-if="step.kind === 'choose-from-list' && !hasCustomInputBranch(step)">
         <div style="margin-top:12px;">
           <div style="display:flex;flex-wrap:wrap;gap:8px;">
             <template x-for="opt in coprimeOptions" :key="opt">
@@ -1051,6 +1088,36 @@
           <div style="margin-top:4px;"><strong>Time:</strong> <span style="color:var(--ok, #22c55e);font-weight:600;" x-text="`${Math.round(state.bcrypt_hash_ms)} ms`"></span> <span style="color:var(--muted);" x-text="`(real bcrypt at this cost: ~${state.bcrypt_cited_real_ms} ms)`"></span></div>
           <div style="margin-top:4px;word-break:break-all;"><strong>Output (synthetic, not real bcrypt format):</strong> <span style="color:var(--muted);" x-text="state.bcrypt_hash"></span></div>
           <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">Each +1 to cost doubles the work. Real bcrypt at cost 14 takes ~1 second per hash — that's 30,000× slower than plain SHA-256. Brute-forcing rainbow tables becomes infeasible.</div>
+        </div>
+      </template>
+
+      <!-- yescrypt: feel-the-memory result -->
+      <template x-if="step.slug === 'feel-the-memory' && state.ys_digest">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Memory filled:</strong> <span x-text="`${state.ys_memory_mib} MiB`"></span> (<span x-text="state.ys_blocks.toLocaleString()"></span> × 1 KiB blocks)</div>
+          <div><strong>Bytes touched:</strong> <span x-text="state.ys_bytes_touched.toLocaleString()"></span> (fill pass + random-read pass)</div>
+          <div style="margin-top:4px;"><strong>Time:</strong> <span style="color:var(--ok, #22c55e);font-weight:600;" x-text="`${Math.round(state.ys_ms)} ms`"></span> <span style="color:var(--muted);" x-text="`(real yescrypt at this memory: ~${state.ys_cited_real_ms} ms)`"></span></div>
+          <div style="margin-top:4px;word-break:break-all;"><strong>Output (toy mixer, not a real hash):</strong> <span style="color:var(--muted);" x-text="state.ys_digest"></span></div>
+          <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">Time scales with memory, and an attacker must pay the memory bill once per guess in flight. That's the knob bcrypt doesn't have.</div>
+        </div>
+      </template>
+
+      <!-- argon2id: feel-the-memory result -->
+      <template x-if="step.slug === 'feel-the-memory' && state.a2_digest">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;font-family:ui-monospace, monospace;">
+          <div><strong>Memory filled:</strong> <span x-text="`${state.a2_memory_mib} MiB`"></span> (<span x-text="state.a2_blocks.toLocaleString()"></span> × 1 KiB blocks)</div>
+          <div><strong>Bytes touched:</strong> <span x-text="state.a2_bytes_touched.toLocaleString()"></span> (fill pass + random-read pass)</div>
+          <div style="margin-top:4px;"><strong>Time:</strong> <span style="color:var(--ok, #22c55e);font-weight:600;" x-text="`${Math.round(state.a2_ms)} ms`"></span> <span style="color:var(--muted);" x-text="`(real argon2id at this memory: ~${state.a2_cited_real_ms} ms)`"></span></div>
+          <div style="margin-top:4px;word-break:break-all;"><strong>Output (toy mixer, not a real hash):</strong> <span style="color:var(--muted);" x-text="state.a2_digest"></span></div>
+          <div style="margin-top:8px;color:var(--muted);font-size:0.88em;">m KiB per guess, every guess, no shortcuts — this is why OWASP puts argon2id first.</div>
+        </div>
+      </template>
+
+      <!-- gost-yescrypt: spot-the-difference result -->
+      <template x-if="step.slug === 'spot-the-difference' && state.gy_choice">
+        <div style="margin-top:14px;padding:12px 14px;border:1px dashed var(--border, #444);border-radius:6px;font-size:0.92em;line-height:1.6;">
+          <div><strong>Right:</strong> only the method prefix (<code>$y$</code> → <code>$gy$</code>) and the final hash bytes differ.</div>
+          <div style="margin-top:6px;color:var(--muted);font-size:0.9em;">Salt and params pass through untouched — the GOST wrapper swaps the outer hash function and nothing else. Compliance by wrapping, not reinventing.</div>
         </div>
       </template>
 

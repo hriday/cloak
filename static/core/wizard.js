@@ -338,6 +338,8 @@ function wizardComponent(initial) {
         "verify-md5-collision", "verify-sha1-collision", // collisions
         "find-a-collision",                   // birthday-attack
         "time-the-cost",                      // bcrypt
+        "feel-the-memory",                    // yescrypt + argon2id (shared branch)
+        "spot-the-difference",                // gost-yescrypt
         "factor-with-rho",                    // RSA: Pollard's rho factoring
       ]);
       if (SLUGS.has(step.slug)) return true;
@@ -386,6 +388,7 @@ function wizardComponent(initial) {
         "verify-sha1-collision",      // collisions: button-driven hashing demo
         "find-a-collision",           // birthday-attack: button-driven brute force
         "time-the-cost",              // bcrypt: {password, cost}
+        "feel-the-memory",            // yescrypt + argon2id: {password, memoryMiB}
         "factor-with-rho",            // RSA: button-driven Pollard's rho run
       ]);
       if (step.kind === "input-multi" || MULTI_INPUT_SLUGS.has(step.slug)) {
