@@ -70,7 +70,7 @@ model's 200-char ceiling.
 | 1 | intro | info | info | `$gy$`; exists for Russian regulatory (GOST) compliance; same yescrypt engine inside |
 | 2 | streebog | info | info | GOST R 34.11-2012 "Streebog" hash in one screen; role as a national-standard SHA-2 analog |
 | 3 | the-wrapper | info | info | The construction: HMAC-Streebog around the yescrypt core — compliance by wrapping, not by reinventing the KDF |
-| 4 | spot-the-difference | choose-from-list | spot_difference | Interactive. Same password/salt/params rendered as `$y$...` and `$gy$...`; learner picks which field changed (prefix + hash output; salt/params identical). Standard choose-from-list rendering, no custom branch |
+| 4 | spot-the-difference | choose-from-list | spot_difference | Interactive. Same password/salt/params rendered as `$y$...` and `$gy$...`; learner picks which field changed (prefix + hash output; salt/params identical). Custom three-button branch (stock choose-from-list renderer is RSA-specific) |
 | 5 | when-to-use | info | info | Honest scoping: required for Russian-market compliance, otherwise use yescrypt/argon2id; note some distros compile libxcrypt without GOST |
 | 6 | done | info | done | ctypes script with `$gy$` prefix + graceful "GOST not enabled" handling |
 
@@ -117,10 +117,6 @@ New directories under `static/algorithms/`:
   with the Fedora/Debian package note.
 
 **`argon2id/`**
-- `memhard_demo.js` — one-line re-export shim
-  (`export * from "../yescrypt/memhard_demo.js"`), needed because the
-  wizard's `DEMO_FILENAMES` resolves filenames inside the algorithm's own
-  static directory.
 - `validators.js` — `memory_cost` (imports the mixer from
   `../yescrypt/memhard_demo.js`, writes `a2_*` state keys), `tuning_math`
   (checks the RAM arithmetic), `info`, `done`.
@@ -132,19 +128,25 @@ Import precedent: hybrid's `math.js` re-exports from `rsa/math.js`.
 ## Wizard + template integration (small, follows bcrypt exactly)
 
 `static/core/wizard.js`:
-- `DEMO_FILENAMES`: add `"yescrypt": "memhard_demo.js"` and
-  `"argon2id": "memhard_demo.js"` (gost-yescrypt needs no demo module —
-  wizard must tolerate a missing entry for it, as it does for lessons
-  without demos).
+- NO `DEMO_FILENAMES` entries: the template branches only call `check()`;
+  the validators import the mixer directly (precedent: hkdf, hybrid,
+  length-extension have no demo entry). The argon2id re-export shim is
+  therefore not needed either.
 - `hasCustomInputBranch` SLUGS: add `"feel-the-memory"` (shared by yescrypt
-  and argon2id, like `walk-empty` is shared by SHA-256/SHA-3).
+  and argon2id) and `"spot-the-difference"` (gost-yescrypt).
 - `MULTI_INPUT_SLUGS`: add `"feel-the-memory"` (`{password, memoryMiB}`).
+  `spot-the-difference` stays single-input (`inputValue`).
 
-`core/templates/.../lesson.html`: ONE new template branch for
-`feel-the-memory` — password field, memory-size dropdown, run button,
-results table (toy ms + bytes touched + cited real ms). Both lessons use it;
-labels come from step state/algorithm slug. `spot-the-difference` and
-`tuning` use stock renderers; no other branches.
+`core/templates/core/lesson.html`:
+- The default `input-numeric` renderer does not consult
+  `hasCustomInputBranch` (bcrypt's `time-the-cost` currently double-renders
+  a stray "your answer" box) and the stock `choose-from-list` renderer is
+  hardwired to RSA's `coprimeOptions`. Fix both guards:
+  `!hasCustomInputBranch(step)` is added to the `input-numeric` and
+  `choose-from-list` conditions.
+- TWO new input branches: `feel-the-memory` (password + memory picker +
+  run button) and `spot-the-difference` (three choice buttons). Plus result
+  panels. `tuning` uses the stock numeric renderer; no other branches.
 
 No model, view, or API changes. No Python validator mirrors (JS-only house
 pattern for post-RSA lessons; server-side `progress_service` has no sequence
